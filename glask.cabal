@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 345a732dc3a2ecdd65d8b668a7ab37665cc528c908e48b07285527556a17810a
+-- hash: af655a47a3b588e8479bbe0160a78febf0220df122703fa0ea28484ae02bbaf4
 
 name:           glask
 version:        0.1.0.0
@@ -18,8 +18,7 @@ license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
-    README.md
-    ChangeLog.md
+    src/Compiler/Lexer/Lexer.x
 
 source-repository head
   type: git
@@ -27,16 +26,25 @@ source-repository head
 
 library
   exposed-modules:
+      Compiler.Lexer.Lexer
+      Compiler.Lexer.LexerState
       Compiler.Lexer.Located
       Compiler.Lexer.Position
       Compiler.Lexer.Token
+      Compiler.Lexer.Utils
       Lib
   other-modules:
       Paths_glask
   hs-source-dirs:
       src
   build-depends:
-      base >=4.7 && <5
+      array
+    , base >=4.7 && <5
+    , containers >=0.6.2.1
+    , directory
+    , filepath
+    , mtl
+    , utf8-string
   default-language: Haskell2010
 
 executable glask-exe
@@ -47,8 +55,14 @@ executable glask-exe
       app
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      array
+    , base >=4.7 && <5
+    , containers >=0.6.2.1
+    , directory
+    , filepath
     , glask
+    , mtl
+    , utf8-string
   default-language: Haskell2010
 
 test-suite glask-test
@@ -60,6 +74,12 @@ test-suite glask-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      base >=4.7 && <5
+      array
+    , base >=4.7 && <5
+    , containers >=0.6.2.1
+    , directory
+    , filepath
     , glask
+    , mtl
+    , utf8-string
   default-language: Haskell2010

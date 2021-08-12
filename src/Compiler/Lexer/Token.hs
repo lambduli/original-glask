@@ -7,17 +7,22 @@ import Compiler.Lexer.Located
 
 data Token
   -- keywords
-  = Tok'Data Position
-  | Tok'If Position
-  | Tok'Then Position
-  | Tok'Else Position
-  | Tok'Let Position
-  | Tok'In Position
-  | Tok'Case Position
-  | Tok'Of Position
-  | Tok'Type Position
-  | Tok'Underscore Position -- typed holes and pattern wild cards
-  | Tok'Lambda Position
+  = Tok'Data Position       -- data
+  | Tok'If Position         -- if
+  | Tok'Then Position       -- then
+  | Tok'Else Position       -- else
+  | Tok'Let Position        -- let
+  | Tok'In Position         -- in
+  | Tok'Case Position       -- case
+  | Tok'Of Position         -- of
+  | Tok'Type Position       -- type
+  | Tok'Underscore Position -- _
+  | Tok'Lambda Position     -- \
+  | Tok'Class Position      -- class
+  | Tok'Instance Position   -- instance
+  | Tok'Where Position      -- where
+  | Tok'Module Position     -- module
+  | Tok'Has'Type Position   -- ::
 
   -- forms of identifiers
   | Tok'Ident'Var String Position
@@ -26,15 +31,15 @@ data Token
   | Tok'Operator'Const String Position
 
   -- special symbols
-  | Tok'Left'Paren Position
-  | Tok'Right'Paren Position
-  | Tok'Left'Bracket Position
-  | Tok'Right'Bracket Position
-  | Tok'Comma Position
-  | Tok'Backtick Position
-  | Tok'Semicolon Position
-  | Tok'Left'Brace Position
-  | Tok'Right'Brace Position
+  | Tok'Left'Paren Position     -- (
+  | Tok'Right'Paren Position    -- )
+  | Tok'Left'Bracket Position   -- [
+  | Tok'Right'Bracket Position  -- ]
+  | Tok'Comma Position          -- ,
+  | Tok'Backtick Position       -- `
+  | Tok'Semicolon Position      -- ;
+  | Tok'Left'Brace Position     -- {
+  | Tok'Right'Brace Position    -- }
 
   -- literals
   | Tok'Int Int Position
@@ -42,7 +47,7 @@ data Token
   | Tok'Char Char Position
   | Tok'String String Position
 
-  | TokEOF Position
+  | Tok'EOF Position
   deriving (Eq, Show)
 
 
@@ -58,6 +63,12 @@ instance Located Token where
   at (Tok'Type position) = position
   at (Tok'Underscore position) = position
   at (Tok'Lambda position) = position
+  at (Tok'Class position) = position
+  at (Tok'Instance position) = position
+  at (Tok'Where position) = position
+  at (Tok'Module position) = position
+  at (Tok'Has'Type position) = position
+
   at (Tok'Ident'Var _ position) = position
   at (Tok'Ident'Const _ position) = position
   at (Tok'Operator _ position) = position
@@ -71,8 +82,10 @@ instance Located Token where
   at (Tok'Semicolon position) = position
   at (Tok'Left'Brace position) = position
   at (Tok'Right'Brace position) = position
+
   at (Tok'Int _ position) = position
   at (Tok'Double _ position) = position
   at (Tok'Char _ position) = position
   at (Tok'String _ position) = position
-  at (TokEOF position) = position
+
+  at (Tok'EOF position) = position
