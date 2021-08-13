@@ -28,7 +28,8 @@ data Parse'State = Parse'State
   , lex'start'code    :: Int              -- lexer start code
   , string'buffer     :: String           -- temporary storage for strings
   , pending'tokens    :: [Token]          -- for when Parser consumes the lookeahead and decided to put it back
-  , pending'position  :: Position }       -- needed when parsing strings, chars, multi-line strings
+  , pending'position  :: Position         -- needed when parsing strings, chars, multi-line strings
+  , done              :: Bool }           -- flag signalizing that we got Tok'EOF
   deriving Show
 
 
@@ -43,4 +44,5 @@ initial'state s = Parse'State
   , lex'start'code = 0
   , string'buffer = ""
   , pending'tokens = []
-  , pending'position = Position { line = 1, column = 1 }}
+  , pending'position = Position { line = 1, column = 1 }
+  , done = False }

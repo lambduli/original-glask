@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Compiler.Lexer.Utils where
 
 
@@ -159,5 +161,21 @@ get'position tok'len = do
 
 
 eval'parser :: Parser a -> String -> a
-eval'parser m s = evalState m (initial'state s)
+eval'parser parser source = evalState parser (initial'state source)
 
+
+run'parser :: Parser a -> String -> (a, Parse'State)
+run'parser parser source = runState parser (initial'state source)
+
+
+use'parser :: Parser a -> String -> [a]
+use'parser parser source = go [] $ runState parser (initial'state source)
+  where
+    -- go :: [a] -> (a, Parse'State) -> [a]
+    go acc (token, p'state)
+      = if finished
+        then acc
+        else go (token : acc) $ runState parser p'state
+      where
+        finished = done p'state
+          
