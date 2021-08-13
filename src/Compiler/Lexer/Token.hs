@@ -89,3 +89,46 @@ instance Located Token where
   at (Tok'String _ position) = position
 
   at (Tok'EOF position) = position
+
+
+
+{- Following operator is usefull for testing. It allows to compare only by the tag. -}
+
+infix 4 ~~
+
+(~~) :: Token -> Token -> Bool
+(Tok'Data _) ~~ (Tok'Data _) = True
+(Tok'If _) ~~ (Tok'If _) = True
+(Tok'Then _) ~~ (Tok'Then _) = True
+(Tok'Else _) ~~ (Tok'Else _) = True
+(Tok'Let _) ~~ (Tok'Let _) = True
+(Tok'In _) ~~ (Tok'In _) = True
+(Tok'Case _) ~~ (Tok'Case _) = True
+(Tok'Of _) ~~ (Tok'Of _) = True
+(Tok'Type _) ~~ (Tok'Type _) = True
+(Tok'Underscore _) ~~ (Tok'Underscore _) = True
+(Tok'Lambda _) ~~ (Tok'Lambda _) = True
+(Tok'Class _) ~~ (Tok'Class _) = True
+(Tok'Instance _) ~~ (Tok'Instance _) = True
+(Tok'Where _) ~~ (Tok'Where _) = True
+(Tok'Module _) ~~ (Tok'Module _) = True
+(Tok'Has'Type _) ~~ (Tok'Has'Type _) = True
+(Tok'Ident'Var _ _) ~~ (Tok'Ident'Var _ _) = True
+(Tok'Ident'Const _ _) ~~ (Tok'Ident'Const _ _) = True
+(Tok'Operator _ _) ~~ (Tok'Operator _ _) = True
+(Tok'Operator'Const _ _) ~~ (Tok'Operator'Const _ _) = True
+(Tok'Left'Paren _) ~~ (Tok'Left'Paren _) = True
+(Tok'Right'Paren _) ~~ (Tok'Right'Paren _) = True
+(Tok'Left'Bracket _) ~~ (Tok'Left'Bracket _) = True
+(Tok'Right'Bracket _) ~~ (Tok'Right'Bracket _) = True
+(Tok'Comma _) ~~ (Tok'Comma _) = True
+(Tok'Backtick _) ~~ (Tok'Backtick _) = True
+(Tok'Semicolon _) ~~ (Tok'Semicolon _) = True
+(Tok'Left'Brace _) ~~ (Tok'Left'Brace _) = True
+(Tok'Right'Brace _) ~~ (Tok'Right'Brace _) = True
+(Tok'Int _ _) ~~ (Tok'Int _ _) = True
+(Tok'Double _ _) ~~ (Tok'Double _ _) = True
+(Tok'Char _ _) ~~ (Tok'Char _ _) = True
+(Tok'String _ _) ~~ (Tok'String _ _) = True
+(Tok'EOF _) ~~ (Tok'EOF _) = True
+_ ~~ _ = False
