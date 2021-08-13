@@ -1,10 +1,10 @@
 name:                glask
 version:             0.1.0.0
-github:              "githubuser/glask"
+github:              "Taskkill/glask"
 license:             BSD3
-author:              "Author name here"
+author:              "Taskkill"
 maintainer:          "example@example.com"
-copyright:           "2021 Author name here"
+copyright:           "2021 Taskkill"
 
 extra-source-files:
 - src/Compiler/Lexer/Lexer.x
@@ -16,7 +16,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/glask#readme>
+description:         Please see the README on GitHub at <https://github.com/Taskkill/glask#readme>
 
 dependencies:
 - base >= 4.7 && < 5
@@ -26,6 +26,9 @@ dependencies:
 - directory
 - filepath
 - containers >= 0.6.2.1
+- hspec
+- transformers
+- extra
 
 library:
   source-dirs: src

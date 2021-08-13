@@ -1,19 +1,19 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: af655a47a3b588e8479bbe0160a78febf0220df122703fa0ea28484ae02bbaf4
+-- hash: 9d0a7021530d9583e3f37ddf1db2ae94c0bcbc329bb9f218d6bf4ce95870a8d2
 
 name:           glask
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/glask#readme>
-homepage:       https://github.com/githubuser/glask#readme
-bug-reports:    https://github.com/githubuser/glask/issues
-author:         Author name here
+description:    Please see the README on GitHub at <https://github.com/Taskkill/glask#readme>
+homepage:       https://github.com/Taskkill/glask#readme
+bug-reports:    https://github.com/Taskkill/glask/issues
+author:         Taskkill
 maintainer:     example@example.com
-copyright:      2021 Author name here
+copyright:      2021 Taskkill
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -22,10 +22,11 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/glask
+  location: https://github.com/Taskkill/glask
 
 library
   exposed-modules:
+      Compiler.Lexer
       Compiler.Lexer.Lexer
       Compiler.Lexer.LexerState
       Compiler.Lexer.Located
@@ -42,8 +43,11 @@ library
     , base >=4.7 && <5
     , containers >=0.6.2.1
     , directory
+    , extra
     , filepath
+    , hspec
     , mtl
+    , transformers
     , utf8-string
   default-language: Haskell2010
 
@@ -59,9 +63,12 @@ executable glask-exe
     , base >=4.7 && <5
     , containers >=0.6.2.1
     , directory
+    , extra
     , filepath
     , glask
+    , hspec
     , mtl
+    , transformers
     , utf8-string
   default-language: Haskell2010
 
@@ -69,6 +76,7 @@ test-suite glask-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      LexerSpec
       Paths_glask
   hs-source-dirs:
       test
@@ -78,8 +86,11 @@ test-suite glask-test
     , base >=4.7 && <5
     , containers >=0.6.2.1
     , directory
+    , extra
     , filepath
     , glask
+    , hspec
     , mtl
+    , transformers
     , utf8-string
   default-language: Haskell2010
