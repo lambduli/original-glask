@@ -23,14 +23,17 @@ $lower                = [a-z]
 $upper                = [A-Z]
 
 $symbol               = [ \! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \: ]
+$opstart              = [ \! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ ]
 
-$identchar            = [$lower $upper $digit $symbol]
+$idchar               = [$lower $upper $digit $symbol \']
+$opchar               = [$symbol $lower $upper $digit \:]
+-- TODO: Should operators contain letters and numbers?
 
-@variableident        = $lower $identchar*
-@constrident          = $upper $identchar*
+@variableident        = $lower $idchar*
+@constrident          = $upper $idchar*
 
-@operator             = $symbol [$lower $upper $symbol \:]*
-@opconstr             = [\:] [$symbol $lower $upper \:]*
+@operator             = $opstart $opchar*
+@opconstr             = \: $opchar*
 
 
 $space                = [\ \t\f\v]
@@ -151,6 +154,7 @@ read'token = do
       case alexScan (input s) (lex'start'code s) of
         AlexEOF -> do
           pos <- get'position 0
+          put s{ done = True }
           return $ Tok'EOF pos
 
         AlexError inp' -> error $ "Lexical error on line " ++ (show $ ai'line'number inp')
