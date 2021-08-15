@@ -150,8 +150,14 @@ alexGetByte ai =
 
 get'line'no :: Parser Int
 get'line'no = do
-  s <- get
-  return . ai'line'number . input $ s
+  state <- get
+  return . ai'line'number . input $ state
+
+
+get'col'no :: Parser Int
+get'col'no = do
+  state <- get
+  return . ai'column'number . input $ state
 
 
 get'position :: Int -> Parser Position
