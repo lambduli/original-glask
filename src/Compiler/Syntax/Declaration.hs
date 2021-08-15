@@ -11,7 +11,7 @@ import Compiler.Syntax.MatchGroup
 
 
 data Declaration
-  = Binding Match'Group                 -- id x = x
+  = Binding Match'Group                     -- id x = x
   -- | Annotated String Type Expression        -- id :: a -> a ; id x = x
   -- I think this one actually might not be that usefull
   -- I can use combination of Signature and Binding
