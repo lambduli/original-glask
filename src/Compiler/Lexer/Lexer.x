@@ -61,6 +61,9 @@ token :-
 <0>         instance                    { plain'tok Tok'Instance }
 <0>         where                       { plain'tok $ Tok'Where }
 <0>         module                      { plain'tok $ Tok'Module }
+<0>         infixl                      { plain'tok $ Tok'Infixl }
+<0>         infix                       { plain'tok $ Tok'Infix }
+<0>         infixr                      { plain'tok $ Tok'Infixr }
 
 
 -- special symbols

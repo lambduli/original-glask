@@ -23,6 +23,9 @@ data Token
   | Tok'Where Position      -- where
   | Tok'Module Position     -- module
   | Tok'Has'Type Position   -- ::
+  | Tok'Infixl Position     -- infixl
+  | Tok'Infix Position      -- infix
+  | Tok'Infixr Position     -- infixr
 
   -- forms of identifiers
   | Tok'Ident'Var String Position
@@ -68,6 +71,9 @@ instance Located Token where
   at (Tok'Where position) = position
   at (Tok'Module position) = position
   at (Tok'Has'Type position) = position
+  at (Tok'Infixl position) = position
+  at (Tok'Infix position) = position
+  at (Tok'Infixr position) = position
 
   at (Tok'Ident'Var _ position) = position
   at (Tok'Ident'Const _ position) = position
@@ -93,7 +99,7 @@ instance Located Token where
 
 
 {- Following operator is usefull for testing. It allows to compare only by the tag. -}
-
+{- As a side note, it is really hard to maintain, I will try to get rid of it and do it the other way. -}
 infix 4 ~~
 
 (~~) :: Token -> Token -> Bool
@@ -113,6 +119,9 @@ infix 4 ~~
 (Tok'Where _) ~~ (Tok'Where _) = True
 (Tok'Module _) ~~ (Tok'Module _) = True
 (Tok'Has'Type _) ~~ (Tok'Has'Type _) = True
+(Tok'Infixl _) ~~ (Tok'Infixl _) = True
+(Tok'Infix _) ~~ (Tok'Infix _) = True
+(Tok'Infixr _) ~~ (Tok'Infixr _) = True
 (Tok'Ident'Var _ _) ~~ (Tok'Ident'Var _ _) = True
 (Tok'Ident'Const _ _) ~~ (Tok'Ident'Const _ _) = True
 (Tok'Operator _ _) ~~ (Tok'Operator _ _) = True
