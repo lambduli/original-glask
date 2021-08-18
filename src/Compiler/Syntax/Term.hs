@@ -4,6 +4,7 @@ module Compiler.Syntax.Term where
 import Compiler.Syntax.Literal
 import Compiler.Syntax.Qualified
 import Compiler.Syntax.Type
+import Compiler.Syntax.Name
 
 
 {-
@@ -59,15 +60,15 @@ Jinak se obejdu bez toho.
 
 -- TODO: add Positions to specific alternatives for better error reporting
 data Term
-  = Term'Var String
-  | Term'Const String
-  | Term'Op String
+  = Term'Var Name
+  | Term'Const Name
+  | Term'Op Name
   | Term'Lit Literal
-  | Term'Abst String Term
+  | Term'Abst Name Term
   | Term'App [Term]
   | Term'Tuple [Term]
   | Term'If Term Term Term
   | Term'Let [(Term, Term)] Term
-  | Term'Ann (Qualified Type) Term
+  | Term'Ann Term (Qualified Type) -- should it be Qualified or not?
   | Term'Case Term [(Term, Term)]
   deriving (Eq)

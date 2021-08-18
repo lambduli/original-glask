@@ -10,7 +10,7 @@ import Compiler.Syntax.Literal
 import Compiler.Syntax.Qualified
 import Compiler.Syntax.Type
 import Compiler.Syntax.Declaration
-import Compiler.Syntax.MatchGroup
+import Compiler.Syntax.Match
 
 
 data Expression
@@ -24,8 +24,8 @@ data Expression
   | Tuple [Expression]
   | If Expression Expression Expression
   | Let [(Name, Expression)] Expression
-  | Ann (Qualified Type) Expression
-  | Case Expression [Match'Group]
+  | Ann Expression (Qualified Type) -- TODO: should it be Qualified Type or just Type?
+  | Case Expression [Match]
   | Intro Name [Expression]
   deriving (Eq)
 
