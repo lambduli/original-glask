@@ -8,5 +8,6 @@ data Pattern
   = P'Var Name
   | P'Con Name [Pattern]
   | P'Lit Literal
+  | P'As Name Pattern
   | P'Wild
   deriving (Show, Eq)
