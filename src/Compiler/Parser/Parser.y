@@ -3,76 +3,76 @@ module Compiler.Parser.Parser (parse'expr, parse'type) where
 
 import Control.Monad (unless, fail)
 import Control.Monad.State
-import Data.List (concat)
+import Data.List (concat,)
 
 import Compiler.Lexer.Token
 import Compiler.Lexer.Lexer
 import Compiler.Lexer.Utils
+import Compiler.Lexer.LexerState
 
 import Compiler.Syntax
 }
 
 %name parsermain
-%name parsertype Type
+-- %name parsertype Type
 %tokentype { Token }
 %error { parse'error }
 %monad { Parser }
-%lexer { lexer } { Tok'EOF }
+%lexer { lexer } { Tok'EOF _ }
 -- %expect 0
 
 
 %token
-  data          { Tok'Data $$ }
-  if            { Tok'If $$ }
-  then          { Tok'Then $$ }
-  else          { Tok'Else $$ }
-  let           { Tok'Let $$ }
-  in            { Tok'In $$ }
-  case          { Tok'Case $$ }
-  of            { Tok'Of $$ }
-  type          { Tok'Type $$ }
-  '_'           { Tok'Hole $$ }
-  lambda        { Tok'Lambda $$ }
-  class         { Tok'Class $$ }
-  instance      { Tok'Instance $$ }
-  where         { Tok'Where $$ }
-  module        { Tok'Module $$ }
-  '::'          { Tok'Has'Type $$ }
-  infixl        { Tok'Infixl $$ }
-  infix         { Tok'Infix $$ }
-  infixr        { Tok'Infixr $$ }
+  data          { Tok'Data _ }
+  if            { Tok'If _ }
+  then          { Tok'Then _ }
+  else          { Tok'Else _ }
+  let           { Tok'Let _ }
+  in            { Tok'In _ }
+  case          { Tok'Case _ }
+  of            { Tok'Of _ }
+  type          { Tok'Type _ }
+  '_'           { Tok'Underscore _ }
+  lambda        { Tok'Lambda _ }
+  class         { Tok'Class _ }
+  instance      { Tok'Instance _ }
+  where         { Tok'Where _ }
+  module        { Tok'Module _ }
+  '::'          { Tok'Has'Type _ }
+  infixl        { Tok'Infixl _ }
+  infix         { Tok'Infix _ }
+  infixr        { Tok'Infixr _ }
 
 
-  '->'          { Tok'Operator "->" $$ }
-  '=>'          { Tok'Operator "=>" $$ }
-  '='           { Tok'Operator "=" $$ }
-  '|'           { Tok'Operator "|" $$ }
-  '..'          { Tok'Operator ".." $$ }
-  '@'           { Tok'Operator "@" $$ }
+  '->'          { Tok'Operator "->" _ }
+  '=>'          { Tok'Operator "=>" _ }
+  '='           { Tok'Operator "=" _ }
+  '|'           { Tok'Operator "|" _ }
+  '..'          { Tok'Operator ".." _ }
+  '@'           { Tok'Operator "@" _ }
 
 
-  varid         { TokVarLower $$ }
-  conid         { TokVarUpper $$ }
-  op            { TokOperator $$ }
-  opcon         { TokOpConstr $$ }
+  varid         { Tok'Ident'Var $$ _ }
+  conid         { Tok'Ident'Const $$ _ }
+  op            { Tok'Operator $$ _ }
+  opcon         { Tok'Operator'Const $$ _ }
 
 
-  '('           { Tok'Left'Paren $$ }
-  ')'           { Tok'Right'Paren $$ }
-  '['           { Tok'Left'Bracket $$ }
-  ']'           { Tok'Right'Bracket $$ }
-  ','           { Tok'Comma $$ }
-  '`'           { Tok'Backtick $$ }
-  '{'           { Tok'Left'Brace $$ }
-  '}'           { Tok'Right'Brace $$ }
-  ';'           { Tok'Semicolon $$ }
+  '('           { Tok'Left'Paren _ }
+  ')'           { Tok'Right'Paren _ }
+  '['           { Tok'Left'Bracket _ }
+  ']'           { Tok'Right'Bracket _ }
+  ','           { Tok'Comma _ }
+  '`'           { Tok'Backtick _ }
+  '{'           { Tok'Left'Brace _ }
+  '}'           { Tok'Right'Brace _ }
+  ';'           { Tok'Semicolon _ }
 
 
---  unit          { TokVarUpper "()" } TODO: Unit will be parsed by the Parser as `'(' ')'`
-  integer       { TokInt $$ }
-  char          { TokChar $$ }
-  double        { TokDouble $$ }
-  string        { TokString $$ }
+  integer       { Tok'Int $$ _ }
+  char          { Tok'Char $$ _ }
+  double        { Tok'Double $$ _ }
+  string        { Tok'String $$ _ }
 
 
 %%
@@ -81,7 +81,7 @@ Program         ::  { [Declaration] }
 
 
 Module          ::  { [Declaration] }
-                :   module conid where Layout(Declaration)          { $4 }
+                :   module conid where Layout(Declaration)          { concat $4 }
 
 
 Declaration     ::  { [Declaration] }
@@ -104,7 +104,7 @@ Constructors    ::  { [Constr'Decl] }
                 |   '=' Constr NoneOrMany(ConstrOther)              { $2 : $3 }
 
 
-Constr          ::  { ConstrDecl }
+Constr          ::  { Constr'Decl }
                 :   UpIdent NoneOrMany(AType)                       { Con'Decl $1 $2 }
                 |   BType ConInfix BType                            { Con'Decl $2 [$1, $3] }
                 {- NOTE: According the Haskell report, both type operands can be either BType or "banged" AType -}
@@ -122,13 +122,13 @@ ConInfix        ::  { String }
                 |   '`' conid '`'                                   { $2 }
 
 
-ConstrOther     ::  { ConstrDecl }
+ConstrOther     ::  { Constr'Decl }
                 :   '|' Constr                                      { $2 }
 
 
 {- Type Alias/Synonym Declaration -}
 TypeSynonym     ::  { Declaration }
-                :   type conid Params '=' Type                      { Type'Alias $2 (foldr TyOp $5 $3) }
+                :   type conid Params '=' Type                      { Type'Alias $2 $3 $5 }
 
 
 {- Identifiers -}
@@ -162,9 +162,14 @@ Oper            ::  { Term'Id }
                 |   opcon                                           { Term'Id'Const $1 }
 
 
+OpInfix_        ::  { String }
+                :   OpInfix                                         { case $1 of
+                                                                      { Term'Id'Var name -> name
+                                                                      ; Term'Id'Const name -> name }}
+
 -- {- Fixity Signature -}
 FixitySigns     ::  { [Declaration] }
-                :   Fixity integer OneOrManySeparated(OpInfix)
+                :   Fixity integer OneOrManySeparated(OpInfix_)
                                                                     { map (Fixity $1 $2) $3 }
 
 
@@ -191,7 +196,7 @@ ClassSigns      ::  { [Declaration] }
 
 {- Instance Declaration -}
 InstanceDecl    ::  { Declaration }
-                :   instance SimpleContext conid Type InstBinds     { Instance ($2 :=> IsIn $3 $4) $5 }
+                :   instance SimpleContext conid Type InstBinds     { Instance ($2 :=> Is'In $3 $4) $5 }
 {- NOTE: There is a integrity restriction on the ^^^^ Type part -}
 {- As described in the Haskell Report 98 -}
 {-
@@ -217,7 +222,7 @@ SimpleContext   ::  { [Predicate] }
 
 
 SimpleClass     ::  { Predicate }
-                :   conid Type                                      { IsIn $1 $2 }
+                :   conid Type                                      { Is'In $1 $2 }
                 {-  Semantic Restrictions:
                     1) $2 have to be a Type Variable
                     2) $ the actual identifier for $2 must be bound by the class/instance declaration -}
@@ -320,9 +325,9 @@ AExp            ::  { Term'Expr }
                 {-  It there's none, produce an empty List -}
                 |   '[' Expression MaybeSeparated(Expression) '..' Expression ']'
                                                                     { Term'E'Arith'Seq $2 $3 $5 }
-                |   conid '{' NoneOrManySeparated(FieldBind) '}'    { Term'E'Labeled'Constr (Term'Id'Const $1) $3 }
+                |   conid '{' NoneOrManySeparated(FieldBind) '}'    { Term'E'Labeled'Constr $1 $3 }
                 |   AExp '{' OneOrManySeparated(FieldBind) '}'      { case $1 of
-                                                                      { Term'E'Id id -> Term'E'Labeled'Constr id $3
+                                                                      { Term'E'Id (Term'Id'Const name) -> Term'E'Labeled'Constr name $3
                                                                       ; _ -> Term'Labeled'Update $1 $3 } }
                 |   '(' Oper ')'                                    { Term'E'Op $2 }
 
@@ -350,8 +355,8 @@ TypeContext     ::  { [Predicate] }
 
 
 Predicate       ::  { Predicate }
-                :   conid varid                                     { IsIn $1 $ T'Var $ T'V $2 }
-                |   conid '(' Type ')'                              { IsIn $1 $3 }
+                :   conid varid                                     { Is'In $1 $ T'Var $ T'V $2 }
+                |   conid '(' Type ')'                              { Is'In $1 $3 }
                 {-  Semantic Constraint: Type must be a Type Application.
                     Where a Type Variable is applied to at least one Type Constants
                     or their application  -}
@@ -416,8 +421,8 @@ AType             ::  { Type }
                   :   GTyCon                                        { $1 }
                   |   varid                                         {%  do
                                                                         { name <- fresh'ident
-                                                                        ; return $ T'Var (T'V $1 (K'V name)) } }
-                  |   '(' Type ',' OneOrManySeparated(Type) ')'     { T'Tuple ($1 : $4) }
+                                                                        ; return $ T'Var (T'V $1 (K'Var name)) } }
+                  |   '(' Type ',' OneOrManySeparated(Type) ')'     { T'Tuple ($2 : $4) }
                   |   '[' Type ']'                                  { t'list $2 }
                   |   '(' Type ')'                                  { $2 }
 
@@ -425,11 +430,11 @@ AType             ::  { Type }
 GTyCon            ::  { Type }
                   :   conid                                         {%  do
                                                                         { name <- fresh'ident
-                                                                        ; return $ T'Con (T'C $1 (K'V name)) } }
+                                                                        ; return $ T'Con (T'C $1 (K'Var name)) } }
                   |   Unit                                          { T'Con $ T'C "()" }
                   |   '['  ']'                                      { T'Con $ T'C "[]" }
                   |   '(' '->' ')'                                  { T'Con $ T'C "(->)" }
-                  |   '(' ',' NoneOrMany(',') ')'                   { T'Con $ T'C "TUPLE FIX" }
+                  |   '(' ',' NoneOrMany(',') ')'                   { T'Con $ T'C "FIX TUPLE!" (K'Var "FIX TUPLE!") }
 {-                TODO: figure out the Tuple types -}
 
 
@@ -476,7 +481,7 @@ parse'error _ = do
   error $ "Parse error on line " ++ show l'no ++ ", column " ++ show col'no ++ "." ++ "  " ++ show state
 
 
-parse'expr :: String -> Either [Declaration] Expression
+parse'expr :: String -> [Declaration]
 parse'expr source = eval'parser parsermain source
 
 
