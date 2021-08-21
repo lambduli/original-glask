@@ -12,10 +12,11 @@ import Compiler.Syntax.Instance
 import Compiler.Syntax.Signature
 import Compiler.Syntax.Name
 import Compiler.Syntax.BindGroup
+import {-# SOURCE #-} Compiler.Syntax.Term
 
 
 data Declaration
-  = Binding Bind'Group                        -- id x = x
+  = Binding (Either (Term'Pat, Term'Expr) Bind'Group)  -- id x = x
   -- I may need to add information about whether it is explicitly typed or not
 
   -- | Annotated String Type Expression        -- id :: a -> a ; id x = x
@@ -46,7 +47,7 @@ instance Show Fixity where
 
 instance Show Declaration where
   show (Binding bind'group)
-    = "TODO: show match'group"
+    = "TODO: show bind'group"
     -- = name ++ " = " ++ show expr
   -- show (Annotated name type' expr)
     -- = name ++ " :: " ++ show type' ++ "\n" ++ name ++ " = " ++ show expr

@@ -5,6 +5,7 @@ import Compiler.Syntax.Literal
 import Compiler.Syntax.Qualified
 import Compiler.Syntax.Type
 import Compiler.Syntax.Name
+import Compiler.Syntax.Declaration
 
 
 {-
@@ -58,17 +59,41 @@ Jinak se obejdu bez toho.
 -}
 
 
+data Term'Id
+  = Term'Id'Var Name
+  | Term'Id'Const Name
+  deriving (Eq)
+
+
 -- TODO: add Positions to specific alternatives for better error reporting
-data Term
-  = Term'Var Name
-  | Term'Const Name
-  | Term'Op Name
-  | Term'Lit Literal
-  | Term'Abst Name Term
-  | Term'App [Term]
-  | Term'Tuple [Term]
-  | Term'If Term Term Term
-  | Term'Let [(Term, Term)] Term
-  | Term'Ann Term (Qualified Type) -- should it be Qualified or not?
-  | Term'Case Term [(Term, Term)]
+data Term'Expr
+  = Term'E'Id Term'Id
+  -- | Term'E'Const Term'Id
+  | Term'E'Op Term'Id -- for +, : or `SomeConstr`
+  | Term'E'Lit Literal
+  | Term'E'Abst Term'Pat Term'Expr
+  | Term'E'App [Term'Expr]
+  | Term'E'Tuple [Term'Expr]
+  | Term'E'List [Term'Expr]
+  | Term'E'Arith'Seq Term'Expr (Maybe Term'Expr) Term'Expr
+  | Term'E'If Term'Expr Term'Expr Term'Expr
+  | Term'E'Let [Declaration] Term'Expr
+  | Term'E'Ann Term'Expr (Qualified Type)
+  | Term'E'Case Term'Expr [(Term'Pat, Term'Expr)]
+  | Term'E'Labeled'Constr Name [(Name, Term'Expr)]
+  | Term'E'Labeled'Update Term'Expr [(Name, Term'Expr)]
+  deriving (Eq)
+
+
+data Term'Pat
+  = Term'P'Id Term'Id
+  -- | Term'P'Const Term'Id
+  | Term'P'Op Term'Id
+  | Term'P'Lit Literal
+  | Term'P'App [Term'Pat]
+  | Term'P'Labeled Name [(Name, Term'Pat)] -- can be desugared to Term'P'App with correct order of field values
+  | Term'P'Tuple [Term'Pat] -- will be able to desugar Term'P'App
+  | Term'P'List [Term'Pat] -- will be able to desugar - same way
+  | Term'P'As Name Term'Pat -- named pattern
+  | Term'P'Wild
   deriving (Eq)
