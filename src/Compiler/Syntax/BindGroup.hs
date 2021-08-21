@@ -6,7 +6,7 @@ import Compiler.Syntax.Match
 
 
 
-data Bind'Group = Bind'Group { name  :: Name , pats  :: [Match] }
+data Bind'Group = Bind'Group { name  :: Name , alternatives  :: [Match] }
   deriving (Eq, Show)
 {- TODO:  Consider adding where clause
           something like where' :: [Declaration] -}
