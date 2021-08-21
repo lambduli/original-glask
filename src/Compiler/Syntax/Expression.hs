@@ -24,7 +24,7 @@ data Expression
   | Tuple [Expression]
   | If Expression Expression Expression
   | Let [(Name, Expression)] Expression
-  | Ann Expression (Qualified Type) -- TODO: should it be Qualified Type or just Type?
+  | Ann Expression (Qualified Type)
   | Case Expression [Match]
   | Intro Name [Expression]
   deriving (Eq)
