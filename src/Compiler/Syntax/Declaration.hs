@@ -24,7 +24,7 @@ data Declaration
   -- I can use combination of Signature and Binding
   | Signature Signature -- Name (Qualified Type)           -- id :: a -> a
   | Data'Decl Name [Name] [Constr'Decl]       -- Data type declaration -- name type'params list'of'consturctors'with'params
-  | Type'Alias Name Type                      -- type String = List Char
+  | Type'Alias Name [Name] Type               -- type String = List Char
   | Fixity Fixity Int Name                    -- infix 5 +
   | Class Name Name [Predicate] [Declaration] -- class (Super1 a1, ... , SuperN aN) ==> Name where { list of Signatures }
   --    cname parname supers     signatures
@@ -55,7 +55,7 @@ instance Show Declaration where
     = name ++ " :: " ++ show qual'type
   show (Data'Decl name params constrs)
     = "data " ++ name ++ " " ++ unwords params ++ " = " ++ intercalate " | " (map show constrs)
-  show (Type'Alias name type')
+  show (Type'Alias name params type')
     = "type " ++ name ++ " = " ++ show type'
   show (Fixity fix prec name)
     = show fix ++ " " ++ show prec ++ " " ++ name

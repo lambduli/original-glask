@@ -1,5 +1,5 @@
 module Compiler.Syntax
-  ( Declaration(..), Constr'Decl(..)
+  ( Declaration(..), Constr'Decl(..), Fixity(..)
   , Expression(..)
   , HasKind(..)
   , Kind(..)
