@@ -11,7 +11,7 @@ module Compiler.Syntax
   , Qualified(..)
   , Scheme(..)
   , Signature(..)
-  , Term(..)
+  , Term'Id(..), Term'Expr(..), Term'Pat(..)
   , T'V(..), T'C(..), Type(..)
   , Bind'Group(..)
   , Supers, Class
