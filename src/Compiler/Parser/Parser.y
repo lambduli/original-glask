@@ -3,18 +3,22 @@ module Compiler.Parser.Parser (parse'expr, parse'type) where
 
 import Control.Monad (unless, fail)
 import Control.Monad.State
-import Data.List (concat,)
+import Data.List (concat)
 
 import Compiler.Lexer.Token
 import Compiler.Lexer.Lexer
 import Compiler.Lexer.Utils
 import Compiler.Lexer.LexerState
 
-import Compiler.Syntax
+import Compiler.Syntax.Name
+import Compiler.Syntax.Literal
+import Compiler.Syntax.Declaration (Fixity(..))
+
+import Compiler.Syntax.Term
 }
 
 %name parsermain
--- %name parsertype Type
+%name parsertype Type
 %tokentype { Token }
 %error { parse'error }
 %monad { Parser }
@@ -76,35 +80,35 @@ import Compiler.Syntax
 
 
 %%
-Program         ::  { [Declaration] }
+Program         ::  { [Term'Decl] }
                 :   Module                                          { $1 }
 
 
-Module          ::  { [Declaration] }
+Module          ::  { [Term'Decl] }
                 :   module conid where Layout(Declaration)          { concat $4 }
 
 
-Declaration     ::  { [Declaration] }
+Declaration     ::  { [Term'Decl] }
                 :   Data                                            { [ $1 ] }
                 |   TypeSynonym                                     { [ $1 ] }
                 |   FixitySigns                                     { $1 }
                 |   TypeSigns                                       { $1 }
-                |   ClassDecl                                       { $1 }
-                |   InstanceDecl                                    { $1 }
+                |   ClassDecl                                       { [ $1 ] }
+                |   InstanceDecl                                    { [ $1 ] }
                 |   Binding                                         { [ $1 ] }
 
 
 {- Data Declaration -}
-Data            ::  { Declaration }
-                :   data UpIdent Params Constructors                { DataDecl $2 $3 $4 }
+Data            ::  { Term'Decl }
+                :   data UpIdent Params Constructors                { Data'Decl $2 $3 $4 }
 
 
-Constructors    ::  { [Constr'Decl] }
+Constructors    ::  { [Term'Constr'Decl] }
                 :   {- empty -}                                     { [] }
                 |   '=' Constr NoneOrMany(ConstrOther)              { $2 : $3 }
 
 
-Constr          ::  { Constr'Decl }
+Constr          ::  { Term'Constr'Decl }
                 :   UpIdent NoneOrMany(AType)                       { Con'Decl $1 $2 }
                 |   BType ConInfix BType                            { Con'Decl $2 [$1, $3] }
                 {- NOTE: According the Haskell report, both type operands can be either BType or "banged" AType -}
@@ -112,7 +116,7 @@ Constr          ::  { Constr'Decl }
                 |   UpIdent '{' NoneOrManySeparated(TypeField) '}'  { Con'Record'Decl $1 $3 }
 
 
-TypeField       ::  { (String, Type) }
+TypeField       ::  { (String, Term'Type) }
                 :   LowIdent '::' Type                              { ($1, $3) }
                 {- NOTE: According the Haskell report, Type could also be "! AType" -}
 
@@ -122,12 +126,12 @@ ConInfix        ::  { String }
                 |   '`' conid '`'                                   { $2 }
 
 
-ConstrOther     ::  { Constr'Decl }
+ConstrOther     ::  { Term'Constr'Decl }
                 :   '|' Constr                                      { $2 }
 
 
 {- Type Alias/Synonym Declaration -}
-TypeSynonym     ::  { Declaration }
+TypeSynonym     ::  { Term'Decl }
                 :   type conid Params '=' Type                      { Type'Alias $2 $3 $5 }
 
 
@@ -168,7 +172,7 @@ OpInfix_        ::  { String }
                                                                       ; Term'Id'Const name -> name }}
 
 -- {- Fixity Signature -}
-FixitySigns     ::  { [Declaration] }
+FixitySigns     ::  { [Term'Decl] }
                 :   Fixity integer OneOrManySeparated(OpInfix_)
                                                                     { map (Fixity $1 $2) $3 }
 
@@ -180,23 +184,23 @@ Fixity          ::  { Fixity }
 
 
 {- Type Annotation Signature -}
-TypeSigns       ::  { [Declaration] }
-                :   OneOrManySeparated(LowIdent) '::' QualType      { map (\ name -> Signature $ T'Signature name $3) $1 }
+TypeSigns       ::  { [Term'Decl] }
+                :   OneOrManySeparated(LowIdent) '::' QualType      { map (\ name -> Signature name $3) $1 }
 
 
 {- Class Declaration -}
-ClassDecl       ::  { Declaration }
+ClassDecl       ::  { Term'Decl }
                 :   class SimpleContext conid varid ClassSigns      { Class $3 $4 $2 $5 }
 
 
-ClassSigns      ::  { [Declaration] }
+ClassSigns      ::  { [Term'Decl] }
                 :   where Layout(TypeSigns)                         { concat $2 }
                 |   {- empty -}                                     { [] }
 
 
 {- Instance Declaration -}
-InstanceDecl    ::  { Declaration }
-                :   instance SimpleContext conid Type InstBinds     { Instance ($2 :=> Is'In $3 $4) $5 }
+InstanceDecl    ::  { Term'Decl }
+                :   instance SimpleContext conid Type InstBinds     { Instance ($2, Is'In $3 $4) $5 }
 {- NOTE: There is a integrity restriction on the ^^^^ Type part -}
 {- As described in the Haskell Report 98 -}
 {-
@@ -209,19 +213,19 @@ InstanceDecl    ::  { Declaration }
 {- TODO: If I keep parsing it as Type, I will need to check this part during semantic analysis. -}
 
 
-InstBinds       ::  { [Declaration] }
+InstBinds       ::  { [Term'Decl] }
                 :   where Layout(Binding)                           { $2 }
                 |   {- empty -}                                     { [] }
 
 
 {- Simple Contexts -}
-SimpleContext   ::  { [Predicate] }
+SimpleContext   ::  { [Term'Pred] }
                 :   SimpleClass '=>'                                { [$1] }
                 |   '(' NoneOrManySeparated(SimpleClass) ')' '=>'   { $2 }
-                |   {- no context -}                             { [] }
+                |   {- no context -}                                { [] }
 
 
-SimpleClass     ::  { Predicate }
+SimpleClass     ::  { Term'Pred }
                 :   conid Type                                      { Is'In $1 $2 }
                 {-  Semantic Restrictions:
                     1) $2 have to be a Type Variable
@@ -229,8 +233,8 @@ SimpleClass     ::  { Predicate }
 
 
 {- Binding -}
-Binding         ::  { Declaration }
-                :   FunLHS RHS                                      { Binding $ Left ($1, $2) }
+Binding         ::  { Term'Decl }
+                :   FunLHS RHS                                      { Binding $1 $2 }
 
 
 FunLHS          ::  { Term'Pat }
@@ -270,6 +274,7 @@ APat            ::  { Term'Pat }
                 -- and insert corresponding type constructors to the typying environment or wherever.
                 |   conid '{' NoneOrManySeparated(FPat) '}'         { Term'P'Labeled $1 $3 }
                 |   Literal                                         { Term'P'Lit $1 }
+                |   string                                          { Term'P'App ((Term'P'Id $ Term'Id'Const "[]") : map (Term'P'Lit . Lit'Char) $1) }
                 |   '_'                                             { Term'P'Wild }
                 |   '(' Pattern ')'                                 { $2 }
                 |   '(' Pattern ',' OneOrManySeparated(Pattern) ')' { Term'P'Tuple ($2 : $4) }
@@ -294,8 +299,8 @@ Expression      ::  { Term'Expr }
 
 Exp10           ::  { Term'Expr }
                 :   lambda APat NoneOrMany(APat) '->' Expression    { foldr Term'E'Abst $5 ($2 : $3) }
-                |   let Layout(Declaration) in Expression           { Term'E'Let $2 $4 }
-                |   if Expression then Expression else Expression   { Term'E'If $2 $4 $5 }
+                |   let Layout(Declaration) in Expression           { Term'E'Let (concat $2) $4 }
+                |   if Expression then Expression else Expression   { Term'E'If $2 $4 $6 }
                 |   case Expression of Layout(Alt)                  { Term'E'Case $2 $4 }
                 |   OneOrMany(BExp)                                 { Term'E'App $1 }
 --  A sequence of infix operators and constructors or AExp.
@@ -315,9 +320,10 @@ AExp            ::  { Term'Expr }
                 :   varid                                           { Term'E'Id $ Term'Id'Var $1 }
                 |   conid                                           { Term'E'Id $ Term'Id'Const $1 }
                 |   Literal                                         { Term'E'Lit $1 }
+                |   string                                          { Term'E'App ((Term'E'Id $ Term'Id'Const "[]") : map (Term'E'Lit . Lit'Char) $1) }
                 |   '(' Expression ')'                              { $2 }
                 |   '(' Expression ',' OneOrManySeparated(Expression) ')'
-                                                                    { Term'E'Tuple $2 : $4 }
+                                                                    { Term'E'Tuple ($2 : $4) }
                 |   '[' NoneOrManySeparated(Expression) ']'         { Term'E'List $2 }
                 {-  TODO: use foldl to construct Term'App with singleton lists -}
                 {-  It will be easier to find possible syntax errors like -}
@@ -328,7 +334,7 @@ AExp            ::  { Term'Expr }
                 |   conid '{' NoneOrManySeparated(FieldBind) '}'    { Term'E'Labeled'Constr $1 $3 }
                 |   AExp '{' OneOrManySeparated(FieldBind) '}'      { case $1 of
                                                                       { Term'E'Id (Term'Id'Const name) -> Term'E'Labeled'Constr name $3
-                                                                      ; _ -> Term'Labeled'Update $1 $3 } }
+                                                                      ; _ -> Term'E'Labeled'Update $1 $3 } }
                 |   '(' Oper ')'                                    { Term'E'Op $2 }
 
 
@@ -340,22 +346,26 @@ Literal         ::  { Literal }
                 :   integer                                         { Lit'Int $1 }
                 |   double                                          { Lit'Double $1 }
                 |   char                                            { Lit'Char $1 }
-                |   string                                          { foldr (\ item acc -> App (App (Var ":") (Lit $ Lit'Char item)) acc ) (Var "[]") $1 }
+                
+
+                -- |   string                                          { Term'E'App ((Term'E'Id $ Term'Id'Const "[]") : map (Term'E'Lit . Lit'Char) $1) }
+                  
+                  -- foldr (\ item acc -> App (App (Var ":") (Lit $ Lit'Char item)) acc ) (Var "[]") $1 }
 
 
 {- Type / Qualified Type -}
-QualType        ::  { Qualified Type }
-                :   TypeContext Type                                { $1 :=> $2 }
+QualType        ::  { ([Term'Pred], Term'Type) }
+                :   TypeContext Type                                { ($1, $2) }
 
 
-TypeContext     ::  { [Predicate] }
+TypeContext     ::  { [Term'Pred] }
                 :   {- empty -}                                     { [] }
                 |   Predicate '=>'                                  { [$1] }
                 |   '(' NoneOrManySeparated(Predicate) ')' '=>'     { $2 }
 
 
-Predicate       ::  { Predicate }
-                :   conid varid                                     { Is'In $1 $ T'Var $ T'V $2 }
+Predicate       ::  { Term'Pred }
+                :   conid varid                                     { Is'In $1 $ Term'T'Id $ Term'Id'Var $2 }
                 |   conid '(' Type ')'                              { Is'In $1 $3 }
                 {-  Semantic Constraint: Type must be a Type Application.
                     Where a Type Variable is applied to at least one Type Constants
@@ -397,44 +407,36 @@ Predicate       ::  { Predicate }
 --                       later just lookup kind of the type variable by it's type name. -}
 
 
-Type              ::  { Type }
+Type              ::  { Term'Type }
                   :   BType NoneOrMany(TypeArr)                     { case $2 of
                                                                         { [] -> $1
-                                                                        ; (t : ts) ->
-                                                                          let
-                                                                            state = last $ t :| ts
-                                                                          in foldr (-->) state ($1 : $2) } }
---                 {- TODO: implement (-->) operator -}
+                                                                        ; (t : ts) -> Term'T'Arrow ($1 : $2) } }
 
 
-TypeArr           ::  { Type }
+TypeArr           ::  { Term'Type }
                   :   '->' Type                                     { $2 }
 
 
-BType             ::  { Type }
+BType             ::  { Term'Type }
                   :   NoneOrMany(BType) AType                       { case $1 of
                                                                         { [] -> $2
-                                                                        ; (t : ts) -> T'App (foldl' T'App t ts) $2 } }
+                                                                        ; (t : ts) -> Term'T'App ($1 ++ [$2]) } }
 
 
-AType             ::  { Type }
+AType             ::  { Term'Type }
                   :   GTyCon                                        { $1 }
-                  |   varid                                         {%  do
-                                                                        { name <- fresh'ident
-                                                                        ; return $ T'Var (T'V $1 (K'Var name)) } }
-                  |   '(' Type ',' OneOrManySeparated(Type) ')'     { T'Tuple ($2 : $4) }
-                  |   '[' Type ']'                                  { t'list $2 }
+                  |   varid                                         { Term'T'Id $ Term'Id'Var $1 }
+                  |   '(' Type ',' OneOrManySeparated(Type) ')'     { Term'T'Tuple ($2 : $4) }
+                  |   '[' Type ']'                                  { Term'T'List $2 }
                   |   '(' Type ')'                                  { $2 }
 
 
-GTyCon            ::  { Type }
-                  :   conid                                         {%  do
-                                                                        { name <- fresh'ident
-                                                                        ; return $ T'Con (T'C $1 (K'Var name)) } }
-                  |   Unit                                          { T'Con $ T'C "()" }
-                  |   '['  ']'                                      { T'Con $ T'C "[]" }
-                  |   '(' '->' ')'                                  { T'Con $ T'C "(->)" }
-                  |   '(' ',' NoneOrMany(',') ')'                   { T'Con $ T'C "FIX TUPLE!" (K'Var "FIX TUPLE!") }
+GTyCon            ::  { Term'Type }
+                  :   conid                                         { Term'T'Id $ Term'Id'Const $1 }
+                  |   Unit                                          { Term'T'Id $ Term'Id'Const "()" }
+                  |   '['  ']'                                      { Term'T'Id $ Term'Id'Const "[]" }
+                  |   '(' '->' ')'                                  { Term'T'Id $ Term'Id'Const "(->)" }
+                  |   '(' ',' NoneOrMany(',') ')'                   { Term'T'Id $ Term'Id'Const "(FIX, TUPLE)" }
 {-                TODO: figure out the Tuple types -}
 
 
@@ -481,11 +483,11 @@ parse'error _ = do
   error $ "Parse error on line " ++ show l'no ++ ", column " ++ show col'no ++ "." ++ "  " ++ show state
 
 
-parse'expr :: String -> [Declaration]
+parse'expr :: String -> [Term'Decl]
 parse'expr source = eval'parser parsermain source
 
 
-parse'type :: String -> Type
+parse'type :: String -> Term'Type
 parse'type source = eval'parser parsertype source
 
 }
