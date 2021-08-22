@@ -1,11 +1,16 @@
-module Compiler.Syntax.Term where
+module Compiler.Syntax.Term
+  ( Term'Id(..)
+  , Term'Expr(..)
+  , Term'Pat(..)
+  , Term'Type(..)
+  , Term'Decl(..), Term'Constr'Decl(..), Term'Pred(..) ) where
 
 
-import Compiler.Syntax.Literal
-import Compiler.Syntax.Qualified
-import Compiler.Syntax.Type
-import Compiler.Syntax.Name
-import Compiler.Syntax.Declaration
+import Compiler.Syntax.Term.Identifier
+import {-# SOURCE #-} Compiler.Syntax.Term.Expression
+import Compiler.Syntax.Term.Pattern
+import Compiler.Syntax.Term.Type
+import Compiler.Syntax.Term.Declaration
 
 
 {-
@@ -59,41 +64,60 @@ Jinak se obejdu bez toho.
 -}
 
 
-data Term'Id
-  = Term'Id'Var Name
-  | Term'Id'Const Name
-  deriving (Eq)
+-- data Term'Id
+--   = Term'Id'Var Name
+--   | Term'Id'Const Name
+--   deriving (Eq)
 
 
--- TODO: add Positions to specific alternatives for better error reporting
-data Term'Expr
-  = Term'E'Id Term'Id
-  -- | Term'E'Const Term'Id
-  | Term'E'Op Term'Id -- for +, : or `SomeConstr`
-  | Term'E'Lit Literal
-  | Term'E'Abst Term'Pat Term'Expr
-  | Term'E'App [Term'Expr]
-  | Term'E'Tuple [Term'Expr]
-  | Term'E'List [Term'Expr]
-  | Term'E'Arith'Seq Term'Expr (Maybe Term'Expr) Term'Expr
-  | Term'E'If Term'Expr Term'Expr Term'Expr
-  | Term'E'Let [Declaration] Term'Expr
-  | Term'E'Ann Term'Expr (Qualified Type)
-  | Term'E'Case Term'Expr [(Term'Pat, Term'Expr)]
-  | Term'E'Labeled'Constr Name [(Name, Term'Expr)]
-  | Term'E'Labeled'Update Term'Expr [(Name, Term'Expr)]
-  deriving (Eq)
+-- -- TODO: add Positions to specific alternatives for better error reporting
+-- data Term'Expr
+--   = Term'E'Id Term'Id
+--   -- | Term'E'Const Term'Id
+--   | Term'E'Op Term'Id -- for +, : or `SomeConstr`
+--   | Term'E'Lit Literal
+--   | Term'E'Abst Term'Pat Term'Expr
+--   | Term'E'App [Term'Expr]
+--   | Term'E'Tuple [Term'Expr]
+--   | Term'E'List [Term'Expr]
+--   | Term'E'Arith'Seq Term'Expr (Maybe Term'Expr) Term'Expr
+--   | Term'E'If Term'Expr Term'Expr Term'Expr
+--   | Term'E'Let [Term'Decl] Term'Expr
+--   | Term'E'Ann Term'Expr ([Term'Pred], Term'Type)
+--   | Term'E'Case Term'Expr [(Term'Pat, Term'Expr)]
+--   | Term'E'Labeled'Constr Name [(Name, Term'Expr)]
+--   | Term'E'Labeled'Update Term'Expr [(Name, Term'Expr)]
+--   deriving (Eq)
 
 
-data Term'Pat
-  = Term'P'Id Term'Id
-  -- | Term'P'Const Term'Id
-  | Term'P'Op Term'Id
-  | Term'P'Lit Literal
-  | Term'P'App [Term'Pat]
-  | Term'P'Labeled Name [(Name, Term'Pat)] -- can be desugared to Term'P'App with correct order of field values
-  | Term'P'Tuple [Term'Pat] -- will be able to desugar Term'P'App
-  | Term'P'List [Term'Pat] -- will be able to desugar - same way
-  | Term'P'As Name Term'Pat -- named pattern
-  | Term'P'Wild
-  deriving (Eq)
+-- data Term'Pat
+--   = Term'P'Id Term'Id
+--   -- | Term'P'Const Term'Id
+--   | Term'P'Op Term'Id
+--   | Term'P'Lit Literal
+--   | Term'P'App [Term'Pat]
+--   | Term'P'Labeled Name [(Name, Term'Pat)] -- can be desugared to Term'P'App with correct order of field values
+--   | Term'P'Tuple [Term'Pat] -- will be able to desugar Term'P'App
+--   | Term'P'List [Term'Pat] -- will be able to desugar - same way
+--   | Term'P'As Name Term'Pat -- named pattern
+--   | Term'P'Wild
+--   deriving (Eq)
+
+
+-- data Term'Type
+--   = Term'T'Id Term'Id
+--   | Term'T'Tuple [Term'Type]
+--   | Term'T'List Term'Type
+--   | Term'T'Arrow [Term'Type]
+--   | Term'T'App [Term'Type]
+--   deriving (Eq)
+
+
+-- tt'arr :: Term'Type
+-- tt'arr = Term'T'Id $ Term'Id'Const "(->)"
+
+
+-- infixr 0 -->
+
+-- (-->) :: Term'Type -> Term'Type -> Term'Type
+-- domain --> codomain = Term'T'App [Term'T'App [tt'arr, domain], codomain]

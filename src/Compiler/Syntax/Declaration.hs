@@ -12,11 +12,10 @@ import Compiler.Syntax.Instance
 import Compiler.Syntax.Signature
 import Compiler.Syntax.Name
 import Compiler.Syntax.BindGroup
-import {-# SOURCE #-} Compiler.Syntax.Term
 
 
 data Declaration
-  = Binding (Either (Term'Pat, Term'Expr) Bind'Group)  -- id x = x
+  = Binding Bind'Group                        -- id x = x
   -- I may need to add information about whether it is explicitly typed or not
 
   -- | Annotated String Type Expression        -- id :: a -> a ; id x = x

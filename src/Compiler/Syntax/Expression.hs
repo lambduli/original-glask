@@ -23,7 +23,7 @@ data Expression
   | Infix'App Expression Expression {- Var / Const or rather Op -} Expression
   | Tuple [Expression]
   | If Expression Expression Expression
-  | Let [(Name, Expression)] Expression
+  | Let [Declaration] Expression
   | Ann Expression (Qualified Type)
   | Case Expression [Match]
   | Intro Name [Expression]
@@ -40,7 +40,7 @@ instance Show Expression where
   show (Infix'App left op right ) = ""
   show (Tuple exprs) = "(" ++ intercalate ", " (map show exprs) ++ ")"
   show (If cond' then' else') = "if " ++ show cond' ++ " then " ++ show then' ++ " else " ++ show else'
-  show (Let pairs expr) = "let " ++ intercalate "\n" (map (\ (name, val) -> name ++ show val) pairs) ++ " in " ++ show expr
+  show (Let decls body) = "let " ++ intercalate "\n" (map show decls) ++ " in " ++ show body
   show (Ann type' expr) = show expr ++ " :: " ++ show type'
   show (Case expr options) = "case " ++ show expr ++ " of \n { " ++ "TODO: show options" ++ " }"
   show (Intro name exprs) = "(" ++ name ++ " " ++ unwords (map show exprs) ++ ")"

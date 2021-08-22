@@ -11,7 +11,6 @@ module Compiler.Syntax
   , Qualified(..)
   , Scheme(..)
   , Signature(..)
-  , Term'Id(..), Term'Expr(..), Term'Pat(..)
   , T'V(..), T'C(..), Type(..)
   , Bind'Group(..)
   , Supers, Class
@@ -31,7 +30,6 @@ import Compiler.Syntax.Predicate
 import Compiler.Syntax.Qualified
 import Compiler.Syntax.Scheme
 import Compiler.Syntax.Signature
-import Compiler.Syntax.Term
 import Compiler.Syntax.Type
 import Compiler.Syntax.BindGroup
 import Compiler.Syntax.Class
