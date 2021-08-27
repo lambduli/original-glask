@@ -7,6 +7,7 @@ import Compiler.Syntax.Term.Declaration
 import Compiler.Syntax.Term.Identifier
 import Compiler.Syntax.Term.Type
 import Compiler.Syntax.Term.Pattern
+import Compiler.Syntax.Term.Predicate
 
 -- TODO: add Positions to specific alternatives for better error reporting
 data Term'Expr

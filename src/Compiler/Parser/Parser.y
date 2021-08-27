@@ -1,5 +1,5 @@
 {
-module Compiler.Parser.Parser (parse'expr, parse'type) where
+module Compiler.Parser.Parser (parse'module, parse'decls, parse'expr, parse'type) where
 
 import Control.Monad (unless, fail)
 import Control.Monad.State
@@ -10,6 +10,8 @@ import Compiler.Lexer.Lexer
 import Compiler.Lexer.Utils
 import Compiler.Lexer.LexerState
 
+import Compiler.Parser.Utils
+
 import Compiler.Syntax.Name
 import Compiler.Syntax.Literal
 import Compiler.Syntax.Declaration (Fixity(..))
@@ -18,6 +20,8 @@ import Compiler.Syntax.Term
 }
 
 %name parsermain
+%name parserdecls Declaration
+%name parserexpr Expression
 %name parsertype Type
 %tokentype { Token }
 %error { parse'error }
@@ -100,7 +104,10 @@ Declaration     ::  { [Term'Decl] }
 
 {- Data Declaration -}
 Data            ::  { Term'Decl }
-                :   data UpIdent Params Constructors                { Data'Decl $2 $3 $4 }
+                :   data conid Params Constructors                { Data'Decl $2 $3 $4 }
+                |   data '(' opcon ')' Params Constructors        { Data'Decl $3 $5 $6 }
+                |   data '(' ')' Params Constructors              { Data'Decl "()" $4 $5 }
+
 
 
 Constructors    ::  { [Term'Constr'Decl] }
@@ -109,11 +116,18 @@ Constructors    ::  { [Term'Constr'Decl] }
 
 
 Constr          ::  { Term'Constr'Decl }
-                :   UpIdent NoneOrMany(AType)                       { Con'Decl $1 $2 }
+                :   conid NoneOrMany(AType)                         { Con'Decl $1 $2 }
+                |   '(' opcon ')' NoneOrMany(AType)                 { Con'Decl $2 $4 }
+                |   '(' ')' NoneOrMany(AType)                       { Con'Decl "()" $3 }
+
                 |   BType ConInfix BType                            { Con'Decl $2 [$1, $3] }
                 {- NOTE: According the Haskell report, both type operands can be either BType or "banged" AType -}
                 {- since I don't have a "!" bang operator, I am not doing that here -}
-                |   UpIdent '{' NoneOrManySeparated(TypeField) '}'  { Con'Record'Decl $1 $3 }
+                
+                |   conid '{' NoneOrManySeparated(TypeField) '}'    { Con'Record'Decl $1 $3 }
+                |   '(' opcon ')' '{' NoneOrManySeparated(TypeField) '}'
+                                                                    { Con'Record'Decl $2 $5 }
+                |   '(' ')' '{' NoneOrManySeparated(TypeField) '}'  { Con'Record'Decl "()" $4 }
 
 
 TypeField       ::  { (String, Term'Type) }
@@ -145,10 +159,10 @@ LowIdent        ::  { String }
                 |   '(' op ')'                                      { $2 }
 
 
-UpIdent         ::  { String }
-                :   conid                                           { $1 }
-                |   '(' opcon ')'                                   { $2 }
-                |   Unit                                            { "()" }
+-- UpIdent         ::  { String }
+--                 :   conid                                           { $1 }
+--                 |   '(' opcon ')'                                   { $2 }
+--                 |   Unit                                            { "()" }
 
 
 Unit            ::  { () }
@@ -265,7 +279,7 @@ APat            ::  { Term'Pat }
                 :   varid MaybeAsPat                                { case $2 of
                                                                       { Nothing -> Term'P'Id $ Term'Id'Var $1
                                                                       ; Just pat -> Term'P'As $1 pat } }
-                |   Unit                                            { Term'P'Id $ Term'Id'Const "()" }
+                |   '(' ')'                                         { Term'P'Id $ Term'Id'Const "()" }
                 |   '[' ']'                                         { Term'P'Id $ Term'Id'Const "[]" }
                 |   '(' ',' NoneOrMany(',') ')'                     { Term'P'Id $ Term'Id'Const undefined }
                 {- TODO: Figure out how to insert tuple constructor for arbitraryly sized tuples -}
@@ -336,6 +350,7 @@ AExp            ::  { Term'Expr }
                                                                       { Term'E'Id (Term'Id'Const name) -> Term'E'Labeled'Constr name $3
                                                                       ; _ -> Term'E'Labeled'Update $1 $3 } }
                 |   '(' Oper ')'                                    { Term'E'Op $2 }
+                |   '(' ')'                                         { Term'E'Id $ Term'Id'Const "()" }
 
 
 FieldBind       ::  { (Name, Term'Expr) }
@@ -355,7 +370,30 @@ Literal         ::  { Literal }
 
 {- Type / Qualified Type -}
 QualType        ::  { ([Term'Pred], Term'Type) }
-                :   TypeContext Type                                { ($1, $2) }
+-- this one is 19 S\R
+--                :   Predicate MaybeArrowType    { () } -- either Predicate is just "simple" type, or it is qualifier
+--                |   '(' NoneOrManySeparated(Predicate) ')' MaybeArrowType { () } -- the same thing -- simple tuple, or qualified type
+--                |   Type    { () } -- just unqualified type
+
+-- this one reduces S/R conflicts to 16
+                :   Type MaybeArrowType   {% do case $2 of
+                                            { Nothing -> return ([], $1)
+                                            ; Just t -> do 
+                                                { let predicates = to'predicates $1
+                                                ; return (predicates, t) } } }
+{- TODO: in case the $2 is (Just _) the $1 must be transformed to the list of predicates -}
+
+MaybeArrowType  ::  { Maybe Term'Type }
+                :   {- empty -}   { Nothing }
+                |   '=>' Type     { Just $2 }
+
+-- this one has something like 19 S/R
+--                :   Type            { ([], $1) }
+--                |   Predicate '=>' Type  { ([$1], $3) }
+--                |   '(' NoneOrManySeparated(Predicate) ')' '=>' Type { ($2, $5) }
+
+-- this one has like 20? S\R
+--                :   TypeContext Type                                { ($1, $2) }
 
 
 TypeContext     ::  { [Term'Pred] }
@@ -418,9 +456,9 @@ TypeArr           ::  { Term'Type }
 
 
 BType             ::  { Term'Type }
-                  :   NoneOrMany(BType) AType                       { case $1 of
-                                                                        { [] -> $2
-                                                                        ; (t : ts) -> Term'T'App ($1 ++ [$2]) } }
+                  :   OneOrMany(AType)                              { case $1 of
+                                                                      { [t] -> t
+                                                                      ; ts -> Term'T'App ts } }
 
 
 AType             ::  { Term'Type }
@@ -433,7 +471,7 @@ AType             ::  { Term'Type }
 
 GTyCon            ::  { Term'Type }
                   :   conid                                         { Term'T'Id $ Term'Id'Const $1 }
-                  |   Unit                                          { Term'T'Id $ Term'Id'Const "()" }
+                  |   '(' ')'                                       { Term'T'Id $ Term'Id'Const "()" }
                   |   '['  ']'                                      { Term'T'Id $ Term'Id'Const "[]" }
                   |   '(' '->' ')'                                  { Term'T'Id $ Term'Id'Const "(->)" }
                   |   '(' ',' NoneOrMany(',') ')'                   { Term'T'Id $ Term'Id'Const "(FIX, TUPLE)" }
@@ -474,6 +512,11 @@ MaybeSeparated(tok)
                 |   ',' tok                                         { Just $2 }
 
 
+Maybe(tok)
+                :   {- empty -}                                     { Nothing }
+                |   tok                                             { Just $1 }
+
+
 {
 
 parse'error _ = do
@@ -483,8 +526,16 @@ parse'error _ = do
   error $ "Parse error on line " ++ show l'no ++ ", column " ++ show col'no ++ "." ++ "  " ++ show state
 
 
-parse'expr :: String -> [Term'Decl]
-parse'expr source = eval'parser parsermain source
+parse'module :: String -> [Term'Decl]
+parse'module source = eval'parser parsermain source
+
+
+parse'decls :: String -> [Term'Decl]
+parse'decls source = eval'parser parserdecls source
+
+
+parse'expr :: String -> Term'Expr
+parse'expr source = eval'parser parserexpr source
 
 
 parse'type :: String -> Term'Type

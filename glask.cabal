@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 49ae798cedb64d9d9c7802cad4200b9efea434668b855aeee595466f356850fa
+-- hash: fa3b15daeca4aa0a7115899dbbaf2b5c1f5875006b19a2d39626f261ac4efc4d
 
 name:           glask
 version:        0.1.0.0
@@ -34,6 +34,7 @@ library
       Compiler.Lexer.Token
       Compiler.Lexer.Utils
       Compiler.Parser.Parser
+      Compiler.Parser.Utils
       Compiler.Syntax
       Compiler.Syntax.BindGroup
       Compiler.Syntax.Class
@@ -55,6 +56,7 @@ library
       Compiler.Syntax.Term.Expression
       Compiler.Syntax.Term.Identifier
       Compiler.Syntax.Term.Pattern
+      Compiler.Syntax.Term.Predicate
       Compiler.Syntax.Term.Type
       Compiler.Syntax.Type
       Lib
@@ -101,6 +103,7 @@ test-suite glask-test
   main-is: Spec.hs
   other-modules:
       LexerSpec
+      ParserSpec
       Paths_glask
   hs-source-dirs:
       test

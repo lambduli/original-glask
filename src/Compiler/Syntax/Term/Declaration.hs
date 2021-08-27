@@ -3,17 +3,18 @@ module Compiler.Syntax.Term.Declaration where
 
 import Compiler.Syntax.Name
 import Compiler.Syntax.Declaration
+
 import {-# SOURCE #-} Compiler.Syntax.Term.Expression
 import Compiler.Syntax.Term.Type
 import Compiler.Syntax.Term.Pattern
-
+import Compiler.Syntax.Term.Predicate
 
 
 data Term'Decl
   = Binding Term'Pat Term'Expr                -- id x = x
   -- I may need to add information about whether it is explicitly typed or not
 
-  | Signature Name ([Term'Pred], Term'Type)      -- id :: a -> a
+  | Signature Name ([Term'Pred], Term'Type)   -- id :: a -> a
   | Data'Decl Name [Name] [Term'Constr'Decl]  -- Data type declaration -- name type'params list'of'consturctors'with'params
   | Type'Alias Name [Name] Term'Type          -- type String = List Char
   | Fixity Fixity Int Name                    -- infix 5 +
@@ -26,8 +27,4 @@ data Term'Decl
 data Term'Constr'Decl
   = Con'Decl Name [Term'Type]
   | Con'Record'Decl Name [(Name, Term'Type)]
-  deriving (Eq)
-
-
-data Term'Pred = Is'In Name Term'Type
   deriving (Eq)
