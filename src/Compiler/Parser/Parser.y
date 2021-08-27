@@ -370,30 +370,16 @@ Literal         ::  { Literal }
 
 {- Type / Qualified Type -}
 QualType        ::  { ([Term'Pred], Term'Type) }
--- this one is 19 S\R
---                :   Predicate MaybeArrowType    { () } -- either Predicate is just "simple" type, or it is qualifier
---                |   '(' NoneOrManySeparated(Predicate) ')' MaybeArrowType { () } -- the same thing -- simple tuple, or qualified type
---                |   Type    { () } -- just unqualified type
-
--- this one reduces S/R conflicts to 16
                 :   Type MaybeArrowType   {% do case $2 of
                                             { Nothing -> return ([], $1)
                                             ; Just t -> do 
                                                 { let predicates = to'predicates $1
                                                 ; return (predicates, t) } } }
-{- TODO: in case the $2 is (Just _) the $1 must be transformed to the list of predicates -}
+
 
 MaybeArrowType  ::  { Maybe Term'Type }
                 :   {- empty -}   { Nothing }
                 |   '=>' Type     { Just $2 }
-
--- this one has something like 19 S/R
---                :   Type            { ([], $1) }
---                |   Predicate '=>' Type  { ([$1], $3) }
---                |   '(' NoneOrManySeparated(Predicate) ')' '=>' Type { ($2, $5) }
-
--- this one has like 20? S\R
---                :   TypeContext Type                                { ($1, $2) }
 
 
 TypeContext     ::  { [Term'Pred] }
