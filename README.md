@@ -87,3 +87,36 @@ So the `b` from the `foo`'s annotation can be anything. And I think the context 
 `Example (a _ _) => a b -> a b`
 
 Where `_` must be some concrete type. 
+
+
+
+
+# Next Steps:
+- Keep adding tests for the Lexer and the Parser
+- Define the `Term->AST` monad transformer stack - based on ExceptT
+- Change the Parser State monad to something possibly also based on the ExceptT -> so I can report syntactic and semantic errors better
+- Prepare the implementation of the Shunting Yard Algorithm
+- Desugar list and tuple patterns
+- Figure out the tuple constructors
+- Other possible stuff 
+- Transform the `Term` to the `AST`
+  - Take care of the Kinds in Type Variables (again consider removing them altagether)
+
+- ## Analysis:
+  - Dependency Analysis will need to be perfored for every `let ... = ... in ...` expression --> I will isolate it into the function and return the result in some reasonable shape to be used for the specific thing
+  - Dependency Analysis for Types
+  - Dependency Analysisi 
+  - Dependency Analysis for Type Class declarations (no cyclic dependencies)
+
+> Can I do all the analyses AFTER the `Term->AST` transformations?
+> Or is there something I need to analyze before I go from Term to AST?
+
+The answer seems to be no. I think I could first transform the stuff, while doing so, I will also collect some information, like specific tuple constructors which need to be put inside the typing context, kinding context, type constant context and so on.
+
+
+## Idea:
+Maybe I could refactor the Terms so that they are parametrized by the type they represent.
+So `Term'Type` would become `Term Type` and so on.
+
+I think the only benefit would be to have the connection between them explicitly specified.
+But then again - I am explicitly specifying that connection when defining the instances of `ToAST`.

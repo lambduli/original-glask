@@ -34,3 +34,4 @@ import Compiler.Syntax.Type
 import Compiler.Syntax.BindGroup
 import Compiler.Syntax.Class
 import Compiler.Syntax.Instance
+import Compiler.Syntax.Fixity

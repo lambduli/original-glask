@@ -12,7 +12,6 @@ import Compiler.Syntax.Term.Predicate
 -- TODO: add Positions to specific alternatives for better error reporting
 data Term'Expr
   = Term'E'Id Term'Id
-  -- | Term'E'Const Term'Id
   | Term'E'Op Term'Id -- for +, : or `SomeConstr`
   | Term'E'Lit Literal
   | Term'E'Abst Term'Pat Term'Expr

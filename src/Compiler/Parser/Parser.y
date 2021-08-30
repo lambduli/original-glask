@@ -14,7 +14,7 @@ import Compiler.Parser.Utils
 
 import Compiler.Syntax.Name
 import Compiler.Syntax.Literal
-import Compiler.Syntax.Declaration (Fixity(..))
+import Compiler.Syntax.Fixity
 
 import Compiler.Syntax.Term
 }

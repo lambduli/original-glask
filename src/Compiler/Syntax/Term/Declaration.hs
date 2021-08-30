@@ -3,6 +3,7 @@ module Compiler.Syntax.Term.Declaration where
 
 import Compiler.Syntax.Name
 import Compiler.Syntax.Declaration
+import Compiler.Syntax.Fixity
 
 import {-# SOURCE #-} Compiler.Syntax.Term.Expression
 import Compiler.Syntax.Term.Type

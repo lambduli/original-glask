@@ -12,6 +12,7 @@ import Compiler.Syntax.Instance
 import Compiler.Syntax.Signature
 import Compiler.Syntax.Name
 import Compiler.Syntax.BindGroup
+import Compiler.Syntax.Fixity
 
 
 data Declaration
@@ -29,19 +30,6 @@ data Declaration
   --    cname parname supers     signatures
   | Instance Instance [Declaration]           -- instance ... where { list of Bindings }
   deriving (Eq)
-
-
-data Fixity
-  = Infixl
-  | Infix
-  | Infixr
-  deriving (Eq)
-
-
-instance Show Fixity where
-  show Infixl = "infixl"
-  show Infix = "infix"
-  show Infixr = "infixr"
 
 
 instance Show Declaration where

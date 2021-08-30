@@ -19,7 +19,7 @@ data Expression
   | Const Name -- should I have value level Const? I mean, even constructors are just variables so...
   | Op Name -- I might want to remove this, but then I should probably remove Infix'App too
   | Lit Literal
-  | Abs Name Expression
+  | Abs Pattern Expression
   | App Expression Expression
   | Infix'App Expression Expression {- Var / Const or rather Op -} Expression
   | Tuple [Expression]
@@ -36,7 +36,7 @@ instance Show Expression where
   show (Const name) = name
   show (Op op) = op
   show (Lit lit) = show lit
-  show (Abs arg body) = "(\\ " ++ arg ++ " -> " ++ show body ++ ")"
+  show (Abs pattern'param body) = "(\\ " ++ show pattern'param ++ " -> " ++ show body ++ ")"
   show (App left right) = "(" ++ show left ++ " " ++ show right ++ ")"
   show (Infix'App left op right ) = ""
   show (Tuple exprs) = "(" ++ intercalate ", " (map show exprs) ++ ")"
