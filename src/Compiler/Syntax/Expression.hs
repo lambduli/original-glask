@@ -11,12 +11,13 @@ import Compiler.Syntax.Qualified
 import Compiler.Syntax.Type
 import Compiler.Syntax.Declaration
 import Compiler.Syntax.Match
+import Compiler.Syntax.Pattern
 
 
 data Expression
   = Var Name
-  | Const Name
-  | Op Name
+  | Const Name -- should I have value level Const? I mean, even constructors are just variables so...
+  | Op Name -- I might want to remove this, but then I should probably remove Infix'App too
   | Lit Literal
   | Abs Name Expression
   | App Expression Expression
