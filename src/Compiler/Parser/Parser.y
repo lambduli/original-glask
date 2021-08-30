@@ -118,7 +118,9 @@ Constructors    ::  { [Term'Constr'Decl] }
 Constr          ::  { Term'Constr'Decl }
                 :   conid NoneOrMany(AType)                         { Con'Decl $1 $2 }
                 |   '(' opcon ')' NoneOrMany(AType)                 { Con'Decl $2 $4 }
-                |   '(' ')' NoneOrMany(AType)                       { Con'Decl "()" $3 }
+                
+                |   '(' ')'                                         { Con'Decl "()" [] }
+                |   '[' ']'                                         { Con'Decl "[]" []}
 
                 |   BType ConInfix BType                            { Con'Decl $2 [$1, $3] }
                 {- NOTE: According the Haskell report, both type operands can be either BType or "banged" AType -}
@@ -127,7 +129,6 @@ Constr          ::  { Term'Constr'Decl }
                 |   conid '{' NoneOrManySeparated(TypeField) '}'    { Con'Record'Decl $1 $3 }
                 |   '(' opcon ')' '{' NoneOrManySeparated(TypeField) '}'
                                                                     { Con'Record'Decl $2 $5 }
-                |   '(' ')' '{' NoneOrManySeparated(TypeField) '}'  { Con'Record'Decl "()" $4 }
 
 
 TypeField       ::  { (String, Term'Type) }
