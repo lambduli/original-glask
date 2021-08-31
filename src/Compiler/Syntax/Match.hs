@@ -36,6 +36,20 @@ import {-# SOURCE #-} Compiler.Syntax.Expression
  -}
 
 
+{- QUESTION:
+    Why is there a list of patterns and not a single Pattern
+    then the rhs would possibly contain a lambda abstraction.
+    Or many nested.
+
+    The thing is - I have the head of the declaration as an expression.
+    That means - it's an Application Term containing a list of Expression Terms.
+    That Application Term needs to be translated to the Pattern Application Term.
+    And it also means the correct association must be decided using Shunting Yard Algorithm.
+    This step will then produce Pattern AST. And that is in the form of a tree.
+    So producing a list of Patterns seems counter productive and counter intuitive.
+ -}
+
+
 data Match = Match { patterns :: [Pattern], rhs :: Expression {-, ctxt :: Match'Context -} }
   deriving (Eq, Show)
 {- TODO:  Consider adding guards for each pattern.
