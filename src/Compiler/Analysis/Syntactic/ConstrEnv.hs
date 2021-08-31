@@ -1,4 +1,4 @@
-module Compiler.Analysis.ConstrEnv where
+module Compiler.Analysis.Syntactic.ConstrEnv where
 
 
 import qualified Data.Map.Strict as Map

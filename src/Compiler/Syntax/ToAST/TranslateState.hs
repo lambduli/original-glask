@@ -7,4 +7,5 @@ import qualified Data.Map.Strict as Map
 import Compiler.Syntax.Kind
 
 
-type Translate'State = Map.Map String Kind
+{- NOTE: I don't think I need the Translate'State right now -}
+type Translate'State = ()

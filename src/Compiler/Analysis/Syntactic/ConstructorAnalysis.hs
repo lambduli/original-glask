@@ -1,4 +1,4 @@
-module Compiler.Analysis.ConstructorAnalysis where
+module Compiler.Analysis.Syntactic.ConstructorAnalysis where
 
 
 import qualified Data.Map.Strict as Map
@@ -8,7 +8,7 @@ import Data.Maybe
 import Compiler.Syntax.Name
 import Compiler.Syntax.Term
 
-import Compiler.Analysis.ConstrEnv
+import Compiler.Analysis.Syntactic.ConstrEnv
 
 
 analyze :: [Term'Decl] -> Constr'Env

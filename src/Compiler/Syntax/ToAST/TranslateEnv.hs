@@ -1,13 +1,16 @@
 module Compiler.Syntax.ToAST.TranslateEnv where
 
 
-import Compiler.Syntax.Name
-import Compiler.Syntax.Fixity
-import Compiler.Syntax.Type
+import qualified Data.Map.Strict as Map
 
-import Compiler.Analysis.ConstrEnv
+
+import Compiler.Syntax.Kind
+
+import Compiler.Analysis.Syntactic.ConstrEnv
+import Compiler.Analysis.Syntactic.FixityEnv
 
 
 data Translate'Env = Trans'Env
-  { fixities :: (Fixity, Int, Name)
-  , constructors :: Constr'Env }
+  { fixities :: Fixity'Env
+  , constructors :: Constr'Env
+  , typing'scope :: Map.Map String Kind }
