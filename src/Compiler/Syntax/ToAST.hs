@@ -116,6 +116,7 @@ instance To'AST (Term'Pat, Term'Expr) Match where
 
 
 -- TODO: maybe remove this, depends whether I will use it in the to'ast for Term'E'Labeled'*
+-- I also use it to translate Con'Record'Decl
 instance To'AST a b => To'AST (Name, a) (Name, b) where
   to'ast (name, a) = do
     b <- to'ast a
