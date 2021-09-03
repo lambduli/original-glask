@@ -7,6 +7,7 @@ import qualified Data.Map.Strict as Map
 import Compiler.Syntax
 
 import Compiler.Analysis.TypeSystem.Type.Constants
+import Compiler.Analysis.TypeSystem.Class
 
 
 data Infer'Env = Infer'Env { kind'env :: Kind'Env, type'env :: Type'Env, class'env :: Class'Env }
