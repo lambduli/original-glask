@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module Compiler.Analysis.TypeSystem.Substituable where
+module Compiler.Analysis.TypeSystem.Solver.Substitutable where
 
 
 import qualified Data.Map.Strict as Map
@@ -23,6 +23,11 @@ newtype Subst k v = Sub (Map.Map k v)
 empty'subst :: Subst k a
 empty'subst = Sub Map.empty
 
+
+--
+-- TODO:  Consider renaming it to Substitute?
+--        Also consider changing the order of type parameters to (Substitutable k v t)
+--
 
 -- | Substituable represents a relation between three types
 -- | `k` is a type of the Name in the Subst -- the thing being replaced
