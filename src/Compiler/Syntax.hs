@@ -13,7 +13,6 @@ module Compiler.Syntax
   , Signature(..)
   , T'V(..), T'C(..), Type(..)
   , Bind'Group(..)
-  , Supers, Class
   , Instance
   ) where
 
@@ -32,6 +31,5 @@ import Compiler.Syntax.Scheme
 import Compiler.Syntax.Signature
 import Compiler.Syntax.Type
 import Compiler.Syntax.BindGroup
-import Compiler.Syntax.Class
 import Compiler.Syntax.Instance
 import Compiler.Syntax.Fixity
