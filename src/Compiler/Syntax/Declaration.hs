@@ -7,7 +7,6 @@ import {-# SOURCE #-} Compiler.Syntax.Expression
 import Compiler.Syntax.Type
 import Compiler.Syntax.Qualified
 import Compiler.Syntax.Predicate
-import Compiler.Syntax.Class
 import Compiler.Syntax.Instance
 import Compiler.Syntax.Signature
 import Compiler.Syntax.Name
@@ -29,6 +28,9 @@ data Declaration
   | Class Name Name [Predicate] [Declaration] -- class (Super1 a1, ... , SuperN aN) ==> Name where { list of Signatures }
   --    cname parname supers     signatures
   | Instance Instance [Declaration]           -- instance ... where { list of Bindings }
+  -- NOTE: I think it's possible that I will need to move the [Declaration] inside the Instance
+  -- I don't need them now - for type checking, but for code generation, it might be necessary
+  -- to have them together
   deriving (Eq)
 
 
