@@ -1,7 +1,6 @@
 module Compiler.Analysis.TypeSystem.Class where
 
 
-
 import qualified Data.Map.Strict as Map
 import Data.Maybe
 import Control.Monad.Except

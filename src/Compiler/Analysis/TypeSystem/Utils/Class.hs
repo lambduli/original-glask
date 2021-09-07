@@ -8,7 +8,6 @@ import Control.Monad.Extra
 import Control.Monad.Trans.Except (catchE)
 
 
-
 import Compiler.Syntax
 
 import Compiler.Analysis.Error
@@ -21,7 +20,6 @@ import Compiler.Analysis.TypeSystem.Solver.Solve
 import Compiler.Analysis.TypeSystem.Solver.Unify
 
 import Compiler.Analysis.TypeSystem.Type.Constants
-
 
 
 {- TODO: NOTE: it's partial, I don't quite like that. Fix that later. -}

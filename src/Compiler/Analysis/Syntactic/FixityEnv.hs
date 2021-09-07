@@ -1,5 +1,6 @@
 module Compiler.Analysis.Syntactic.FixityEnv where
 
+
 import qualified Data.Map.Strict as Map
 
 
