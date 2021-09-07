@@ -146,6 +146,24 @@ So the `b` from the `foo`'s annotation can be anything. And I think the context 
 Where `_` must be some concrete type. 
 
 
+## 3
+
+Is there any way, to qualify over type constructors?
+ex.:
+
+```haskell
+data Dictionary k v = ...
+```
+Now, what if I would like to say, that whatever the `k` is, it must have an instance of `Ord`?
+
+I think the workaround would be to have "smart constructors" and they would qualify the type, but that is not that ergonomic.
+
+## Answer (3)
+
+No.
+I can use GADTs and they will bring the context in some cases (let behaves strangely) but aside from that - no.
+
+
 ## Idea:
 Maybe I could refactor the Terms so that they are parametrized by the type they represent.
 So `Term'Type` would become `Term Type` and so on.
