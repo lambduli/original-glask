@@ -50,7 +50,12 @@ import {-# SOURCE #-} Compiler.Syntax.Expression
  -}
 
 
-data Match = Match { patterns :: [Pattern], rhs :: Expression {-, ctxt :: Match'Context -} }
+data Match
+  = Match { patterns :: [Pattern]
+          , rhs :: Expression
+        {-, ctxt :: Match'Context -}
+        {-, wheres :: [Declaration] -}
+        {-, guards :: [Guard] -} }
   deriving (Eq, Show)
 {- TODO:  Consider adding guards for each pattern.
           I am thinking guards :: [Guard] -}
