@@ -17,7 +17,6 @@ import Compiler.Analysis.TypeSystem.Type.Infer.Pattern
 import Compiler.Analysis.TypeSystem.Utils.Infer
 
 
-
 infer'expr :: Expression -> Infer ([Predicate], Type, [Constraint Type], [Constraint Kind])
 infer'expr (Var var'name) = do
   preds :=> type' <- lookup't'env var'name
@@ -35,6 +34,7 @@ infer'expr (Lit lit) = do
   (preds, type') <- infer'lit lit
   return (preds, type', [], [])
 
+-- TODO: check if it's really valid
 infer'expr (Abs pattern'param body) = do
   (preds'param, type'param, assumptions'param) <- infer'pat pattern'param
   (preds'body, type'body, t'constrs, k'constrs) <- merge'into't'env assumptions'param (infer'expr body)
@@ -58,9 +58,28 @@ infer'expr (App left right) = do
   let t'var = T'Var (T'V fresh'name K'Star)
   return (preds'l ++ preds'r, t'var, cs'l ++ cs'r ++ [t'l `Unify` (t'r `type'fn` t'var)], k'cs'l ++ k'cs'r)
 
+-- TODO: check if it's really valid
 infer'expr (Infix'App left op right) = do
-  undefined
-  -- TODO: implement later - should be easy enough
+  (preds'l, t'l, t'cs'l, k'cs'l) <- infer'expr left
+  (preds'op, t'op, t'cs'op, k'cs'op) <- infer'expr op
+  (preds'r, t'r, t'cs'r, k'cs'r) <- infer'expr right
+
+  {-
+    The type of the operator should be a binary function.
+    Where the type of the first argument should be the type of the left.
+    And the type of the second argument should be the type of the right.
+    The type of the result will then be a type of the whole expression.
+  -}
+
+  fresh'name <- fresh
+  let t'res = T'Var (T'V fresh'name K'Star)
+
+  let t'whole = t'l `type'fn` (t'r `type'fn` t'res)
+
+  return  (preds'l ++ preds'op ++ preds'r
+          , t'res
+          , (t'whole `Unify` t'op) : t'cs'l ++ t'cs'op ++ t'cs'r
+          , k'cs'l ++ k'cs'op ++ k'cs'r)
 
 -- TODO: check if it's really valid
 infer'expr (Tuple exprs) = do
