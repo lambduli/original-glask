@@ -52,21 +52,21 @@ type Type'Env = Map.Map Name Scheme
 
 init't'env :: Type'Env
 init't'env = Map.fromList
-  [ ("#fst",    ForAll [T'V "a" K'Star, T'V "b" K'Star]   $ [] :=> (T'Tuple [T'Var (T'V "a" K'Star), T'Var (T'V "b" K'Star)] `type'fn` T'Var (T'V "a" K'Star)))
-  , ("#snd",    ForAll [T'V "a" K'Star, T'V "b" K'Star]   $ [] :=> (T'Tuple [T'Var (T'V "a" K'Star), T'Var (T'V "b" K'Star)] `type'fn` T'Var (T'V "b" K'Star)))
-  , ("#=",      ForAll [T'V "a" K'Star]                   $ [] :=> (T'Tuple [T'Var (T'V "a" K'Star), T'Var (T'V "a" K'Star)] `type'fn` t'Bool))
-  , ("#<",      ForAll [T'V "a" K'Star]                   $ [] :=> (T'Tuple [T'Var (T'V "a" K'Star), T'Var (T'V "a" K'Star)] `type'fn` t'Bool))
-  , ("#>",      ForAll [T'V "a" K'Star]                   $ [] :=> (T'Tuple [T'Var (T'V "a" K'Star), T'Var (T'V "a" K'Star)] `type'fn` t'Bool))
-  , ("#+",      ForAll []                                 $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
-  , ("#+.",     ForAll []                                 $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
-  , ("#*",      ForAll []                                 $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
-  , ("#*.",     ForAll []                                 $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
-  , ("#-",      ForAll []                                 $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
-  , ("#-.",     ForAll []                                 $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
-  , ("#div",    ForAll []                                 $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
-  , ("#/",      ForAll []                                 $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
-  , ("#show",   ForAll [T'V "a" K'Star]                   $ [] :=> (T'Var (T'V "a" K'Star) `type'fn` T'App (T'Con (T'C "List" (K'Arr K'Star K'Star))) t'Char)) -- wiring the List type into the compiler
-  , ("#debug",  ForAll [T'V "a" K'Star]                   $ [] :=> (T'Var (T'V "a" K'Star) `type'fn` T'Var (T'V "a" K'Star)))
+  [ ("#fst",    For'All [T'V "a" K'Star, T'V "b" K'Star]   $ [] :=> (T'Tuple [T'Var (T'V "a" K'Star), T'Var (T'V "b" K'Star)] `type'fn` T'Var (T'V "a" K'Star)))
+  , ("#snd",    For'All [T'V "a" K'Star, T'V "b" K'Star]   $ [] :=> (T'Tuple [T'Var (T'V "a" K'Star), T'Var (T'V "b" K'Star)] `type'fn` T'Var (T'V "b" K'Star)))
+  , ("#=",      For'All [T'V "a" K'Star]                   $ [] :=> (T'Tuple [T'Var (T'V "a" K'Star), T'Var (T'V "a" K'Star)] `type'fn` t'Bool))
+  , ("#<",      For'All [T'V "a" K'Star]                   $ [] :=> (T'Tuple [T'Var (T'V "a" K'Star), T'Var (T'V "a" K'Star)] `type'fn` t'Bool))
+  , ("#>",      For'All [T'V "a" K'Star]                   $ [] :=> (T'Tuple [T'Var (T'V "a" K'Star), T'Var (T'V "a" K'Star)] `type'fn` t'Bool))
+  , ("#+",      For'All []                                 $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
+  , ("#+.",     For'All []                                 $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
+  , ("#*",      For'All []                                 $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
+  , ("#*.",     For'All []                                 $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
+  , ("#-",      For'All []                                 $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
+  , ("#-.",     For'All []                                 $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
+  , ("#div",    For'All []                                 $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
+  , ("#/",      For'All []                                 $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
+  , ("#show",   For'All [T'V "a" K'Star]                   $ [] :=> (T'Var (T'V "a" K'Star) `type'fn` T'App (T'Con (T'C "List" (K'Arr K'Star K'Star))) t'Char)) -- wiring the List type into the compiler
+  , ("#debug",  For'All [T'V "a" K'Star]                   $ [] :=> (T'Var (T'V "a" K'Star) `type'fn` T'Var (T'V "a" K'Star)))
   ]
 -- TODO: revise the list in the future
 

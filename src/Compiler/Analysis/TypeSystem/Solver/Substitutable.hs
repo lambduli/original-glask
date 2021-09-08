@@ -101,13 +101,13 @@ instance Term String Kind where
 -- | Substitution on Type Schemes
 
 instance Substitutable T'V Scheme Type where
-  apply (Sub s) (ForAll varnames type')
-    = ForAll varnames $ apply s' type'
+  apply (Sub s) (For'All varnames type')
+    = For'All varnames $ apply s' type'
       where s' = Sub $ foldr Map.delete s varnames
 
 
 instance Term T'V Scheme where
-  free'vars (ForAll vars type')
+  free'vars (For'All vars type')
     = free'vars type' `Set.difference` Set.fromList vars
 
 
