@@ -170,3 +170,14 @@ So `Term'Type` would become `Term Type` and so on.
 
 I think the only benefit would be to have the connection between them explicitly specified.
 But then again - I am explicitly specifying that connection when defining the instances of `ToAST`.
+
+
+## Idea:
+Could I remove the `Intro` constructor from the Expression and instead go like this:
+
+  - do the inference on the `AST` without generated code for evaluation
+  - only then do some code generation into some `IR` which will contain stuff taking care of actually constructing/introducing a value into the "evaluation state"
+
+I think that would make a lot of sense and make things easier to understand.
+I would infer the type of the constructor easily - it is just a constant registered in the typing context.
+Sound good - ask Ryan for a technical term describing the act of actually generating/constructing an actual runtime representation of the value using the constructor and its arguments.
