@@ -177,5 +177,5 @@ infer'expr (Case expr matches) = do
 
 -- | TODO: Introductors (how I call them) already have the type annotation in the typing context/
 --          So all I need is to retrieve it from there.
-infer'expr (Intro name exprs) = do
-  undefined
+-- infer'expr (Intro name exprs) = do
+  -- undefined

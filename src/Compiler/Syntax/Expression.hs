@@ -27,7 +27,7 @@ data Expression
   | Let [Declaration] Expression
   | Ann Expression (Qualified Type)
   | Case Expression [Match]
-  | Intro Name [Expression]
+  -- | Intro Name [Expression]
   deriving (Eq)
 
 
@@ -44,4 +44,4 @@ instance Show Expression where
   show (Let decls body) = "let " ++ intercalate "\n" (map show decls) ++ " in " ++ show body
   show (Ann type' expr) = show expr ++ " :: " ++ show type'
   show (Case expr options) = "case " ++ show expr ++ " of \n { " ++ "TODO: show options" ++ " }"
-  show (Intro name exprs) = "(" ++ name ++ " " ++ unwords (map show exprs) ++ ")"
+  -- show (Intro name exprs) = "(" ++ name ++ " " ++ unwords (map show exprs) ++ ")"

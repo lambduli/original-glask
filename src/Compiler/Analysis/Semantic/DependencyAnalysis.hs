@@ -295,6 +295,6 @@ instance Depends Expression (Set.Set Int) where
 
       combined'deps = expr'deps `Set.union` alts'deps
 
-  -- This should always produce an empty Set. But just to be sure.
-  depends'on (Intro name exprs) indexer
-    = depends'on exprs indexer
+  -- -- This should always produce an empty Set. But just to be sure.
+  -- depends'on (Intro name exprs) indexer
+  --   = depends'on exprs indexer
