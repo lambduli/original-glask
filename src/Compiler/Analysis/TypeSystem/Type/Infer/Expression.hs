@@ -13,6 +13,8 @@ import Compiler.Analysis.TypeSystem.Type.Constants
 
 import Compiler.Analysis.TypeSystem.Type.Infer.Literal
 import Compiler.Analysis.TypeSystem.Type.Infer.Pattern
+import {-# SOURCE #-} Compiler.Analysis.TypeSystem.Type.Infer.Match
+import {-# SOURCE #-} Compiler.Analysis.TypeSystem.Type.Infer.Declaration
 
 import Compiler.Analysis.TypeSystem.Utils.Infer
 
@@ -92,13 +94,24 @@ infer'expr (Tuple exprs) = do
 
 -- TODO: check if it's really valid
 infer'expr (If condition then' else') = do
-    (preds'cond, t1, c1, k'c1) <- infer'expr condition
-    (preds'tr, t2, c2, k'c2) <- infer'expr then'
-    (preds'fl, t3, c3, k'c3) <- infer'expr else'
-    return (preds'cond ++ preds'tr ++ preds'fl, t2, (t1 `Unify` t'Bool) : (t2 `Unify` t3) : c1 ++ c2 ++ c3, k'c1 ++ k'c2 ++ k'c3)
+  (preds'cond, t1, c1, k'c1) <- infer'expr condition
+  (preds'tr, t2, c2, k'c2) <- infer'expr then'
+  (preds'fl, t3, c3, k'c3) <- infer'expr else'
+  return (preds'cond ++ preds'tr ++ preds'fl, t2, (t1 `Unify` t'Bool) : (t2 `Unify` t3) : c1 ++ c2 ++ c3, k'c1 ++ k'c2 ++ k'c3)
 
 infer'expr (Let decls body) = do
-  undefined
+  -- I will need to do some dependency analysis to split the declarations into groups
+  -- and infer the types in the scope of the each group
+  -- there's just a small problem
+  -- the future implementation of `infer'decls` will probably need to import the infer'expr function
+  -- so there's a cycle
+  -- I will need to break it somehow or use .hs-boot file
+  -- also will there happen the generalization for the declaration?
+  -- I think so - each group should generalize the declarations at most at the end of the work for that group
+  -- so the next group have the correct generalized types
+  (preds'decls, assumptions'decls, t'cs'decls, k'cs'decls) <- infer'decls decls
+  (preds'body, t'body, t'cs'body, k'cs'body) <- merge'into't'env assumptions'decls (infer'expr body)
+  return (preds'decls ++ preds'body, t'body, t'cs'decls ++ t'cs'body, k'cs'decls ++ k'cs'body)
 
 -- | TODO: I need to read a section about type checking explicitly annotated bindings
 -- |        from that I think I should be able to derive the plan for this specific case.
@@ -111,6 +124,22 @@ infer'expr (Ann expr qual'type) = do
 --          Once I figure that out I should be able to derive the strategy for the case expression.
 infer'expr (Case expr matches) = do
   undefined
+  -- TODO: infer the type of the expr
+  -- then infer the types of the list of matches
+  -- each match should produce:
+    -- Types
+      -- a type - for the expression (RHS)
+      -- and a list of types - for the list of patterns
+      --      in this case the list of types (for patterns) is going to contain only a single type
+    -- Predicates
+      -- list of predicates from a list of patterns
+      -- list of predicates from an expression
+      --  I should be able to just append them together without any problem
+    -- Constraints
+      -- type constraints from the expression (patterns do not produce type constraints, only assumptions)
+      -- kind constraints from the expression
+      --    Even though patterns produce assumptions - but the local bindings are used only in the RHSs
+      --    and that means, that these assumptions do not escape the context of the Match
 
 -- | TODO: Introductors (how I call them) already have the type annotation in the typing context/
 --          So all I need is to retrieve it from there.
