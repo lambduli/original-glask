@@ -181,3 +181,10 @@ Could I remove the `Intro` constructor from the Expression and instead go like t
 I think that would make a lot of sense and make things easier to understand.
 I would infer the type of the constructor easily - it is just a constant registered in the typing context.
 Sound good - ask Ryan for a technical term describing the act of actually generating/constructing an actual runtime representation of the value using the constructor and its arguments.
+
+
+## Idea / Question:
+Would it be desirable to have the option to define parts of the binding group throughout the whole program?
+Basicaly having the binding group being open - in the same sense as type classes are open.
+
+That would allow programmer to declare those bindings even in different modules.
