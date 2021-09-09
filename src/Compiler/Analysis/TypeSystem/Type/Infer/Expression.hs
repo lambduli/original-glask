@@ -67,7 +67,7 @@ infer'expr (Infix'App left op right) = do
   (preds'r, t'r, t'cs'r, k'cs'r) <- infer'expr right
 
   {-
-    The type of the operator should be a binary function.
+    The type of the operator should be (at least) a binary function.
     Where the type of the first argument should be the type of the left.
     And the type of the second argument should be the type of the right.
     The type of the result will then be a type of the whole expression.
@@ -118,14 +118,14 @@ infer'expr (Let decls body) = do
 infer'expr (Ann expr qual'type) = do
   undefined
 
--- | TODO: I will need to think about how to translate the case expression into Let
---          maybe it's because the THIH mentions a Let having a type Bind'Group -> Expression
---          so maybe the trick is done by the Bind'Group part - I am not sure.
---          Once I figure that out I should be able to derive the strategy for the case expression.
 infer'expr (Case expr matches) = do
-  undefined
-  -- TODO: infer the type of the expr
-  -- then infer the types of the list of matches
+  {- Infer the type of the expr. -}
+  (preds'expr, type'expr, t'cs'expr, k'cs'expr) <- infer'expr expr
+  
+  {- Infer the types of the list of matches. -}
+  -- results :: [([Type], Type, [Predicate], [Predicate], [Constraint Type], [Constraint Kind])]
+  results <- mapM infer'match matches
+
   -- each match should produce:
     -- Types
       -- a type - for the expression (RHS)
@@ -140,6 +140,40 @@ infer'expr (Case expr matches) = do
       -- kind constraints from the expression
       --    Even though patterns produce assumptions - but the local bindings are used only in the RHSs
       --    and that means, that these assumptions do not escape the context of the Match
+  
+  -- I then need to unify all the types in the list of types (in this case a singleton) together
+  -- that ensures that all patterns are going to match the same thing.
+  -- That same thing must be a type of the expr.
+  -- So instead - I must take the list of list of types (but in this case it's a list of singletons)
+  -- and map that to [Constraint Type] by - for each singleton - unifying that singleton element with a type'expr.
+  let t'cs'patterns = [ type'expr `Unify` type'patt | ([type'patt], _, _, _, _, _) <- results ]
+
+  -- Then I need to take a list of types (types of the right hand sides) and map that to the list of
+  -- (Constraint Type) by unifying them all with a new fresh variable.
+  -- Asserting, that all the right sides are of the same type.
+  -- That type is also the result of this whole case expression.
+  fresh'name <- fresh
+  let t'var = T'Var (T'V fresh'name K'Star)
+  {- Now assert that Types of all Right Hand Sides are the same thing. -}
+  let t'cs'rhs's = [ t'var `Unify` type'rhs | (_, type'rhs, _, _, _, _) <- results ]
+
+  -- Now I need to concatenate all the Predicates coming both from Pattern and Right Hand Side.
+  {- I think I can mix them together, because from the standpoint of the whole expression - it doesn't
+      matter, what part of the expression requires that constraints / produces that Predicate
+      it just means, it is needed.
+      That also means, that the function infer'match could maybe produce a single [Predicate]. -}
+  let preds = preds'expr ++ concat [ preds'patts ++ preds'rhs | (_, _, preds'patts, preds'rhs, _, _) <- results ]
+
+  {-  I also need to concatenate all type constraints and kind constraints from list of matches together
+      to those I also need to add constraints from the expr at the top of this branch. -}
+  let t'cs = concat $ t'cs'patterns
+                    : t'cs'rhs's
+                    : t'cs'expr
+                    : [ t'cs'patts | (_, _, _, _, t'cs'patts, _) <- results ]
+  let k'cs = concat $ k'cs'expr : [ k'cs'patts | (_, _, _, _, _, k'cs'patts) <- results ]
+  
+  -- Now I have taken care of all the memebers of each tuple.
+  return (preds, t'var, t'cs, k'cs)
 
 -- | TODO: Introductors (how I call them) already have the type annotation in the typing context/
 --          So all I need is to retrieve it from there.
