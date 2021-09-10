@@ -1,3 +1,6 @@
+{-# LANGUAGE NoMonomorphismRestriction #-}
+
+
 module Compiler.Analysis.TypeSystem.Type.Infer.Expression where
 
 
@@ -117,6 +120,93 @@ infer'expr (Let decls body) = do
 -- |        from that I think I should be able to derive the plan for this specific case.
 infer'expr (Ann expr qual'type) = do
   undefined
+  -- so according the paper this is what should happen:
+  {-  Freshly instantiate the implicit type scheme given by the user.
+      That most likely means I will need to quantify the qualified type first.
+      Destructure the result (Qualified Type) into a list of qualifiers and a type.
+  -}
+  {-  Infer the type of the expression and unify it with the type-part of the previous step.
+      __ I am deriving this process from the part of the paper which infers a type for the annotated
+      __ binding group - that means there are Alternatives and there's a function *tiAlts*
+      __ which also takes a type as its argument. That type is then unified with the type of
+      __ a right hand side - for all alternatives. But I strongly suspect, it doesn't matter if
+      __ I pass that type in the *tiAlts* function or not - I can always unify all the RHS types with
+      __ it later. So I should be able to do the same here. As it doesn't seem to be used in *tiAlts*
+      __ for anything else.
+      
+      The unification produces a [Constraint Type]. Called Constraints.
+      It also produces [Predicate]. Called Predicates.
+      Then I should solve the Constraints and obtain the Substitution representing the solution.  -}
+
+  {-  I shall apply the Substitution to the Qualifiers from the first step and get Qualifiers'.
+      I shall also apply it to the Type from the first step and get Type'.
+
+      I then apply it to the typing context and find all free type variables in the result. Caled *fs*.
+      I then find all free type variables in the Type' and remove all free type variables in *fs*.
+        I call the result *gs*.
+
+      I then make the (Qualifiers' :=> Type') into a Type Scheme generalizing over variables in the *gs*.
+      Called Scheme'.
+
+      I then apply the Substitution to the Predicates (from the second step),
+      then I filter all such Predicates which are entailed by the context Qualifiers'.
+      What remains is *split* according the generalized variables.
+      And if there are any retained predicates -> error is reported
+      signalizing that the declared context is too weak.
+
+      BUT this begs the question: can there be a case like this?
+      ...
+      ...
+      ...    __e :: (P1 a, P2 b) => ...
+
+      And it would be the case that some of the inferred predicates from the __e woule be taken care of
+      by the surrounding context? Like (P3 b).
+
+      And I think that this would be illegal. If I am going to give type annotation,
+      I must give the full and correct one. If there is a (P3 b) inferred, and I say in my type annotation
+      that it is not there - I am saying that this constraint is not a part of the requirements for the
+      expression. That means I am denying that requirement. Right?
+      And that is pretty much obviously wrong.
+
+
+      WRONG!
+      This piece of code is perfectly valid:
+
+      {-# LANGUAGE ExplicitForAll, ScopedTypeVariables #-}
+      class Pred a
+      class Aft a
+
+      foo :: forall a b . (Pred a, Aft a) => a -> b -> a
+      foo x y
+        = bar (x :: a) :: Pred a => a
+
+      bar :: forall a . (Pred a, Aft a) => a -> a
+      bar a = a :: a
+
+      That means, that when inferring the type of annotated term, I can in fact leave some constraints
+      for surrounding context. That might mean I will need to drop the check for the emptiness of retained
+      predicates.
+  -}
+
+  {-  Original scheme - as given by the programmer - and the Scheme' are then compared.
+      This is the tricky part - as Jones represents Schemes in a different way than I do.
+      His representation always has the same order of abstracted type variables and it uses nameless
+      convention I think. Because of the first difference, comparing two schemes is very easy and straight forward.
+      That is not the case for me and my representation.
+      So I will need to inspect Jones'es convention and how the comparison works and translate that into my design.
+
+      In any case - they are supposed to be equal modulo alpha conversion - I think.
+      
+      Major question: If the Type part of the original scheme (after the substitution) is unified
+      with the type inferred by the analysis, could those two be not equal?
+      Error reported with not equality is "Signature too general".
+      So that probably means, cases like - I say it's gonna be *a* but it is very much an *Int*.
+      In this case, the inference would figure out the *Int* part and unifying the *a* with the *Int*
+      would not make it an *a* - it would stay being an *Int*.
+      Then in the Scheme' there would still be the *Int* and not a type variable *a*.
+
+
+  -}
 
 infer'expr (Case expr matches) = do
   {- Infer the type of the expr. -}
