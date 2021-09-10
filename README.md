@@ -188,3 +188,48 @@ Would it be desirable to have the option to define parts of the binding group th
 Basicaly having the binding group being open - in the same sense as type classes are open.
 
 That would allow programmer to declare those bindings even in different modules.
+
+
+
+## Interesting Note:
+
+
+
+```haskell
+{-# LANGUAGE ExplicitForAll, ScopedTypeVariables, NoMonomorphismRestriction #-}
+
+class Pred a
+
+class Aft a
+
+-- foo :: forall a b . (Pred a, Aft a) => a -> b -> a
+-- foo x y
+--   = bar (x :: a) :: Pred a => a
+-- this works fine
+-- it also shows that you CAN only specify some of the constraints
+-- in the "inline" type annotation if you take care
+-- of the rest of them in the surrounding type annotation
+
+foo
+  = (\ x y -> bar x :: Pred a => a)
+    :: forall a b . Pred a => a -> b -> a
+-- doesn't work
+-- because the (Aft a1) can not be deduced from neither of these:
+--     the inferred type for foo (interesting!!!)
+--     from the type annotation of the whole function
+--     from the "inline" type annotation
+
+
+-- foo
+--   = (\ x y -> bar x :: Pred a => a )
+--     :: forall a b . (Pred a, Aft a) => a -> b -> a
+-- this works with NoMonomorphismRestriction enabled
+
+-- foo = (\ x y -> bar x) -- doesn't work without NoMonomorphismRestriction
+-- foo x y = bar x -- works even without NoMonomorphismRestriction
+
+bar :: forall a . (Pred a, Aft a) => a -> a
+bar a = a :: a
+
+main = putStrLn "Hello, World!"
+```
