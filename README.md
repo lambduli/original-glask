@@ -9,10 +9,12 @@
   - construct application trees from application lists (Shunting Yard Algorithm)
   - transform general expressions to patterns
   - ? make the Kind Variables in the Type Variables correct
-- ## Semantic Analysis
+- ## Semantic Analysis and Transformation
+  - merge all binding groups (at first each one only contains single equation) into a single group
   - check that all type constructors are fully applied
   - check type contexts validity (read Haskell Report for that)
     - basic structure checking is done by the parser - add better error reporting in the future
+  - transform the binding groups into `Implicit` or `Explicit` according the type annotations
 
 - ## Error Reporting
   - propagate locations through the representations
@@ -233,3 +235,105 @@ bar a = a :: a
 
 main = putStrLn "Hello, World!"
 ```
+
+
+## Interesting Note:
+
+Regarding the page 35/38 in THIH.
+
+> Note also that if _es_ is empty, then _n_ must be 1.
+
+`I don't think this is true in current version of Haskell. I also don't believe it is necessary.`
+
+```haskell
+my'foldl acc _ [] = acc
+my'foldl acc fn (i : is)
+  = my'foldl (fn acc i) fn is
+  -- where _ = foo undefined
+
+foo x = my'foldl 0 (+) [1 :: Int,2,3]
+```
+
+Contrary to what THIH mentions - it seems like even thought there are no explicitly typed bind groups,
+the implicitly typed ones are split to (at least) two groups.
+Only if I uncomment the fourth line, it is forced to typecheck them in the same group and it leads to forced monomorphization of the `my'foldl` function.
+
+
+## Discussion:
+
+Page 32/38 of THIH.
+Code snippet.
+
+line where `fs = tv (apply s as)`.
+
+Questions is - why do I need to apply the substitution to the typing context from the beggining of this inference?
+
+My understanding - `as` can only contain the assumptions about "global" variables (from the perspective of this explicitly annotated biding).
+It also contains inferred assumptions from all previous implcits.
+And finally it contains assumptions for all the explicits. So even this specific one.
+
+Now - when inferring the "alts" for the explicit, I think I will somehow interact with this typing context.
+Like creating some type cosntraints mentioning stuff from the typing context. (That seems possible.)
+But WHY would I want to substitute/update the typing context after that?
+
+Maybe some of those typing constraints will be able to specify something from the context?
+I honestly don't think so - that would mean, that some later inference round (for later binding group) would be able to
+change the type of the things from the previous groups. That can't happen!
+
+So applying a substitution obtained by solving constraints from one explicit - to a typing context full of
+assumptions about bindings from preceding binding groups makes no sense to me.
+
+
+So maybe let's try something different.
+In the code the following line is this:
+`gs = tv t' \\ fs`
+Nowhere else is the `fs` variable used.
+So what if it is really applied only for the `tv` function application?
+
+Well, free type variables in the typing context are looked up like this:
+It just looks for all free variables in the Scheme part of the typing context/assumptions.
+Finding free variables in the Scheme looks for all free type variables in the qualified type and removes those, which are mentioned in the quantifier part.
+Free variables of the qualified type is defined as an union of free variables in the qualifier part and free variables in the type part.
+Predicate part is simple - all variables are going to be free. They are not bound by any type scheme - that's why.
+The type part is going to be simple too. All type variables are considered free - the type scheme will remove those, which are in fact bound.
+
+So the question would be:
+Could it happen, that application of the substitution to the typing context, would change the result of the `free'vars`?
+It definitely could. If the substitution would replace some free type variable with some type, which would contain different free variables
+than what was the "begin-replaced" variable.
+Than that would lead to possibly registering some new free variables.
+
+BUT - can that even happen? Is it possible to run inference on the `[Alt]` and obtain such constraints, that when solved, it will produce
+a substitution which will add some more specificity to the types already present in the assumptions?
+Those are just assumptions about top level declarations right?
+Not even local assumptions make it into the typing context - they are passed down locally, but never make it onto the higher level.
+Because that would cause leaking of locally declared variables and their types.
+
+So WHY should I apply the substitution to the typing context?
+
+
+As I am looking right now - I might actually be doing it too in the Frea. I will need to investigate those two lines:
+
+```haskell
+(t'env', t'constrs', k'constrs') <- put'in't'env (bind'name, closeOver $ apply subst bind'type) (infer'groups sccs)
+```
+
+and 
+
+```haskell
+(t'env', t'constrs', k'constrs') <- merge'into't'env (map (second (closeOver . apply subst)) t'binds) (infer'groups sccs)
+```
+
+I need to find out if it is possible, that those functions `put'in't'env` and/or `merge'into't'env` could possibly modify the typing context
+in any way - aside from updating/inserting those explicitly mentioned assumptions.
+
+Answer: I don't think that any of that is happening.
+What I do is - for each binding in the SCC component - I must apply the substitution to the infered type for that binding,
+than I put the result into the typing context - because so far it was there only registered as a *fresh and free type variable*.
+This way I make it the thing I figured it should be and put it into the typing context for the following rounds of inference for
+following (dependent) SCC components.
+
+That is - because in Frea I just assigned each binding (annotated or not) a *free and fresh type variable* which later needs to be
+substituted - immidiately when the constraints are solved.
+
+So my conclusion - I just don't know why I would need to do it.
