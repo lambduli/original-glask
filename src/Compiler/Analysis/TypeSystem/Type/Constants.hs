@@ -1,7 +1,8 @@
 module Compiler.Analysis.TypeSystem.Type.Constants where
 
 
-import Compiler.Syntax
+import Compiler.Syntax.Type
+import Compiler.Syntax.Kind
 
 
 t'Bool, t'Int, t'Double, t'Char, t'Arr :: Type

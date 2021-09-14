@@ -8,7 +8,9 @@ import Control.Monad.Extra
 import Control.Monad.Trans.Except (catchE)
 
 
-import Compiler.Syntax
+import Compiler.Syntax.Name
+import Compiler.Syntax.Instance
+
 
 type Supers = [Name]
 

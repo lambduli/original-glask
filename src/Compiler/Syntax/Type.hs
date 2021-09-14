@@ -9,14 +9,23 @@ import Compiler.Syntax.Kind
 
 
 data T'V = T'V Name Kind
-  deriving (Eq)
+  -- deriving (Eq)
 
 
 instance Show T'V where
   show (T'V name kind) = "(" ++ name ++ " :: " ++ show kind ++ ")"
 
 
-{- NOTE: this is SOLELY because Map TVar _ and it's `Map.union` operation -}
+{- NOTE: this is SOLELY because Map T'V _ and it's `Map.findWithDefault` operation -}
+{-  The problem is - the T'V contains a Kind value and it must not be taken into an account
+    when looking up the variables in the process of substitution.
+    Otherwise it would be thrown off by different Kind Variables representing the same thing.
+    Maybe I will figure out a way, how to get rid of this problem and then I should be able to refactor this back to deriving. -}
+instance Eq T'V where
+  T'V v'l _ == T'V v'r _ = v'l == v'r
+
+
+{- NOTE: this is SOLELY because Map T'V _ and it's `Map.union` operation -}
 -- Maybe this isn't really necessary, deriving (Ord) may also work
 instance Ord T'V where
   (T'V n'l _) <= (T'V n'r _) = n'l <= n'r

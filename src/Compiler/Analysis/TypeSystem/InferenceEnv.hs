@@ -4,7 +4,11 @@ module Compiler.Analysis.TypeSystem.InferenceEnv where
 import qualified Data.Map.Strict as Map
 
 
-import Compiler.Syntax
+import Compiler.Syntax.Name
+import Compiler.Syntax.Type
+import Compiler.Syntax.Kind
+import Compiler.Syntax.Qualified
+import {-# SOURCE #-} Compiler.Syntax.Scheme
 
 import Compiler.Analysis.TypeSystem.Type.Constants
 import Compiler.Analysis.TypeSystem.Class

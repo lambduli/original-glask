@@ -10,7 +10,12 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 
 
-import Compiler.Syntax
+import Compiler.Syntax.Expression
+import Compiler.Syntax.Type
+import Compiler.Syntax.Kind
+import Compiler.Syntax.Qualified
+import Compiler.Syntax.Predicate
+import {-# SOURCE #-} Compiler.Syntax.Scheme
 
 import Compiler.Analysis.TypeSystem.InferenceEnv
 import Compiler.Analysis.TypeSystem.Constraint
