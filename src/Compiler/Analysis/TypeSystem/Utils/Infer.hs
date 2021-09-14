@@ -44,6 +44,11 @@ quantify = For'All
 to'scheme :: Type -> Scheme
 to'scheme t = For'All [] ([] :=> t)
 
+{- Qualifies the Type with no Predicates -}
+qualify :: Type -> Qualified Type
+qualify t = [] :=> t
+
+
 
 
 letters :: [String]
