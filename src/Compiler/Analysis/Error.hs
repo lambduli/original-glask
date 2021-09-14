@@ -19,6 +19,8 @@ data Error
   | Type'Unif'Count'Mismatch [Type] [Type]
   | Kind'Unif'Count'Mismatch [Kind] [Kind]
   | Synonym'Cycle [(String, Type)]
+  | Signature'Too'General
+  | Context'Too'Weak
 
   | Unexpected String -- this is just temporary helper constructor for me to debug stuff ... mostly
   deriving (Eq)

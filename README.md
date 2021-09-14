@@ -337,3 +337,13 @@ That is - because in Frea I just assigned each binding (annotated or not) a *fre
 substituted - immidiately when the constraints are solved.
 
 So my conclusion - I just don't know why I would need to do it.
+
+
+> In any case, I still can do it the way it is done in the THIH, using a combination of `ask` and `local`
+
+
+
+## Question:
+
+Maybe I should merge the `Infer` and `Solve` monads into a one - then I would be able to interleave the unification and inference.
+(implementation of `infer'expl` for instance is bit awkward because of them being two things)
