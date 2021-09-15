@@ -119,7 +119,10 @@ infer'impls implicits = do
         Right (deferred'preds, retained'preds) -> do
           if restricted implicits then -- Monomorphism Restriction
             let gs'   = gs \\ Set.toList (free'vars retained'preds)
-                scs'  = map (quantify gs' . ([] :=> )) ts'
+                scs'  = map (quantify gs' . ([] :=> )) ts' -- NOTE: notice that we are not using close'over - that would quantify over
+                -- all the free variables in the type, but because of the monomorphism restriction
+                -- we must quantify over only some of them
+                -- TODO: inspect more later!
             in return (deferred'preds ++ retained'preds, zip is scs', cs't, cs'k)
           else
             let scs'  = map (quantify gs . (retained'preds :=> )) ts' -- qualify each substituted type with retained predicates
