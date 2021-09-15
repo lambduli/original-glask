@@ -79,17 +79,27 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
 infer'impls :: [Implicit] -> Infer ([Predicate], [(Name, Scheme)], [Constraint Type], [Constraint Kind])
 infer'impls implicits = do
   let is = map (\ (Implicit b'g) -> name b'g) implicits
-      make'fresh'tv _ = do fmap (\ t'name -> T'Var (T'V t'name K'Star)) fresh
-  ts <- mapM make'fresh'tv is
+  {-  get only the names of the implicit bindings in the same order -}
+      make'fresh'tv = fmap (\ t'name -> T'Var (T'V t'name K'Star)) fresh
+  {-  gives a fresh type variable -}
+  ts <- mapM (const make'fresh'tv) is
+  {-  for each name - create a fresh type variable -}
   let scs = map to'scheme ts
-      assumptions = zip is scs -- NOTE: I will need to put this into the typing context later
+  {-  qualify and quantify the fresh type variables - both empty -}
+      assumptions = zip is scs -- NOTE: I will need to put this into the typing context later [1]
+  {-  assign each name one type scheme -}
       many'matches = map (\ (Implicit b'g) -> alternatives b'g) implicits
-  -- now I am going to merge them into the typing context
+  {-  pick only [Match] from each implicit binding -}
+  
+  -- [1] now I am going to merge them into the typing context
   -- explanation of the zipWithM part: I need to infer list of matches and I also need to
   -- make sure that once inference for every match is done, constraint unifying the resulting type
   -- with the original fresh type variable will be created and registered
   -- results :: [([Predicate], [Constraint Type], [Constraint Kind])] -- for better reading experience
   results <- merge'into't'env assumptions $ zipWithM infer'matches many'matches ts
+  {-  infering each [Match] inside the typing context containing all the assumptions about the types of the implicits
+      zipWith is needed because infer'matches expects to be given a type which it unifies with the infered type of all the RHSs
+  -}
   let preds = concat [ preds  | (preds, _, _) <- results ]
       cs't  = concat [ cs't   | (_, cs't, _) <- results ]
       cs'k  = concat [ cs'k   | (_, _, cs'k) <- results ]
@@ -99,7 +109,7 @@ infer'impls implicits = do
     Left err -> throwError err
     Right subst -> do
       let preds'  = apply subst preds
-          ts'     = apply subst ts
+          ts'     = apply subst ts -- by now each fresh type variable should be replaced with more specific type, BUT it still will just be Qualified Type
       Infer'Env{ type'env = t'env, class'env = c'env } <- ask
       let fs = Set.toList $ free'vars $ apply subst t'env
           vss = map (Set.toList . free'vars) ts'
@@ -107,12 +117,12 @@ infer'impls implicits = do
       case runIdentity $ runExceptT $ split c'env fs (foldr1 intersect vss) preds' of
         Left err -> throwError err
         Right (deferred'preds, retained'preds) -> do
-          if restricted implicits then
+          if restricted implicits then -- Monomorphism Restriction
             let gs'   = gs \\ Set.toList (free'vars retained'preds)
                 scs'  = map (quantify gs' . ([] :=> )) ts'
             in return (deferred'preds ++ retained'preds, zip is scs', cs't, cs'k)
           else
-            let scs'  = map (quantify gs . (retained'preds :=> )) ts'
+            let scs'  = map (quantify gs . (retained'preds :=> )) ts' -- qualify each substituted type with retained predicates
             in return (deferred'preds, zip is scs', cs't, cs'k)
 
 
