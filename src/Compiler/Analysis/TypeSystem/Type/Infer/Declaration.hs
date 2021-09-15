@@ -11,6 +11,9 @@ import Compiler.Analysis.TypeSystem.Assumption
 import {-# SOURCE #-} Compiler.Analysis.TypeSystem.Type.Infer.Expression
 
 
+--
+-- Most likely, this function will represent a function tiProgram from the THIH
+--
 infer'decls :: [Declaration] -> Infer ([Predicate], [Assumption Scheme], [Constraint Type], [Constraint Kind])
 infer'decls decls = do
   -- transform [Declaration] into [Binding]
