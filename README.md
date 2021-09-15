@@ -347,3 +347,11 @@ So my conclusion - I just don't know why I would need to do it.
 
 Maybe I should merge the `Infer` and `Solve` monads into a one - then I would be able to interleave the unification and inference.
 (implementation of `infer'expl` for instance is bit awkward because of them being two things)
+
+
+## Inference for class members
+
+I think it's correct to treat the class members as `explicits` even though they will share the same name with multiple other definitions.
+That should not be a problem - it will be slightly inefficient when putting those assumptions into the Typing Context,
+but I can fix that later.
+That also means that I don't need to compute dependency analysis on instance member declarations.
