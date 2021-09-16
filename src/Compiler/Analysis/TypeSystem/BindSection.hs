@@ -1,4 +1,4 @@
-module Compiler.Analysis.TypeSystem.Type.BindSection where
+module Compiler.Analysis.TypeSystem.BindSection where
 
 
 import Compiler.Analysis.TypeSystem.Binding

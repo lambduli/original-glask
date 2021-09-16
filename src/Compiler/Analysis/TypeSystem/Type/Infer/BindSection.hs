@@ -7,8 +7,8 @@ import Compiler.Analysis.TypeSystem.Infer
 import Compiler.Analysis.TypeSystem.InferenceEnv
 import Compiler.Analysis.TypeSystem.Constraint
 import Compiler.Analysis.TypeSystem.Binding
+import Compiler.Analysis.TypeSystem.BindSection
 
-import Compiler.Analysis.TypeSystem.Type.BindSection
 import Compiler.Analysis.TypeSystem.Type.Infer.Binding
 
 import Compiler.Analysis.TypeSystem.Utils.Infer
@@ -30,7 +30,8 @@ infer'bind'section (es, iss) = do
   return (ps ++ preds', as' ++ as'', cs't ++ cs't', cs'k ++ cs'k')
 
 
-infer'seq :: ([Implicit] -> Infer ([Predicate], [(Name, Scheme)], [Constraint Type], [Constraint Kind])) -> [[Implicit]] -> Infer ([Predicate], [(Name, Scheme)], [Constraint Type], [Constraint Kind])
+-- infer'seq :: ([Implicit] -> Infer ([Predicate], [(Name, Scheme)], [Constraint Type], [Constraint Kind])) -> [[Implicit]] -> Infer ([Predicate], [(Name, Scheme)], [Constraint Type], [Constraint Kind])
+infer'seq :: (a -> Infer ([Predicate], [(Name, Scheme)], [Constraint Type], [Constraint Kind])) -> [a] -> Infer ([Predicate], [(Name, Scheme)], [Constraint Type], [Constraint Kind])
 infer'seq _ [] = return ([], [], [], [])
 infer'seq ti (bs : bss) = do
   (ps, as', cs't, cs'k) <- ti bs
