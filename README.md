@@ -15,6 +15,10 @@
   - check type contexts validity (read Haskell Report for that)
     - basic structure checking is done by the parser - add better error reporting in the future
   - transform the binding groups into `Implicit` or `Explicit` according the type annotations
+  - type synonym substitution
+    But I think it would be nice to collect kind constraints from non expanded synonyms and type annotations mentioning them for better error reporting maybe?
+    How to make sure that the error mentioning the synonym is found and reported before the error from the expanded type?
+    I don't think that is necessary now.
 
 - ## Error Reporting
   - propagate locations through the representations
@@ -25,6 +29,9 @@
   - implement show (for debugging) for Match'Group and Match
 
 - ## Kind Analysis
+  - Inference itself is implemented [+]
+  - Implement the wiring parts
+  - Write tests
 
 - ## Type Analysis
   - Most of the inference / type analysis is implemented
@@ -356,3 +363,17 @@ I think it's correct to treat the class members as `explicits` even though they 
 That should not be a problem - it will be slightly inefficient when putting those assumptions into the Typing Context,
 but I can fix that later.
 That also means that I don't need to compute dependency analysis on instance member declarations.
+
+
+## Discussion about Monomorphism Restriction
+
+```haskell
+five = 2 + 3
+```
+
+with monomorphism restriction enabled five has the type `Integer`
+
+but with it disabled it has a type `Num a => a`.
+
+So I think the defaulting substitution is what is happening and what makes some declarations possible even in the presence of the monomorphism restriction, because it is such a pain to have to work around it.
+I wonder whether I will validate this hypothesis in the future.
