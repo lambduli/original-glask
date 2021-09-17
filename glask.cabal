@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 48ddb385e6df5348da3cfac895b4298335cf0c798a0b9f50815ba6fd412c5c12
+-- hash: cb8adbb09e64d01820ca8aadccb0e6cc3c647ba91f4d226990b5d4ff0f77548c
 
 name:           glask
 version:        0.1.0.0
@@ -42,6 +42,7 @@ library
       Compiler.Analysis.TypeSystem.Infer
       Compiler.Analysis.TypeSystem.InferenceEnv
       Compiler.Analysis.TypeSystem.InferenceState
+      Compiler.Analysis.TypeSystem.Kind.Infer.Type
       Compiler.Analysis.TypeSystem.Program
       Compiler.Analysis.TypeSystem.Solver
       Compiler.Analysis.TypeSystem.Solver.Bind

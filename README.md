@@ -27,7 +27,8 @@
 - ## Kind Analysis
 
 - ## Type Analysis
-  - 
+  - Most of the inference / type analysis is implemented
+  - Write tests
 
 
 
