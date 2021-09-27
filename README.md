@@ -377,3 +377,32 @@ but with it disabled it has a type `Num a => a`.
 
 So I think the defaulting substitution is what is happening and what makes some declarations possible even in the presence of the monomorphism restriction, because it is such a pain to have to work around it.
 I wonder whether I will validate this hypothesis in the future.
+
+
+## Discussion
+
+```haskell
+{-# LANGUAGE MultiParamTypeClasses #-}
+
+class Operation a b where
+  operation :: a -> b
+
+instance Operation () Int where
+  operation _ = 23
+
+instance Operation Int Bool where
+  operation _ = True
+
+
+main = do
+  let a = operation ()
+  let b = operation a
+  -- print a
+  -- print b
+  print "End."
+```
+
+What happens - type error for ambiguous type variable because of use of `operation`.
+I would need to annotate the `a` with correct type. The question is - WHY?
+At first sight - this is pretty obvious example isn't it?
+Investigate it.
