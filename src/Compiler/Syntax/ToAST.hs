@@ -4,7 +4,7 @@
 module Compiler.Syntax.ToAST where
 
 
-import Data.List (intersperse)
+import Data.List (intersperse, replicate)
 
 
 import Compiler.Syntax.Term
@@ -44,7 +44,7 @@ instance To'AST Term'Expr Expression where
     return $ Abs pattern' body
 
   to'ast (Term'E'App t'exprs) = undefined
-  -- TODO: implement
+  -- TODO: implement! This will use my implementation of the Extended Shunting Yard algorithm.
 
   to'ast (Term'E'Tuple t'exprs) = do
     exprs <- mapM to'ast t'exprs
@@ -55,7 +55,7 @@ instance To'AST Term'Expr Expression where
 
   to'ast (Term'E'Arith'Seq t'begin may'step t'end)
     = undefined
-    -- TODO: implement later - this is going to be rewritten with class methods
+    -- TODO: implement later - this is going to be rewritten/desugared with class methods from Enum or something like that.
 
   to'ast (Term'E'If t'condition t'then t'else) = do
     condition <- to'ast t'condition
@@ -79,12 +79,12 @@ instance To'AST Term'Expr Expression where
     alts <- to'ast t'alts
     return $ Case expr alts
 
-  to'ast (Term'E'Labeled'Constr name field'assigns)
-    = undefined
+  to'ast (Term'E'Labeled'Constr name field'assigns) = do
+    undefined
   -- TODO: I first need to do constructor analysis
   -- collect all the important information about constructors from their declarations
   -- like the fields fixed in the right order -- their types
-  -- so that record syntax than can be desugared into ordinary data types
+  -- so that record syntax then can be desugared into ordinary data types
   -- the constructor analysis is also important for when I need to generate some aditional code
   -- like in case of costructor identifier - registering a lambda with a Intro construct inside
   -- also register the getter for each field name
@@ -101,7 +101,70 @@ instance To'AST Term'Expr Expression where
 
 
 instance To'AST Term'Pat Pattern where
-  to'ast = undefined
+  to'ast (Term'P'Id (Term'Id'Var var'name)) = do
+    return $ P'Var var'name
+
+  to'ast (Term'P'Id (Term'Id'Const const'name)) = do
+    undefined
+
+  to'ast (Term'P'Op (Term'Id'Var var'name)) = do
+    return $ P'Var var'name
+
+  to'ast (Term'P'Op (Term'Id'Const var'name)) = do
+    undefined
+
+  to'ast (Term'P'Lit literal) = do
+    return $ P'Lit literal
+
+  to'ast (Term'P'App t'pats) = do
+    {-  Here is the interesting part, I first need to use the Extended Shunting Yard Algorithm to correctly parenthesize/split the whole Pattern Application.
+        Then I might get Pattern Sub-Expressions like: Cons ... ... ...
+        where Cons stands for a Term'P'Id (Term'Id'Const _)
+        What I will need to do is go over all the newly constructed Term'P'App and if the first member in the list is a Cons (from above)
+        I will need to change the whole Term'P'App into a P'Con
+
+        IMPORTANT: I think I should do that only after running the ESYA first.
+        So that means I will do either of those:
+          1)  I will run the ESYA and get the result
+              But because the result is still the Term'Pat I will need to translate it into a Pattern and for that I may need to call some other function,
+              because the to'ast would loop forever on the Term'P'App
+
+          2)  I can integrate the translation of the Cons ... pattern into a specific implementation of ESYA for Patterns
+
+        BUT:  If I decide that I will first run the ESYA on the Term'Expression input and that way I will correctly parenthesise it.
+              Then translate it from the Expression to Pattern, then I think I may not need to concern myself with these details.
+              Instead of this instance I will implement instance To'AST Expression Pattern and for Application Expression I will do the important thing.
+    -}
+
+    undefined
+
+  to'ast (Term'P'Labeled name t'fields) = do
+    {-  This will be translated into a (P'Con Name [Pattern]).
+        For such desugar I need to have a Constructor Analysis information ready.
+
+        THOUGHT:  If I decide to translate to Expression and from that to Pattern, this will already be taken care of.
+        So I would only need to take care of the Cons Pattern case.
+    -}
+
+    undefined
+
+  to'ast (Term'P'Tuple t'pats) = do
+    pats <- to'ast t'pats
+    return $ P'Con (tuple'name'for $ length t'pats) pats
+    --             ^^^ or something like that
+      where tuple'name'for num = "(" ++ replicate num ',' ++ ")"
+
+  to'ast (Term'P'List t'pats) = do
+    -- TODO: use P'Con Pattern constructor, create sequence like a : b : ... : z : []
+    undefined
+
+  to'ast (Term'P'As name t'pat) = do
+    pat <- to'ast t'pat
+    return $ P'As name pat
+
+  to'ast Term'P'Wild = do
+    return P'Wild
+
 
 
 instance To'AST a b => To'AST [a] [b] where
