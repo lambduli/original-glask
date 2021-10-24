@@ -12,15 +12,16 @@ data Error
   | Infinite'Kind Kind Kind
   | Type'Unif'Mismatch Type Type
   | Kind'Unif'Mismatch Kind Kind
-  | Unbound'Var String
+  | Unbound'Var Name
   | Unbound'Type'Var String
   | Type'Shape'Mismatch Type Type
   | Kind'Shape'Mismatch Kind Kind
   | Type'Unif'Count'Mismatch [Type] [Type]
   | Kind'Unif'Count'Mismatch [Kind] [Kind]
-  | Synonym'Cycle [(String, Type)]
+  | Synonym'Cycle [(Name, Type)]
   | Signature'Too'General
   | Context'Too'Weak
+  | Synonym'Not'Fully'Applied Name
 
   | Unexpected String -- this is just temporary helper constructor for me to debug stuff ... mostly
   deriving (Eq)
@@ -61,6 +62,15 @@ instance Show Error where
   show (Type'Unif'Count'Mismatch _ _) = undefined  -- TODO: FIX this pls!
   
   show (Kind'Unif'Count'Mismatch _ _) = undefined  -- TODO: FIX this pls!
+  
+  show (Signature'Too'General)
+    = "Signature is too general" -- TODO: add some info about what am I talking about too
+
+  show (Context'Too'Weak)
+    = "Context is too weak" -- TODO: add some info about what am I talking about too
+
+  show (Synonym'Not'Fully'Applied name)
+    = "Type Synonym " ++ name ++ " is not fully applied" -- TODO: add some more info about the problem
 
   show (Unexpected s)
     = "Something bad happened: " ++ s
