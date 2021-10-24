@@ -445,7 +445,16 @@ TypeArr           ::  { Term'Type }
 BType             ::  { Term'Type }
                   :   OneOrMany(AType)                              { case $1 of
                                                                       { [t] -> t
-                                                                      ; ts -> Term'T'App ts } }
+                                                                      ; (t : ts) -> case t of
+                                                                        { Term'T'App types -> Term'T'App $ types ++ ts
+                                                                        ; _ -> Term'T'App (t : ts) } } }
+{- Explanation: If you have a type expression like: `T a b` it can be written like `(T a) b`.
+    But but parsing that second form would result in creating something like: Term'T'App [Term'T'App [T, a], b].
+    That is generally OK. But if I want to check that all Type Synonyms are fully applied I would be having a hard time.
+    For that reason I decided to try this approach instead. That is - Type Applications of thhis specific shape
+    are going to be collapsed. But only Type Applications which are a first element of another Type Application.
+    That should 1:1 correspond to the well known rule of implicit parenthesizing of (not only) Type Applications.
+-}
 
 
 AType             ::  { Term'Type }
