@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 module Compiler.Analysis.Syntactic.ConstructorAnalysis where
 
 
@@ -9,10 +11,20 @@ import Compiler.Syntax.Name
 import Compiler.Syntax.Term
 
 import Compiler.Analysis.Syntactic.ConstrEnv
+import Compiler.Analysis.Syntactic.FieldEnv
 
 
-analyze :: [Term'Decl] -> Constr'Env
-analyze decls = Map.fromList $ concat $ mapMaybe collect decls
+analyze :: [Term'Decl] -> (Constr'Env, Field'Env)
+analyze decls = (constr'env, field'env)
+  where
+    constr'env = Map.fromList $ concat $ mapMaybe collect decls
+    
+    {-  From all the entries in the `constr'env` I only consider bindings of type `Record { fields :: [Name] }`.
+        For such bindings I assign each field name the Constr'Info they are tied to.
+        All of those new bindings are then concatenated into a singular collection and transformed into a Map aka Field'Env. -}
+    field'env = Map.fromList $ concat [ map (, constr) fields | (constr'name, constr@Record{ fields = fields }) <- entries ]
+      where
+        entries = Map.toList constr'env
 
 
 collect :: Term'Decl -> Maybe [(Name, Constr'Info)]

@@ -8,6 +8,10 @@ import Compiler.Syntax.Name
 import Compiler.Syntax.Type
 
 
+{-  Associates a Name and a Constr'Info
+    Since each constructor and Record-Field-Name has to have a unique identifier
+    this Map holds the globally-scoped information.
+-}
 type Constr'Env = Map.Map Name Constr'Info
 
 
