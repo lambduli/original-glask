@@ -19,7 +19,7 @@ data Term'Decl
   | Data'Decl Name [Name] [Term'Constr'Decl]  -- Data type declaration -- name type'params list'of'consturctors'with'params
   | Type'Alias Name [Name] Term'Type          -- type String = List Char
   | Fixity Fixity Int Name                    -- infix 5 +
-  | Class Name Name [Term'Pred] [Term'Decl]   -- class (Super1 a1, ... , SuperN aN) ==> Name where { list of Signatures }
+  | Class Name Name [Term'Pred] [Term'Decl]   -- class (Super1 a, ... , SuperN a) ==> Name a where { list of Signatures }
   --    cname parname supers     signatures
   | Instance ([Term'Pred], Term'Pred) [Term'Decl]             -- instance ... where { list of Bindings }
   deriving (Eq)
