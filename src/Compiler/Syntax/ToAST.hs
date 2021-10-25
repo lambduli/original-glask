@@ -8,6 +8,7 @@ import Data.List (intersperse, replicate, find)
 import Data.Maybe
 import Control.Monad.Trans.Reader
 import Control.Monad.Except
+import Control.Monad.State
 import qualified Data.Map.Strict as Map
 
 
@@ -22,6 +23,7 @@ import qualified Compiler.Syntax.ToAST.TranslateEnv as Trans'Env
 import Compiler.Syntax.ToAST.Translate
 import Compiler.Syntax.ToAST.SemanticError
 import Compiler.Analysis.Syntactic.ConstrEnv
+import qualified Compiler.Analysis.Syntactic.ConstrEnv as CE
 
 
 class To'AST a b where
@@ -102,7 +104,7 @@ instance To'AST Term'Expr Expression where
     constr'env <- asks Trans'Env.constructors
     case constr'env Map.!? name of
       Nothing -> throwError $ Not'In'Scope'Data name
-      Just Constr -> do
+      Just (Constr _) -> do
         if null field'assigns -- Constr {}
         then return $ Const name -- Constr
         else throwError $ Wrong'Fields name $ map fst field'assigns -- error
@@ -148,56 +150,77 @@ instance To'AST Term'Expr Expression where
             - if NOT --> raise an error saying that there's no constructor defining all the fields
             - if YES --> proceed with the desugaring
   -}
-  result <- look'for'constr field'assigns t'expr
+    constr'info <- look'for'constr field'assigns t'expr
+    case constr'info of
+      Constr _ -> error "Unexpected behaviour: function look'for'constr returned `Constr _` instead of Record{}"
+      Record{ CE.name = name, fields = fields } -> do
+        -- now I can actually desugar the expression
+        -- we begin with something like: expr{ field_1 = val_1, ..., field_n = val_n }
+        -- we now know what Constructor is going to be used
+        -- so what I need to do is - I think - create a case expression which deconstructs the current expression
+        -- and pattern matches on all the values with just variables
+        -- then uses the variables to fill the not-mentioned properties
+        -- and replace those mentioned with the values given
+        -- I should make some function like patch or something to figure it out
+        expr <- to'ast t'expr
+        let letters = [1 ..] >>= flip replicateM ['a' .. 'z']
+        let var'names = map (letters !!) [0 .. length fields]
+        let pattern = P'Con name $ map P'Var var'names  -- to budou vsechno promenny o poctu `length fields`
+
+        -- NOTE: I map the sequence of the (Variable'From'Pattern, Field'Name)
+        --        to a sequence of Expression
+        --        every time I find a position which corresponds to the field name which is in the field'assigns I pick the assigned value instead
+        let var'names'on'field'names = zip var'names fields
+        let var'or'update :: (Name, Name) -> Translate Expression
+            var'or'update (var'name, field'name)
+              = case lookup field'name field'assigns of
+                Nothing -> return $ Var var'name
+                Just term'expr -> do
+                  to'ast term'expr
+
+        exprs <- mapM var'or'update var'names'on'field'names
+        -- NOTE: now I fold it all together, constructing the RHS of the pattern
+        let rhs = foldl App (Const name) exprs
+        let the'match = Match { patterns = [pattern], rhs = rhs }
+        return $ Case expr [the'match]
 
 
-  return undefined
-
-
-look'for'constr :: [(Name, Term'Expr)] -> Term'Expr -> Translate (Maybe Constr'Info)
+look'for'constr :: [(Name, Term'Expr)] -> Term'Expr -> Translate Constr'Info
 look'for'constr field'assigns t'expr = do
   if null field'assigns
   then throwError $ Empty'Record'Update t'expr
   else do
-  -- get the name of any field from the non-empty sequence of pairs
-  -- I choose to pick the first one
-  let ((field'name, _) : assigns) = field'assigns
-  -- now I need to find the Record Constr'Info which contains this field
-  constr'env <- asks Trans'Env.constructors
-  field'env <- asks Trans'Env.fields
+    -- get the name of any field from the non-empty sequence of pairs
+    -- I choose to pick the first one
+    let ((field'name, _) : assigns) = field'assigns
+    -- now I need to find the Record Constr'Info which contains this field
+    constr'env <- asks Trans'Env.constructors
+    field'env <- asks Trans'Env.fields
 
-  let field'names :: [Name]
-      field'names = map fst field'assigns
+    let field'names :: [Name]
+        field'names = map fst field'assigns
 
-  case field'env Map.!? field'name of
-    Nothing ->
-      throwError $ Not'In'Scope'Field field'name
-    Just Constr ->
-      error "Unexpected behaviour: the lookup for the constructor with a specific field returned an ordinary constructor without fields."
-    Just Record{ fields = fields } -> do
-      -- I can now iterate over all the field names in the `field'assigns`
-      -- I can check whether each field name IS or IS NOT defined
-      -- I can first focus on the field names which are not defined
-      -- if there are NO UNDEFINED field names some of them still can be 'from some other constructor'
-        -- I will need to check that all the field names in the `field'assigns` are in fact the fields from this current constructor
-      
-      case find (not . flip Map.member field'env) field'names of
-        Just undefined'field'name ->
-          throwError $ Not'In'Scope'Field undefined'field'name
-        Nothing -> do
-          -- now check that all the field names in the `field'names` are present in this constructor (in the `fields` sequence)
-          case filter (not . flip elem fields) field'names of
-            (_ : _) -> throwError $ No'Constructor'Has'All'Fields field'names
-            [] -> do
-              undefined -- TODO: continue from here
-              -- now I can actually desugar the expression
-              -- we begin with something like: expr{ field_1 = val_1, ..., field_n = val_n }
-              -- we now know what Constructor is going to be used
-              -- so what I need to do is - I think - create a case expression which deconstructs the current expression
-              -- and pattern matches on all the values with just variables
-              -- then uses the variables to fill the not-mentioned properties
-              -- and replace those mentioned with the values given
-              -- I should make some function like patch or something to figure it out
+    case field'env Map.!? field'name of
+      Nothing ->
+        throwError $ Not'In'Scope'Field field'name
+      Just (Constr _) ->
+        error "Unexpected behaviour: the lookup for the constructor with a specific field returned an ordinary constructor without fields."
+      Just constr@Record{ fields = fields } -> do
+        -- I can now iterate over all the field names in the `field'assigns`
+        -- I can check whether each field name IS or IS NOT defined
+        -- I can first focus on the field names which are not defined
+        -- if there are NO UNDEFINED field names some of them still can be 'from some other constructor'
+          -- I will need to check that all the field names in the `field'assigns` are in fact the fields from this current constructor
+        
+        case find (not . flip Map.member field'env) field'names of
+          Just undefined'field'name ->
+            throwError $ Not'In'Scope'Field undefined'field'name
+          Nothing -> do
+            -- now check that all the field names in the `field'names` are present in this constructor (in the `fields` sequence)
+            case filter (not . flip elem fields) field'names of
+              (_ : _) -> throwError $ No'Constructor'Has'All'Fields field'names
+              [] -> return constr
+              
 
   -- case find (`has'field` field'name) $ Map.elems constr'env of
   --   Nothing -> do

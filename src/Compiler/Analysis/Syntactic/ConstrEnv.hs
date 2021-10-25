@@ -23,5 +23,5 @@ type Constr'Env = Map.Map Name Constr'Info
   can be used interchangeably even by the user.
   The positional order corresponds to the order in which the fields were given. -}
 data Constr'Info
-  = Constr
-  | Record { fields :: [Name] }
+  = Constr Name
+  | Record { name :: Name, fields :: [Name] }
