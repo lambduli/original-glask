@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c7c8d0b2d66379a17a807d1f89c9244a5a18db1a8eed7e55ff9567f9e113fc27
+-- hash: cb4f1534a4bff90ab49aec8f63b74cdc55414e850920a0737183dbcc795e20f3
 
 name:           glask
 version:        0.1.0.0
@@ -128,7 +128,7 @@ executable glask-exe
       Paths_glask
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -Weverything
   build-depends:
       array
     , base >=4.7 && <5
