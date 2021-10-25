@@ -220,36 +220,6 @@ look'for'constr field'assigns t'expr = do
             case filter (not . flip elem fields) field'names of
               (_ : _) -> throwError $ No'Constructor'Has'All'Fields field'names
               [] -> return constr
-              
-
-  -- case find (`has'field` field'name) $ Map.elems constr'env of
-  --   Nothing -> do
-  --     throwError $ Not'In'Scope'Field field'name
-  --   Just Constr -> error "Unexpected behaviour: the lookup for the constructor with a specific field returned an ordinary constructor without fields."
-  --   Just Record{ fields = fields } -> do
-  --     -- now check that all the fields in the field'assigns are present in this constructor
-  --     let wrong'fields = filter (not . flip elem fields) $ map fst field'assigns
-  --     -- TODO: NOTE: Ideally I would offer more fine-grained kind of an error.
-  --     -- If I find some field name which is not in the current constructor it can be two things:
-  --       -- It is not actually declared at all --> not in scope field error
-  --       -- It is declared but it's not a field of the current constructor --> no constructor with all these fields error
-  --     -- I can get this information by iterating over all the `wrong'fields` and assigning them a bool depending on whether they are somewhere to be found.
-  --     -- All the fields which are somewhere-to-be-found are declared as a field of some other constructor.
-  --     -- But if there are some fields which are not to-be-found anywhere --> those are not in the scope.
-
-  --     undefined'fields <- allM (defined'field) wrong'fields
-
-  --     if not . null $ wrong'fields
-  --     then undefined
-  --     else undefined
-
-  --   where
-  --     has'field :: Constr'Info -> Name -> Bool
-  --     Constr `has'field` _ = False
-  --     Record{ fields = fields } `has'field` f'name = f'name `elem` fields
-
-
-
 
 
 instance To'AST Term'Pat Pattern where
@@ -286,6 +256,7 @@ instance To'AST Term'Pat Pattern where
         BUT:  If I decide that I will first run the ESYA on the Term'Expression input and that way I will correctly parenthesise it.
               Then translate it from the Expression to Pattern, then I think I may not need to concern myself with these details.
               Instead of this instance I will implement instance To'AST Expression Pattern and for Application Expression I will do the important thing.
+              I LIKE THIS IDEA BETTER I THINK.
     -}
 
     undefined
@@ -377,6 +348,17 @@ instance To'AST Term'Decl Declaration where
   -- THERE IS A NOTE IN THE FORM OF A QUESTION IN THE MODULE FOR MATCH
   -- PLEASE CONSULT IT FIRST, THINK ABOUT IT AND FIND A SATISFIABLE ANSWER
   to'ast (Term.Binding t'pat t'expr) = undefined
+  -- TODO: I will need to translate the t'pat (Term'Pattern) into a Pattern
+  --        That should give me something like Pattern Application on the top level
+  --          if not --> raise an error (syntactic) = this binding's pattern is not syntactically correct
+  --          if yes --> I need to pick the left-most operation/function
+  --            if the Infix'App makes it to the final implementation, this would be the place where it would be used
+  --            I would take the middle part and somehow deconstruct the rest of the pattern parameters
+  --            because what I store in the Binding'Group is a list of Matches
+  --            that means I need the complete list of Patterns
+  --            For that exact reason, it would perhaps be better to start with correctly parenthesizing the t'pat with ESYA
+  --            and then manually transforming it into a [Match] and Binding'Group eventually.
+  --            Skipping the step where I translate it using a to'ast directly (calling it at the top level or something like that).
 
   to'ast (Term.Signature name t'qual'type) = do
     qual'type <- to'ast t'qual'type
