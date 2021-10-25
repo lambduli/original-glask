@@ -174,6 +174,15 @@ No.
 I can use GADTs and they will bring the context in some cases (let behaves strangely) but aside from that - no.
 
 
+## Q 4
+
+Why does `ghc` only report warning on missing field initialization?
+Shouldn't that be pretty much an error? Because partially applying the constructor would still produce a resulting value of a different type, so why not with record syntax?
+
+## Answer (4)
+
+Because it initializes them to `undefined` by default.
+
 ## Idea:
 Maybe I could refactor the Terms so that they are parametrized by the type they represent.
 So `Term'Type` would become `Term Type` and so on.
