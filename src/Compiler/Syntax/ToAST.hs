@@ -24,7 +24,8 @@ import Compiler.Syntax.ToAST.Translate
 import Compiler.Syntax.ToAST.SemanticError
 import Compiler.Analysis.Syntactic.ConstrEnv
 import qualified Compiler.Analysis.Syntactic.ConstrEnv as CE
-import Compiler.Syntax.ToAST.ESYA (ESYA(process))
+import Compiler.Syntax.ToAST.ESYA
+import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
 
 
 class To'AST a b where
@@ -351,12 +352,41 @@ instance To'AST a b => To'AST (Name, a) (Name, b) where
     return (name, b)
 
 
+{- NOTE: So I think that if I make a requirement/assumption that:
+          before `to'ast` is called on the type
+          first - information about all free type variables is retrieved
+          only type variables which are not in the current environment are considered free
+          and those are going to be registered in the environment
+          but first to each one of those there's going to be a fresh Kind Variable
+          assigned.
+          Because of that - later when actually translating using `to'ast`
+          when a type variable/constant is approached -> it's kind variable
+          will be looked up in the environment, so that each occurence of that type variable
+          will share the same Kind Variable.
+
+        The same typing context should also contain the kind associations for all type constants.
+        Like type constructors - primitives and user-defined.
+   -}
 instance To'AST Term'Type Type where
-  to'ast (Term'T'Id (Term'Id'Var var)) = undefined
+  to'ast (Term'T'Id (Term'Id'Var var)) = do
+    typing'context <- asks TE.typing'scope
+    -- NOTE: even though this type variable should always be in the context
+    --        I might make a mistake in the implementation -> better be safe.
+    case typing'context Map.!? var of
+      Nothing -> error "Unexpected behaviour: While assigning a Kind to a type variable, I have approached a type variable which is not in the typing context."
+      Just kind -> return $ T'Var $ T'V var kind
 
-  to'ast (Term'T'Id (Term'Id'Const con)) = undefined
+  to'ast (Term'T'Id (Term'Id'Const con)) =  do
+    typing'context <- asks TE.typing'scope
+    -- NOTE: even though this type constant should always be in the context
+    --        I might make a mistake in the implementation -> better be safe.
+    case typing'context Map.!? con of
+      Nothing -> error "Unexpected behaviour: While assigning a Kind to a type constant, I have approached a type constant which is not in the typing context."
+      Just kind -> return $ T'Con $ T'C con kind
 
-  to'ast (Term'T'Tuple t'types) = undefined
+  to'ast (Term'T'Tuple t'types) = do
+    types <- mapM to'ast t'types
+    return $ T'Tuple types
 
   to'ast (Term'T'List t'type) = undefined
   
