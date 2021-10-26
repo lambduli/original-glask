@@ -6,12 +6,12 @@
 - ## Parsing Stage 1
   - resolve all shift/reduce conflicts (16)
 - ## Parsing Stage 2
-  - construct application trees from application lists ((Extended) Shunting Yard Algorithm)
-  - transform general expressions to patterns
-  - ? make the Kind Variables in the Type Variables correct (this will be done by the part of implementation which translates from Term'Expr to Expr)
+  - construct application trees from application lists (Extended Shunting Yard Algorithm)
+  - ? make the Kind Variables in the Type Variables correct (this will be done by the part of implementation which translates from Term'Type to Type)
 - ## Semantic Analysis and Transformation
   - merge all binding groups (at first each one only contains single equation) into a single group
-  - check that all type constructors are fully applied `WIP`
+  - check that all data constructors which are operators and defined as POST/PRE-fix are always unary (consider having the similar requirement on binary infix operators)
+  - check that all type synonyms are fully applied `WIP`
   - check type contexts validity (read Haskell Report for that)
     - basic structure checking is done by the parser - add better error reporting in the future
   - transform the binding groups into `Implicit` or `Explicit` according the type annotations
