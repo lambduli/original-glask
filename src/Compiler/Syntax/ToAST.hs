@@ -26,6 +26,7 @@ import Compiler.Analysis.Syntactic.ConstrEnv
 import qualified Compiler.Analysis.Syntactic.ConstrEnv as CE
 import Compiler.Syntax.ToAST.ESYA
 import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
+import Compiler.Analysis.TypeSystem.Type.Constants
 
 
 class To'AST a b where
@@ -53,7 +54,14 @@ instance To'AST Term'Expr Expression where
     body <- to'ast t'body
     return $ Abs pattern' body
 
-  to'ast (Term'E'App t'exprs) = undefined
+  -- TODO: for now, I am assuming, that each application will be parenthesized
+  to'ast (Term'E'App [left, right]) = do
+    left'ast <- to'ast left
+    right'ast <- to'ast right
+    return $ App left'ast right'ast
+
+  to'ast (Term'E'App t'exprs) =
+    error "Not implemented: Expression Term Application with mutliple arguments --> AST"
   -- TODO: implement! This will use my implementation of the Extended Shunting Yard algorithm.
 
   to'ast (Term'E'Tuple t'exprs) = do
@@ -64,7 +72,7 @@ instance To'AST Term'Expr Expression where
     = to'ast $ Term'E'App $ intersperse (Term'E'Op $ Term'Id'Const ":") $ exprs ++ [Term'E'Id $ Term'Id'Const "[]"]
 
   to'ast (Term'E'Arith'Seq t'begin may'step t'end)
-    = undefined
+    = error "Not implemented: Arithmetic sequences --> AST"
     -- TODO: implement later - this is going to be rewritten/desugared with class methods from Enum or something like that.
 
   to'ast (Term'E'If t'condition t'then t'else) = do
@@ -306,14 +314,13 @@ instance To'AST Term'Pat Pattern where
     --      make it a P'Con
     --      then I can return this value, as will all the calls on the smaller parts
     --      which will produce a valid Pattern value and it will type check
-    undefined
+    error "Not implemented: Pattern Application Term --> AST"
 
   to'ast (Term'P'Labeled name t'fields) = do
     {-  This will be translated into a (P'Con Name [Pattern]).
         For such desugar I need to have a Constructor Analysis information ready.
     -}
-
-    undefined
+    error "Not implemented: Labeled pattern --> AST"
 
   to'ast (Term'P'Tuple t'pats) = do
     pats <- to'ast t'pats
@@ -323,7 +330,7 @@ instance To'AST Term'Pat Pattern where
 
   to'ast (Term'P'List t'pats) = do
     -- TODO: use P'Con Pattern constructor, create sequence like a : b : ... : z : []
-    undefined
+    error "Not implemented: List Patter Term --> AST"
 
   to'ast (Term'P'As name t'pat) = do
     pat <- to'ast t'pat
@@ -388,17 +395,32 @@ instance To'AST Term'Type Type where
     types <- mapM to'ast t'types
     return $ T'Tuple types
 
-  to'ast (Term'T'List t'type) = undefined
+  to'ast (Term'T'List t'type) = do
+    type' <- to'ast t'type
+    -- NOTE: now I relly on the fact, that list type constructor is going to be defined in the prelude
+    return $ T'App type'list type'
   
   {- This relies on the fact that (->) is registered in the fixity environment
       and the shunting yard algorithm is implemented for types too.
       
     In case I change my mind about that -> just do it the simple way. -}
   to'ast (Term'T'Arrow t'types) = do
-    to'ast $ Term'T'App $ intersperse (Term'T'Id (Term'Id'Const "(->)")) t'types
+    types <- mapM to'ast t'types
+    -- [a, b, c] ~~> (a -> b -> c)
+    -- (a -> (b -> c))
+    -- (-> a ((-> b) c))
+    return $ foldr1 type'fn types -- I can use the line below any time later
+    -- to'ast $ Term'T'App $ intersperse (Term'T'Id (Term'Id'Const "(->)")) t'types
 
-  to'ast (Term'T'App t'types) = undefined
-  -- TODO: implement shunting yard algorithm
+  -- TODO: for now I assume that I don't have type operators
+  --        that makes the type applications pretty straightforward
+  --        (a b c d) ~~> (((a b) c) d)
+  -- TODO: later implement the extended shunting yard algorithm
+  --        which will allow me to support various type operators
+  -- NOTE: assuming that `t'types` are not empty (though they should always contain more than 1 element)
+  to'ast (Term'T'App t'types) = do
+    types <- mapM to'ast t'types
+    return $ foldl1 T'App types
 
 
 instance To'AST Term'Pred Predicate where

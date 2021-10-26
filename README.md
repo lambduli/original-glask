@@ -8,6 +8,26 @@
 - ## Parsing Stage 2
   - construct application trees from application lists (Extended Shunting Yard Algorithm)
   - ? make the Kind Variables in the Type Variables correct (this will be done by the part of implementation which translates from Term'Type to Type)
+    - it's going to work like this:
+      - what is the only way for a type variable to be introduced?
+      - it's the type annotation (also, there are no "local types" in types)
+      - first time the variable is introduced is the same as the last time it's mentioned
+        - this doesn't really break something like `ScopedTypeVariable`, because it can work like this:
+          - when translating an annotated declaration, I will first translate the type annotation
+          - that will produce a type, I can then look at the type and register all the type variables in the kind context and within such context I can translate the expression part of the definition
+          - that will lead to the type variables all being correctly registered already, so that later, when such type variable is approached within the body, it is assigned the same kind variable as other occurences -> that makes them equal
+        - but that also means, that when dealing with local declarations inside a global declarations - the local declaration, which could register it's own variables, must not override any assignments already in the context, because that would break the association between the top level declaration's type variable and the local one
+          - so before registering a new binding in the kind context, one must make sure that the corresponding binding is not already present in there -> if it happens to be already present, it will be used as is and not overwritten
+      - but that means, that each time a type annotation is processed, that level must do some bookkeeping:
+        - first identify all free type variables (that would pretty much be all type variables present)
+        - then remove from those, all those which are already registered in the kind context
+          (those are already taken care of)
+        - and only register what is left
+    - !!! If I want to make a `ScopedTypeVar` work, I need to take care of the type annotation type inference rule
+      - because that means, that those type variables from the surrounding scope are not going to be closed over
+      - that will definitely change the rule for infering annotated expression
+      - maybe it will work just fine when I will conditionally NOT close over that specific (already closed over) type variable, similarly how it works just fine for type variables from outer scope (leading to deffered predicates) - I will need to check this thoroughly
+    
 - ## Semantic Analysis and Transformation
   - merge all binding groups (at first each one only contains single equation) into a single group
   - check that all data constructors which are operators and defined as POST/PRE-fix are always unary (consider having the similar requirement on binary infix operators)

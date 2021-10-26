@@ -13,6 +13,8 @@ import Compiler.Syntax.Term
 
     type parameter `a` is a type of the input sequence member
 -}
+
+-- TODO: I need to pass the information about precedences, associativities and fixities
 class ESYA a where
   process :: [a] -> [a]
   process as = do
