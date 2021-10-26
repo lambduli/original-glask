@@ -24,6 +24,7 @@ import Compiler.Syntax.ToAST.Translate
 import Compiler.Syntax.ToAST.SemanticError
 import Compiler.Analysis.Syntactic.ConstrEnv
 import qualified Compiler.Analysis.Syntactic.ConstrEnv as CE
+import Compiler.Syntax.ToAST.ESYA (ESYA(process))
 
 
 class To'AST a b where
@@ -222,51 +223,93 @@ look'for'constr field'assigns t'expr = do
               [] -> return constr
 
 
+
+{- TODO: What needs to be done - I need to correctly parenthesize the pattern applications.
+          For that I will use my ESYA.
+        Then I need to translate Term'P'App into a P'Con.
+          If I understand correctly - in case of patterns - the only acceptable Pattern Application
+          will be an application of the constructor identifier to one or many patterns.
+          Knowing that - I can always assume that Pattern Applications have to start with
+          Pattern Identifier (Term'P'Id (Term'Id'Const _)) and then there can be any Pattern.
+          So every time I see a Term'P'App, I can be sure that after correctly parenthesizing it
+          with ESYA, its first element must be a constructor identifier.
+
+          And because it is not allowed to make patterns like: `((Cons head) tail)`
+          I don't need to worry about collapsing the Pattern Applications.
+          In this case it would be possible to collapse correctly.
+          But what if the constructor is an operator: `(head :) tail`
+            this might seem like almost understandable, but in Haskell, this doesn't work.
+            Also - with my postfix operators, it may be possible to make it work just fine.
+            But realize that the `:` is probably POST-fix constructor (binary) in this example
+            (otherwise it wouldn't make sense and would not parse)
+            and `head :` means it is partially applied, so it still waits for another argument
+            then the whole expression is applied to another argument - all good right?
+            Except that the POST-fix constructor operator `:` somehow finds itself
+            in the middle, in a very strange position.
+            It should look like this: `head tail :`. Puting the POST-fix `:` anywhere else
+            than at the end is just unreasonable.
+
+        So - when translating Term'P'App I first need to use ESYA to create the correct structure
+          then I should always obtain a Term'P'App (because I don't have an Infix App Pattern)
+          that means I will get the list of Term'Patterns - being arguments to the first Pattern
+          in the Term'P'App list. That list of Term'Patterns (without the first Constructor)
+          needs to be translated to'ast too. It can be done by `mapM` and no problem at all should arise.
+
+        If I implement the ESYA as a type class. And one of the methods will be something like
+          on'value'accept which should mean, that the Term'Pat value is being pushed to the output
+          and before that, I have an option to do something with it.
+          I could call `to'ast` on that value. That would mean, that the resulting output sequence
+          would contain Patterns and not Term'Pats. That would also mean, that I would as a result of the ESYA
+          get a value of the Pattern.
+          To make it work, means ESYA needs to call some externally-defined function, which at the end,
+          transforms the sesquence of the Patterns into a P'Con pattern
+          something like `on'whole'sequence`. And that would make it possible to inspect the whole sequence
+          and in case of Patterns -> check that the first thing in the application is always a constructor
+          and then change it to P'Con.
+
+          I kinda like that idea. It makes the general idea of ESYA customizable to the great extent.
+
+          Change of plans - that wouldn't work, because the types.
+
+          Instead I will make the ESYA produce a sequence of Term'Pat in the postfix.
+          Then when translating the sequence into a valid Pattern tree, I will do all the
+          checking and translation of the Term'P'App into a P'Con
+-}
 instance To'AST Term'Pat Pattern where
-  to'ast (Term'P'Id (Term'Id'Var var'name)) = do
+  to'ast (Term'P'Id (Term'Id'Var var'name)) =
     return $ P'Var var'name
 
-  to'ast (Term'P'Id (Term'Id'Const const'name)) = do
-    undefined
+  to'ast (Term'P'Id (Term'Id'Const const'name)) =
+    return $ P'Con const'name []
 
-  to'ast (Term'P'Op (Term'Id'Var var'name)) = do
+  to'ast (Term'P'Op (Term'Id'Var var'name)) =
     return $ P'Var var'name
 
-  to'ast (Term'P'Op (Term'Id'Const var'name)) = do
-    undefined
+  to'ast (Term'P'Op (Term'Id'Const const'name)) =
+    return $ P'Con const'name []
 
-  to'ast (Term'P'Lit literal) = do
+  to'ast (Term'P'Lit literal) =
     return $ P'Lit literal
 
   to'ast (Term'P'App t'pats) = do
-    {-  Here is the interesting part, I first need to use the Extended Shunting Yard Algorithm to correctly parenthesize/split the whole Pattern Application.
-        Then I might get Pattern Sub-Expressions like: Cons ... ... ...
-        where Cons stands for a Term'P'Id (Term'Id'Const _)
-        What I will need to do is go over all the newly constructed Term'P'App and if the first member in the list is a Cons (from above)
-        I will need to change the whole Term'P'App into a P'Con
-
-        IMPORTANT: I think I should do that only after running the ESYA first.
-        So that means I will do either of those:
-          1)  I will run the ESYA and get the result
-              But because the result is still the Term'Pat I will need to translate it into a Pattern and for that I may need to call some other function,
-              because the to'ast would loop forever on the Term'P'App
-
-          2)  I can integrate the translation of the Cons ... pattern into a specific implementation of ESYA for Patterns
-
-        BUT:  If I decide that I will first run the ESYA on the Term'Expression input and that way I will correctly parenthesise it.
-              Then translate it from the Expression to Pattern, then I think I may not need to concern myself with these details.
-              Instead of this instance I will implement instance To'AST Expression Pattern and for Application Expression I will do the important thing.
-              I LIKE THIS IDEA BETTER I THINK.
-    -}
-
+    let in'postfix :: [Term'Pat]
+        in'postfix = process t'pats
+    -- TODO: now I need to translate the sequence in postfix of Term'Pat
+    --      into a single Pattern value
+    --      along the way I will use the information from the analysis about operators
+    --      their fixities, associativity, and precedence (sometimes also arity? or does that mean, that POST and PRE will only be unary?)
+    --      and for each actual value I will need to call to'ast to produce Pattern
+    --      it also means, that the last thing I need to do, is take the constructor
+    --      which should be the FIRST (in POSTfix) element in this list
+    --      and together with the rest of the list
+    --      make it a P'Con
+    --      then I can return this value, as will all the calls on the smaller parts
+    --      which will produce a valid Pattern value and it will type check
     undefined
 
   to'ast (Term'P'Labeled name t'fields) = do
     {-  This will be translated into a (P'Con Name [Pattern]).
         For such desugar I need to have a Constructor Analysis information ready.
-
-        THOUGHT:  If I decide to translate to Expression and from that to Pattern, this will already be taken care of.
-        So I would only need to take care of the Cons Pattern case.
     -}
 
     undefined
@@ -287,7 +330,6 @@ instance To'AST Term'Pat Pattern where
 
   to'ast Term'P'Wild = do
     return P'Wild
-
 
 
 instance To'AST a b => To'AST [a] [b] where
@@ -351,7 +393,7 @@ instance To'AST Term'Decl Declaration where
   -- TODO: I will need to translate the t'pat (Term'Pattern) into a Pattern
   --        That should give me something like Pattern Application on the top level
   --          if not --> raise an error (syntactic) = this binding's pattern is not syntactically correct
-  --          if yes --> I need to pick the left-most operation/function
+  --          if yes --> I need to pick the left-most (top-most? [but not necessarily at the complete root]) operation/function
   --            if the Infix'App makes it to the final implementation, this would be the place where it would be used
   --            I would take the middle part and somehow deconstruct the rest of the pattern parameters
   --            because what I store in the Binding'Group is a list of Matches

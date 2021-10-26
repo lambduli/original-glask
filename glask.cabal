@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: cb4f1534a4bff90ab49aec8f63b74cdc55414e850920a0737183dbcc795e20f3
+-- hash: 46ab5baa3a87f197380411dd5fa1c02b19a2e3a3aaaf4805bea5557fde84a695
 
 name:           glask
 version:        0.1.0.0
@@ -99,6 +99,7 @@ library
       Compiler.Syntax.Term.Predicate
       Compiler.Syntax.Term.Type
       Compiler.Syntax.ToAST
+      Compiler.Syntax.ToAST.ESYA
       Compiler.Syntax.ToAST.SemanticError
       Compiler.Syntax.ToAST.Translate
       Compiler.Syntax.ToAST.TranslateEnv
