@@ -4,6 +4,7 @@
 module Compiler.Syntax.ToAST where
 
 
+import qualified Data.Set as Set
 import Data.List (intersperse, replicate, find)
 import Data.Maybe
 import Control.Monad.Trans.Reader
@@ -26,7 +27,9 @@ import Compiler.Analysis.Syntactic.ConstrEnv
 import qualified Compiler.Analysis.Syntactic.ConstrEnv as CE
 import Compiler.Syntax.ToAST.ESYA
 import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
+import Compiler.Syntax.ToAST.Utils.Translate
 import Compiler.Analysis.TypeSystem.Type.Constants
+import Compiler.Analysis.TypeSystem.Solver.Substitutable (Term(free'vars))
 
 
 class To'AST a b where
@@ -455,14 +458,33 @@ instance To'AST Term'Decl Declaration where
   --            Skipping the step where I translate it using a to'ast directly (calling it at the top level or something like that).
 
   to'ast (Term.Signature name t'qual'type) = do
+    -- TODO: here is the place where I need to find all the free type variables
+    --        keep only those, which are not "scoped" (already in the kind context)
+    --        and register them with fresh Kind Varaible
+
+    -- destructure the term qualified type
+    let (t'preds, t'type) = t'qual'type
+
+    -- first to get the Set of Term'Ids (but only Term'Id'Var actually)
+    let free'from'type = free'vars t'type :: Set.Set Term'Id
+
+    -- now also the type variables from the type context part
+    let free'from'context = foldl (\ set' t' -> Set.union set' (free'vars t')) Set.empty t'preds :: Set.Set Term'Id
+    
+    -- now combine them together
+    let free'variables = free'from'context `Set.union` free'from'type
+
+
     qual'type <- to'ast t'qual'type
     return $ AST.Signature $ AST.T'Signature name qual'type
 
   to'ast (Term.Data'Decl name params t'constr'decls) = do
+    -- TODO: Here I also need to register all the type variables
     constr'decls <- to'ast t'constr'decls
     return $ AST.Data'Decl name params constr'decls
 
   to'ast (Term.Type'Alias name params t'type) = do
+    -- TODO: Here I also need to register all the type variables
     type' <- to'ast t'type
     return $ AST.Type'Alias name params type'
 
@@ -470,6 +492,8 @@ instance To'AST Term'Decl Declaration where
     return $ AST.Fixity fixity level name
 
   to'ast (Term.Class cl'name var'name t'preds t'decls) = do
+    -- TODO: Here I also need to register all the type variables
+    -- since it is a class declaration, there's going to be just the one `var'name`
     preds <- to'ast t'preds
     decls <- to'ast t'decls
     return $ AST.Class cl'name var'name preds decls
