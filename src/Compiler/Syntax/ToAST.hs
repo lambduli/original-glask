@@ -29,7 +29,7 @@ import Compiler.Syntax.ToAST.ESYA
 import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
 import Compiler.Syntax.ToAST.Utils.Translate
 import Compiler.Analysis.TypeSystem.Type.Constants
-import Compiler.Analysis.TypeSystem.Solver.Substitutable (Term(free'vars))
+import Compiler.Analysis.TypeSystem.Solver.Substitutable
 
 
 class To'AST a b where
@@ -472,8 +472,21 @@ instance To'AST Term'Decl Declaration where
     let free'from'context = foldl (\ set' t' -> Set.union set' (free'vars t')) Set.empty t'preds :: Set.Set Term'Id
     
     -- now combine them together
-    let free'variables = free'from'context `Set.union` free'from'type
+    -- NOTE: following lambda is partial, but since free'variables only contains variables and not constants, that should be OK
+    -- TODO: perhaps revisit this piece of code and maybe decide to return Set of Strings instead to fix this weak spot
+    let free'variables = map (\ (Term'Id'Var name) -> name) $ Set.toList $ free'from'context `Set.union` free'from'type
 
+    -- now remove all those variables which are already in the kind context
+    -- so first I need to get the kind context
+    kind'context <- asks TE.typing'scope
+    -- now I keep only those type variables which are not scoped and are therefore seen for the first time
+    let only'actually'free = filter (`Map.member` kind'context) free'variables
+    -- those need to be assigned a new and fresh Kind Variable
+    new'kind'context <- Map.fromList <$> mapM (\ name -> return (name, K'Var <$> fresh)) only'actually'free
+
+    -- now, this new kind context needs to be merged into a current invironment and
+    -- with use of `local` the translation of the whole Qualified Type Term shall proceed
+    -- TODO: continue with that and correct following lines
 
     qual'type <- to'ast t'qual'type
     return $ AST.Signature $ AST.T'Signature name qual'type
