@@ -18,3 +18,20 @@ data Term'Pat
   | Term'P'As Name Term'Pat -- named pattern
   | Term'P'Wild
   deriving (Eq)
+
+
+instance Show Term'Pat where
+  show (Term'P'Id term'id) =
+    show term'id
+
+  show (Term'P'Op term'id) =
+    show term'id
+
+  show (Term'P'Lit lit) =
+    show lit
+
+  show (Term'P'App term'patterns) = show term'patterns
+
+  show (Term'P'Labeled _ _) = "[[Pattern Labeled]]"
+
+  show _ = "Not Implemented: Show for Term'Pat"

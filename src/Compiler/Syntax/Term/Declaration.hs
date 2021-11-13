@@ -2,7 +2,7 @@ module Compiler.Syntax.Term.Declaration where
 
 
 import Compiler.Syntax.Name
-import Compiler.Syntax.Declaration
+import Compiler.Syntax.Declaration hiding (Binding)
 import Compiler.Syntax.Fixity
 
 import {-# SOURCE #-} Compiler.Syntax.Term.Expression
@@ -23,6 +23,13 @@ data Term'Decl
   --    cname parname supers     signatures
   | Instance ([Term'Pred], Term'Pred) [Term'Decl]             -- instance ... where { list of Bindings }
   deriving (Eq)
+
+
+instance Show Term'Decl where
+  show (Binding term'pat term'expr)
+    = "[[Binding]]    " ++ show term'pat ++ " = " ++ show term'expr
+
+  show _ = "Not Implemented: Show for Term'Decl"
 
 
 data Term'Constr'Decl

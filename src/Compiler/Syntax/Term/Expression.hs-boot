@@ -5,3 +5,5 @@ data Term'Expr
 
 
 instance Eq Term'Expr
+
+instance Show Term'Expr

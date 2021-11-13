@@ -26,3 +26,9 @@ data Term'Expr
   | Term'E'Labeled'Constr Name [(Name, Term'Expr)]
   | Term'E'Labeled'Update Term'Expr [(Name, Term'Expr)]
   deriving (Eq)
+
+
+instance Show Term'Expr where
+  show (Term'E'Lit lit) = show lit
+
+  show _ = "Not Implemented: Show for Term'Expr"
