@@ -262,7 +262,9 @@ RHS             ::  { Term'Expr }
 
 {- Pattern -}
 Pattern         ::  { Term'Pat }
-                :   OneOrMany(BPat)                                 { Term'P'App $1 }
+                :   OneOrMany(BPat)                                 { case $1 of
+                                                                      { [one'pattern] -> one'pattern
+                                                                      ; many'patterns -> Term'P'App many'patterns } }
 --  A sequence of "A Pattern", "Constructor", "Constructor as infix operator" or "Operator Constructor".
 --  Later the whole sequence needs to be processed and according the precedence, fixity and associativity rules ->
 --  transformed into tree shaped structure.
@@ -317,7 +319,9 @@ Exp10           ::  { Term'Expr }
                 |   let Layout(Declaration) in Expression           { Term'E'Let (concat $2) $4 }
                 |   if Expression then Expression else Expression   { Term'E'If $2 $4 $6 }
                 |   case Expression of Layout(Alt)                  { Term'E'Case $2 $4 }
-                |   OneOrMany(BExp)                                 { Term'E'App $1 }
+                |   OneOrMany(BExp)                                 { case $1 of
+                                                                      { [one'expr] -> one'expr
+                                                                      ; many'exprs -> Term'E'App many'exprs } }
 --  A sequence of infix operators and constructors or AExp.
 --  Same as with BPat -> I will need to "straighten" them later.
 
