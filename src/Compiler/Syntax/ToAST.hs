@@ -29,7 +29,7 @@ import Compiler.Syntax.ToAST.ESYA
 import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
 import Compiler.Syntax.ToAST.Utils.Translate
 import Compiler.Analysis.TypeSystem.Type.Constants
-import Compiler.Analysis.TypeSystem.Solver.Substitutable (Term(free'vars))
+import Compiler.Analysis.TypeSystem.Solver.Substitutable
 
 
 class To'AST a b where
@@ -303,6 +303,16 @@ instance To'AST Term'Pat Pattern where
   to'ast (Term'P'Lit literal) =
     return $ P'Lit literal
 
+  -- NOTE: This is just momentary implementation for simple patterns
+  to'ast (Term'P'App (constr't'pat : arg't'pats)) = do
+    arg'pats <- mapM to'ast arg't'pats
+    case constr't'pat of
+      Term'P'Id (Term'Id'Const con'name) -> -- desugar into P'Con
+        return $ P'Con con'name arg'pats
+      Term'P'Op (Term'Id'Const con'op'name) -> -- desugar into P'Con
+        return $ P'Con con'op'name arg'pats
+      _ -> error "Not implemented: Pattern Application Term --> AST"
+
   to'ast (Term'P'App t'pats) = do
     let in'postfix :: [Term'Pat]
         in'postfix = process t'pats
@@ -444,7 +454,36 @@ instance To'AST Term'Decl Declaration where
 
   -- THERE IS A NOTE IN THE FORM OF A QUESTION IN THE MODULE FOR MATCH
   -- PLEASE CONSULT IT FIRST, THINK ABOUT IT AND FIND A SATISFIABLE ANSWER
-  to'ast (Term.Binding t'pat t'expr) = undefined
+  to'ast (Term.Binding t'pat t'expr) = do
+    expr <- to'ast t'expr
+
+    case t'pat of
+      Term'P'Op _ -> do
+        pat <- to'ast t'pat :: Translate Pattern
+        error "Not Implemented: Operator binding."
+
+      Term'P'Id (Term'Id'Var var'name) -> do
+        pat <- to'ast t'pat
+        return $ AST.Binding $ Bind'Group{ AST.name = var'name, alternatives = [ Match{ patterns = [pat], rhs = expr } ] }
+
+
+      Term'P'App t'pats -> do
+        -- TODO: now I use ESYA and translate the list of patterns and
+        error "Not Implemented: to'ast for Term Binding for non-variable (parametrized) bindings"
+
+      _ -> error "Not Implemented: This is a Semantic Error - bad binding, it should never happen if my parser is correct, but also, it should be either made impossible by the type system or covered by some constructor of Semantic'Error (TODO: get on it)"
+      -- LATEST NOTE: I am handling it this way (differently for variable binding and function binding)
+      -- because I haven't yet decided how am I going to implement ESYA for Patterns
+      -- because normally Patterns would never really look like:
+      -- `foo [pattern] [pattern] ... [pattern]`
+      -- where `foo` is some NON-CONSTRUCTOR identifier, aka just a variable
+      -- that would be an error in normal Patterns
+      -- but here I would very much need to allow such behaviour
+      -- and what's more - that case is actually one of only two valid forms I recognise
+      -- so either my ESYA for Patterns is going to somehow know about this
+      -- or I will need to only use ESYA for Patterns on the data, which won't make it break
+
+
   -- TODO: I will need to translate the t'pat (Term'Pattern) into a Pattern
   --        That should give me something like Pattern Application on the top level
   --          if not --> raise an error (syntactic) = this binding's pattern is not syntactically correct
@@ -472,8 +511,21 @@ instance To'AST Term'Decl Declaration where
     let free'from'context = foldl (\ set' t' -> Set.union set' (free'vars t')) Set.empty t'preds :: Set.Set Term'Id
     
     -- now combine them together
-    let free'variables = free'from'context `Set.union` free'from'type
+    -- NOTE: following lambda is partial, but since free'variables only contains variables and not constants, that should be OK
+    -- TODO: perhaps revisit this piece of code and maybe decide to return Set of Strings instead to fix this weak spot
+    let free'variables = map (\ (Term'Id'Var name) -> name) $ Set.toList $ free'from'context `Set.union` free'from'type
 
+    -- now remove all those variables which are already in the kind context
+    -- so first I need to get the kind context
+    kind'context <- asks TE.typing'scope
+    -- now I keep only those type variables which are not scoped and are therefore seen for the first time
+    let only'actually'free = filter (`Map.member` kind'context) free'variables
+    -- those need to be assigned a new and fresh Kind Variable
+    new'kind'context <- Map.fromList <$> mapM (\ name -> return (name, K'Var <$> fresh)) only'actually'free
+
+    -- now, this new kind context needs to be merged into a current invironment and
+    -- with use of `local` the translation of the whole Qualified Type Term shall proceed
+    -- TODO: continue with that and correct following lines
 
     qual'type <- to'ast t'qual'type
     return $ AST.Signature $ AST.T'Signature name qual'type

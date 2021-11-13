@@ -20,3 +20,7 @@ type Translate a
         (Except
           Semantic'Error))  -- | offenses against Semantic Rules
       a                     -- | Result
+
+
+run'translate :: Translate'Env -> Translate a -> Either Semantic'Error a
+run'translate env m = runExcept $ evalStateT (runReaderT m env) init'translate'state
