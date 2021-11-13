@@ -32,7 +32,7 @@ source ~.. decl = result == decl
 
 spec :: Spec
 spec = do
-  describe "Test parsing declarations" $ do
+  describe "Test parsing of type annotations" $ do
 
     it "parses a simple type signature" $ do
       "foo :: Int" ~.. [Signature "foo" ([], Term'T'Id $ Term'Id'Const "Int")]
@@ -53,6 +53,12 @@ spec = do
 
     it "parses a type signature with qualified type with empty context" $ do
       "foo :: () => Int" ~.. [Signature "foo" ([], Term'T'Id $ Term'Id'Const "Int")]
+
+
+  describe "Test parsing of simple declarations" $ do
+
+    it "parses a simple variable binding" $ do
+      "foo = 23" ~.. [Binding (Term'P'Id (Term'Id'Var "foo")) (Term'E'Lit (Lit'Int 23))]
 
 
   describe "Test parsing type expressions" $ do
