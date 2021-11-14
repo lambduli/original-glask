@@ -389,7 +389,7 @@ instance To'AST a b => To'AST (Name, a) (Name, b) where
    -}
 instance To'AST Term'Type Type where
   to'ast (Term'T'Id (Term'Id'Var var)) = do
-    typing'context <- asks TE.typing'scope
+    typing'context <- asks TE.kind'context
     -- NOTE: even though this type variable should always be in the context
     --        I might make a mistake in the implementation -> better be safe.
     case typing'context Map.!? var of
@@ -397,7 +397,7 @@ instance To'AST Term'Type Type where
       Just kind -> return $ T'Var $ T'V var kind
 
   to'ast (Term'T'Id (Term'Id'Const con)) =  do
-    typing'context <- asks TE.typing'scope
+    typing'context <- asks TE.kind'context
     -- NOTE: even though this type constant should always be in the context
     --        I might make a mistake in the implementation -> better be safe.
     case typing'context Map.!? con of
@@ -517,7 +517,7 @@ instance To'AST Term'Decl Declaration where
 
     -- now remove all those variables which are already in the kind context
     -- so first I need to get the kind context
-    kind'context <- asks TE.typing'scope
+    kind'context <- asks TE.kind'context
     -- now I keep only those type variables which are not scoped and are therefore seen for the first time
     let only'actually'free = filter (`Map.member` kind'context) free'variables
     -- those need to be assigned a new and fresh Kind Variable

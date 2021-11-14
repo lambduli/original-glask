@@ -18,6 +18,7 @@ data Semantic'Error
   | No'Constructor'Has'All'Fields [Name]
   | Synonym'Not'Fully'Applied Name
   | Synonym'Cycle [(Name, Type)]
+  | Many'Errors [Semantic'Error]
 
 
 
@@ -38,3 +39,5 @@ instance Show Semantic'Error where
     = "Semantic Error: Found a cycle in the type synonym declaration(s) of\n" ++ intercalate "\n" (map prnt aliases)
       where
         prnt (name, type') = "  type " ++ name ++ " = " ++ show type'
+  show (Many'Errors errs)
+    = "Semantic Errors: " ++ intercalate "\n" (map show errs)
