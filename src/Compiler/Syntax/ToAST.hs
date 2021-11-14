@@ -22,12 +22,12 @@ import qualified Compiler.Syntax as AST
 import Compiler.Syntax.Expression
 import qualified Compiler.Syntax.ToAST.TranslateEnv as Trans'Env
 import Compiler.Syntax.ToAST.Translate
-import Compiler.Syntax.ToAST.SemanticError
 import Compiler.Analysis.Syntactic.ConstrEnv
 import qualified Compiler.Analysis.Syntactic.ConstrEnv as CE
 import Compiler.Syntax.ToAST.ESYA
 import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
 import Compiler.Syntax.ToAST.Utils.Translate
+import Compiler.Analysis.Semantic.SemanticError
 import Compiler.Analysis.TypeSystem.Type.Constants
 import Compiler.Analysis.TypeSystem.Solver.Substitutable
 

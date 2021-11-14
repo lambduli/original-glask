@@ -18,10 +18,8 @@ data Error
   | Kind'Shape'Mismatch Kind Kind
   | Type'Unif'Count'Mismatch [Type] [Type]
   | Kind'Unif'Count'Mismatch [Kind] [Kind]
-  | Synonym'Cycle [(Name, Type)]
   | Signature'Too'General
   | Context'Too'Weak
-  | Synonym'Not'Fully'Applied Name
 
   | Unexpected String -- this is just temporary helper constructor for me to debug stuff ... mostly
   deriving (Eq)
@@ -53,12 +51,7 @@ instance Show Error where
   
   show (Kind'Shape'Mismatch kind'l kind'r)
     = "[Shape] Couldn't match kind `" ++ show kind'l ++ "` with `" ++ show kind'r ++ "`"
-  
-  show (Synonym'Cycle aliases)
-    = "Found a cycle in the type synonym declaration(s) of\n" ++ intercalate "\n" (map prnt aliases)
-      where
-        prnt (name, type') = "  type " ++ name ++ " = " ++ show type'
-  
+
   show (Type'Unif'Count'Mismatch _ _) = undefined  -- TODO: FIX this pls!
   
   show (Kind'Unif'Count'Mismatch _ _) = undefined  -- TODO: FIX this pls!
@@ -68,9 +61,6 @@ instance Show Error where
 
   show (Context'Too'Weak)
     = "Context is too weak" -- TODO: add some info about what am I talking about too
-
-  show (Synonym'Not'Fully'Applied name)
-    = "Type Synonym " ++ name ++ " is not fully applied" -- TODO: add some more info about the problem
 
   show (Unexpected s)
     = "Something bad happened: " ++ s

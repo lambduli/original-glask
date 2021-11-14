@@ -8,7 +8,7 @@ import Control.Monad.Except
 
 import Compiler.Syntax.ToAST.TranslateEnv
 import Compiler.Syntax.ToAST.TranslateState
-import Compiler.Syntax.ToAST.SemanticError
+import Compiler.Analysis.Semantic.SemanticError
 
 
 

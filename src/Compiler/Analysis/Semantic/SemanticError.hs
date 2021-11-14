@@ -1,4 +1,6 @@
-module Compiler.Syntax.ToAST.SemanticError where
+module Compiler.Analysis.Semantic.SemanticError where
+
+import Data.List.Extra (intercalate)
 
 
 import Compiler.Syntax.Name
@@ -14,6 +16,9 @@ data Semantic'Error
   | Empty'Record'Update Term'Expr
   | Not'In'Scope'Field Name
   | No'Constructor'Has'All'Fields [Name]
+  | Synonym'Not'Fully'Applied Name
+  | Synonym'Cycle [(Name, Type)]
+
 
 
 -- TODO: actually implement proper Show
@@ -27,4 +32,9 @@ instance Show Semantic'Error where
   show (Empty'Record'Update te) = "Semenatic Error: Empty Record Update (TODO: print the problematic expression)"
   show (Not'In'Scope'Field s) = "Semantic Error: Not In Scope Field " ++ s
   show (No'Constructor'Has'All'Fields ss) = "Semantic Error: No Constructor Has All Fields " ++ show ss
-  
+  show (Synonym'Not'Fully'Applied name)
+    = "Semantic Error: Type Synonym " ++ name ++ " is not fully applied" -- TODO: add some more info about the problem
+  show (Synonym'Cycle aliases)
+    = "Semantic Error: Found a cycle in the type synonym declaration(s) of\n" ++ intercalate "\n" (map prnt aliases)
+      where
+        prnt (name, type') = "  type " ++ name ++ " = " ++ show type'

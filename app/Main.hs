@@ -9,6 +9,8 @@ import Compiler.Parser.Parser (parse'module)
 import Compiler.Syntax.ToAST.Translate
 import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
 
+import qualified Compiler.Analysis.Semantic.Synonym.Cycles as Cycles
+
 import qualified Compiler.Analysis.Syntactic.FixityAnalysis as Fixity
 import qualified Compiler.Analysis.Syntactic.ConstructorAnalysis as Constructors
 import qualified Compiler.Analysis.Syntactic.SynonymAnalysis as Synonyms
@@ -22,7 +24,7 @@ import Compiler.Analysis.Syntactic.SynonymEnv
 import Compiler.Syntax.Term
 import Compiler.Syntax
 
-import Compiler.Syntax.ToAST.SemanticError
+import Compiler.Analysis.Semantic.SemanticError
 
 
 main :: IO ()
@@ -50,9 +52,13 @@ load file'name = do
 parse :: String -> Either Semantic'Error [Declaration]
 parse source = do
   case parse'module source of
-    declarations -> do -- TODO: now I need to run all the analyses, use them to translate to ast
-    -- build the environment for the to'ast translation
-    -- also to initialize the translation with some initial state, which should be already prepared somewhere
+    declarations -> do
+      -- TODO: I can start with semantic analysis
+
+      
+      -- TODO: now I need to run all the analyses, use them to translate to ast
+      -- build the environment for the to'ast translation
+      -- also to initialize the translation with some initial state, which should be already prepared somewhere
       let fixities :: Fixity'Env
           fixities = Fixity.analyze declarations
 

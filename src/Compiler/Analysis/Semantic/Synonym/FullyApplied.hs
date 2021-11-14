@@ -1,4 +1,4 @@
-module Compiler.Analysis.Semantic.SynonymAnalysis where
+module Compiler.Analysis.Semantic.Synonym.FullyApplied where
 
 import Control.Monad.Reader
 import Control.Applicative (Applicative(liftA2))
@@ -9,10 +9,10 @@ import Compiler.Syntax.Term
 
 import Compiler.Analysis.Syntactic.SynonymEnv
 
-import Compiler.Analysis.Error
+import Compiler.Analysis.Semantic.SemanticError
 import Compiler.Syntax.Term.Expression
 
-type Partially'Applied'Synonyms = Reader Synonym'Env [Error]
+type Partially'Applied'Synonyms = Reader Synonym'Env [Semantic'Error]
 
 class Find'Error a where
   find :: a -> Partially'Applied'Synonyms
@@ -43,7 +43,7 @@ class Find'Error a where
 -- |    Check the first element in the Term'T'App's argument --> if it's a Term'T'Id I need to check if it's Term'Id'Const
 -- |    if it is --> check whether it is a known Type Synonym (in the Synonym'Env) --> if yes, check that it is applied to as many arguments as the number in the Synonym'Env declares.
 -- |    if it isn't --> return an Error (Synonym'Not'Partially'Applied'Synonyms)
-analyze :: Synonym'Env -> [Term'Decl] -> [Error]
+analyze :: Synonym'Env -> [Term'Decl] -> [Semantic'Error]
 analyze syn'env term'decls
   = concatMap (\ decl -> runReader (find decl) syn'env) term'decls
 
