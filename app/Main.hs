@@ -2,8 +2,6 @@ module Main where
 
 import System.IO
 
-import qualified Data.Map.Strict as Map
-
 import Compiler.Parser.Parser (parse'module)
 
 import Compiler.Syntax.ToAST.Translate
@@ -41,56 +39,81 @@ load file'name = do
   handle <- openFile file'name ReadMode
   contents <- hGetContents handle
 
-  case parse contents of
+  let term'decls = parse contents
+  let trans'env = build'trans'env term'decls
+  
+  case do'semantic'analysis term'decls trans'env of
     Left sem'err -> do
       print sem'err
       return ()
 
-    Right declarations -> do
-      putStrLn "Successfully read the file."
-      return ()
+    Right () -> do
+      case translate'to'ast term'decls trans'env of
+        Left sem'err -> do
+          print sem'err
+          return ()
+
+        Right declarations -> do
+          putStrLn "Successfully read the file."
+          print declarations
+          return ()
 
 
--- TODO: split this function into two
--- one is only going to parse (maybe just call parse'module)
--- the other one does the semantic analysis
--- and thinking of it - maybe the third one does the translation to the AST
-parse :: String -> Either Semantic'Error [Declaration]
-parse source = do
-  case parse'module source of
-    declarations -> do
-      -- TODO: now I need to run all the analyses, use them to translate to ast
-      -- build the environment for the to'ast translation
-      -- also to initialize the translation with some initial state, which should be already prepared somewhere
-      let fixities :: Fixity'Env
-          fixities = Fixity.analyze declarations
-
-      let -- (constructors, fields) :: (Constr'Env, FIeld'Env)
-          (constructors, fields) = Constructors.analyze declarations
-
-      let kind'context :: Kind'Context
-          kind'context = init'kind'context
-          -- TODO: this should not be empty, it needs to contain kinds of all known type constructors
-          -- that means primitive types like Int, Char, Tuple, Unit, List, Bool, (->)
-          -- am I missing something?
-
-      let synonyms :: Synonym'Env
-          synonyms = Synonyms.analyze declarations
-
-      -- TODO: I can start with semantic analysis
-      let errors = Applied.analyze synonyms declarations
-      raise errors -- only of there are any
-
-      let errors = Cycles.analyze synonyms declarations
-      raise errors
+parse :: String -> [Term'Decl]
+parse = parse'module
 
 
-      let trans'env = TE.Trans'Env{ TE.fixities = fixities, TE.constructors = constructors, TE.fields = fields, TE.kind'context = kind'context, TE.synonyms = synonyms }
+build'trans'env :: [Term'Decl] -> TE.Translate'Env
+build'trans'env declarations = do
+  -- TODO: now I need to run all the analyses, use them to translate to ast
+  -- build the environment for the to'ast translation
+  -- also to initialize the translation with some initial state, which should be already prepared somewhere
+  let fixities :: Fixity'Env
+      fixities = Fixity.analyze declarations
 
-      -- TODO: now to run the translation using some sort of run'X function
-      run'translate trans'env (to'ast declarations :: Translate [Declaration])
+  let -- (constructors, fields) :: (Constr'Env, FIeld'Env)
+      (constructors, fields) = Constructors.analyze declarations
+
+  let kind'context :: Kind'Context
+      kind'context = init'kind'context
+      -- TODO: this should not be empty, it needs to contain kinds of all known type constructors
+      -- that means primitive types like Int, Char, Tuple, Unit, List, Bool, (->)
+      -- am I missing something?
+      -- YES! It also needs to contain assignments for all user declared types
+      -- TODO: add all user defined types declared with `data` keyword
+      -- Think about type synonyms, there are at least two ways to go about them
+      -- I can ignore them in this step, because they will be fully erased in the following step
+      -- so (for instance) the result of `to'ast` will not contain any type synonym declarations and the code will not too
+      -- OR I keep the synonyms bit longer
+      -- but honestly, I dont' really see the value in that
+      -- since I already do Fully Applied and Cycle analyses on the Term level
+      -- I don't think it's necessary to translate synonyms to AST too
+
+  let synonyms :: Synonym'Env
+      synonyms = Synonyms.analyze declarations
+
+  TE.Trans'Env{ TE.fixities = fixities, TE.constructors = constructors, TE.fields = fields, TE.kind'context = kind'context, TE.synonyms = synonyms }
+
+
+-- TODO: implement checking that every declaration which needs to be unique is in fact unique
+--        like no types declared multiple times, same with functions and synonyms, ...
+do'semantic'analysis :: [Term'Decl] -> TE.Translate'Env -> Either Semantic'Error ()
+do'semantic'analysis declarations TE.Trans'Env{ TE.synonyms = synonyms } = do
+  -- TODO: I can start with semantic analysis
+  let errors = Applied.analyze synonyms declarations
+  raise errors -- only of there are any
+
+  let errors = Cycles.analyze synonyms declarations
+  raise errors
 
 
 raise :: [Semantic'Error] -> Either Semantic'Error ()
 raise [] = Right ()
 raise errors = Left $ Many'Errors errors
+
+
+-- TODO: this function also needs to merge all the binding groups of the same name together
+translate'to'ast :: [Term'Decl] -> TE.Translate'Env -> Either Semantic'Error [Declaration]
+translate'to'ast declarations trans'env
+  = -- TODO: now to run the translation using some sort of run'X function
+  run'translate trans'env (to'ast declarations :: Translate [Declaration])
