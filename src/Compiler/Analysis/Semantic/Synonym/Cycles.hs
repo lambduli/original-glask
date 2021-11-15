@@ -10,4 +10,4 @@ import Compiler.Analysis.Syntactic.SynonymEnv
 -- and if I find any Mutually Recursive Strongly Connected Component --> that's and error
 -- I also need to check that some type synonym doesn't depend on itself
 analyze :: Synonym'Env -> [Term'Decl] -> [Semantic'Error]
-analyze = undefined
+analyze _ _ = []
