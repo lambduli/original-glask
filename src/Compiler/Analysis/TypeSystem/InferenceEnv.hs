@@ -78,5 +78,8 @@ init't'env = Map.fromList
 data Class'Env = Class'Env  { classes :: Map.Map Name Class
                             , defaults :: [Type] }
 
+
+-- TODO: either make this one empty, that means I will need to write a function which inserts all the classes form the declaration list into it
+--        or delete this value and instead write a function taking [Declaration], which will produce the value of type Class'Env
 init'c'env :: Class'Env
 init'c'env = undefined

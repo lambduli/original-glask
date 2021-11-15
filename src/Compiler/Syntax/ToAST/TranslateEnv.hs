@@ -10,12 +10,12 @@ import Compiler.Analysis.Syntactic.ConstrEnv
 import Compiler.Analysis.Syntactic.FixityEnv
 import Compiler.Analysis.Syntactic.FieldEnv
 import Compiler.Analysis.Syntactic.SynonymEnv
-import Compiler.Analysis.Syntactic.KindContext
+import Compiler.Analysis.TypeSystem.InferenceEnv
 
 
 data Translate'Env = Trans'Env
   { fixities :: Fixity'Env
   , constructors :: Constr'Env
   , fields :: Field'Env
-  , kind'context :: Kind'Context
+  , kind'context :: Kind'Env
   , synonyms :: Synonym'Env }

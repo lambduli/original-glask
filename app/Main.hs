@@ -19,7 +19,7 @@ import Compiler.Syntax.ToAST
 import Compiler.Analysis.Syntactic.FixityEnv
 import Compiler.Analysis.Syntactic.FieldEnv
 import Compiler.Analysis.Syntactic.SynonymEnv
-import Compiler.Analysis.Syntactic.KindContext
+import Compiler.Analysis.TypeSystem.InferenceEnv
 
 import Compiler.Syntax.Term
 import Compiler.Syntax
@@ -54,6 +54,17 @@ load file'name = do
           return ()
 
         Right declarations -> do
+          -- TODO: now when I have the list of Declarations in AST form
+          -- I need to call inference
+          -- for the inference I am going to need to build things like class environment and instance environment
+          -- I need to split binding declarations into - explicitly typed (also includes instance bindings) and implicitly typed
+          -- then I need to do the dependency analysis on those two groups and figure out the order in which I will infer them
+          -- then I "just" do the inference
+
+          -- TODO: I also need to do the Kind inference, probably even before type inference
+          -- figure out the order in which I need to infer the Kinds of `data` and `type` declarations
+          -- for now - I can just infer them together I think
+          -- but later I could implement Kind Polymorphism --> I would need to first top sort them into SCCs
           putStrLn "Successfully read the file."
           print declarations
           return ()
@@ -74,8 +85,8 @@ build'trans'env declarations = do
   let -- (constructors, fields) :: (Constr'Env, FIeld'Env)
       (constructors, fields) = Constructors.analyze declarations
 
-  let kind'context :: Kind'Context
-      kind'context = init'kind'context
+  let kind'context :: Kind'Env
+      kind'context = init'k'env
       -- TODO: this should not be empty, it needs to contain kinds of all known type constructors
       -- that means primitive types like Int, Char, Tuple, Unit, List, Bool, (->)
       -- am I missing something?
