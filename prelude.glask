@@ -1,6 +1,11 @@
 module Main where
-{ type Foo = Int
+{ 
+  class Bar b
+
+; class () => Foo a where { foo :: a }
   
-;  foo = 23
+; type Foo = Int
+  
+; foo = 23
 
 }
