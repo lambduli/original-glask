@@ -205,7 +205,15 @@ TypeSigns       ::  { [Term'Decl] }
 
 {- Class Declaration -}
 ClassDecl       ::  { Term'Decl }
-                :   class SimpleContext conid varid ClassSigns      { Class $3 $4 $2 $5 }
+                -- :   class SimpleContext conid varid ClassSigns      { Class $3 $4 $2 $5 }
+                :   class ClassDecl2 ClassSigns                     { let { (ctx, name, var'name) = $2 } in Class name var'name ctx $3 }
+
+
+ClassDecl2      ::  { ([Term'Pred], Name, Name) }
+                :   conid varid '=>' conid varid                    { ([Is'In $1 (Term'T'Id (Term'Id'Var $2))], $4, $5) }
+                |   conid varid                                     { ([], $1, $2) }
+                |   '(' NoneOrManySeparated(SimpleClass) ')' '=>' conid varid
+                                                                    { ($2, $5, $6) }
 
 
 ClassSigns      ::  { [Term'Decl] }
@@ -215,7 +223,8 @@ ClassSigns      ::  { [Term'Decl] }
 
 {- Instance Declaration -}
 InstanceDecl    ::  { Term'Decl }
-                :   instance SimpleContext conid Type InstBinds     { Instance ($2, Is'In $3 $4) $5 }
+                :  instance InstanceDecl2 InstBinds                 { let { (ctx, pred) = $2 } in Instance (ctx, pred) $3 }
+             -- |   instance SimpleContext conid Type InstBinds     { Instance ($2, Is'In $3 $4) $5 }
 {- NOTE: There is a integrity restriction on the ^^^^ Type part -}
 {- As described in the Haskell Report 98 -}
 {-
@@ -227,6 +236,26 @@ InstanceDecl    ::  { Term'Decl }
 -}
 {- TODO: If I keep parsing it as Type, I will need to check this part during semantic analysis. -}
 
+
+InstanceDecl2   ::  { ([Term'Pred], Term'Pred) }
+                :   conid varid '=>' conid Type                     { ([Is'In $1 (Term'T'Id (Term'Id'Var $2))], Is'In $4 $5) }
+{- NOTE: There is a restriction on the     ^^^^ Type part -}
+
+                |   conid Type                                      { ([], Is'In $1 $2) }
+{- NOTE:                  ^^^^ -}
+
+                |   '(' NoneOrManySeparated(SimpleClass) ')' '=>' conid Type
+                                                                    { ($2, Is'In $5 $6) }
+{- NOTE:                                                                ^^^^ -}
+{- As described in the Haskell Report 98 -}
+{-
+  -> 	gtycon
+	| 	( gtycon tyvar1 ... tyvark )		(k>=0, tyvars distinct)
+	| 	( tyvar1 , ... , tyvark )		(k>=2, tyvars distinct)
+	| 	[ tyvar ]
+	| 	( tyvar1 -> tyvar2 )		(tyvar1 and tyvar2 distinct) 
+-}
+{- TODO: If I keep parsing it as Type, I will need to check this part during semantic analysis. -}
 
 InstBinds       ::  { [Term'Decl] }
                 :   where Layout(Binding)                           { $2 }
