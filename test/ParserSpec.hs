@@ -55,10 +55,19 @@ spec = do
       "foo :: () => Int" ~.. [Signature "foo" ([], Term'T'Id $ Term'Id'Const "Int")]
 
 
-  describe "Test parsing of simple declarations" $ do
+  describe "Test parsing of a simple variable declarations" $ do
 
     it "parses a simple variable binding" $ do
       "foo = 23" ~.. [Binding (Term'P'Id (Term'Id'Var "foo")) (Term'E'Lit (Lit'Int 23))]
+
+    it "parses a simple variable binding" $ do
+      "bar = []" ~.. [Binding (Term'P'Id (Term'Id'Var "bar")) (Term'E'Id (Term'Id'Const "[]"))]
+
+
+  describe "Test parsing of a simple class declarations" $ do
+
+    it "parses a small class declaration" $ do
+      "class Foo a" ~.. [Class "Foo" "a" [] []]
 
 
   describe "Test parsing type expressions" $ do
