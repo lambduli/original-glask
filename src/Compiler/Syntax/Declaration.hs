@@ -25,7 +25,7 @@ data Declaration
   | Data'Decl Name [Name] [Constr'Decl]       -- Data type declaration -- name type'params list'of'consturctors'with'params
   | Type'Alias Name [Name] Type               -- type String = List Char
   | Fixity Fixity Int Name                    -- infix 5 +
-  | Class Name Name [Predicate] [Declaration] -- class (Super1 a1, ... , SuperN aN) ==> Name where { list of Signatures }
+  | Class Name Name [Predicate] [Declaration] -- class (Super1 a, ... , SuperN a) ==> Name a where { list of Signatures }
   --    cname parname supers     signatures
   | Instance Instance [Declaration]           -- instance ... where { list of Bindings }
   -- NOTE: I think it's possible that I will need to move the [Declaration] inside the Instance
