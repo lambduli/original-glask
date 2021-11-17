@@ -14,6 +14,8 @@ import qualified Compiler.Analysis.Syntactic.FixityAnalysis as Fixity
 import qualified Compiler.Analysis.Syntactic.ConstructorAnalysis as Constructors
 import qualified Compiler.Analysis.Syntactic.SynonymAnalysis as Synonyms
 
+import qualified Compiler.Analysis.Semantic.Class as Classes
+
 import Compiler.Syntax.ToAST
 
 import Compiler.Analysis.Syntactic.FixityEnv
@@ -57,6 +59,9 @@ load file'name = do
           -- TODO: now when I have the list of Declarations in AST form
           -- I need to call inference
           -- for the inference I am going to need to build things like class environment and instance environment
+          let class'env = Classes.analyze declarations
+
+
           -- I need to split binding declarations into - explicitly typed (also includes instance bindings) and implicitly typed
           -- then I need to do the dependency analysis on those two groups and figure out the order in which I will infer them
           -- then I "just" do the inference
@@ -66,6 +71,13 @@ load file'name = do
           -- for now - I can just infer them together I think
           -- but later I could implement Kind Polymorphism --> I would need to first top sort them into SCCs
           putStrLn "Successfully read the file."
+          
+          putStrLn "-----------------------"
+          
+          putStrLn "Class Environment:"
+          print class'env
+          
+          putStrLn "All Declarations:"
           print declarations
           return ()
 
