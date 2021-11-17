@@ -77,6 +77,7 @@ init't'env = Map.fromList
 
 data Class'Env = Class'Env  { classes :: Map.Map Name Class
                             , defaults :: [Type] }
+                  deriving (Show)
 
 
 -- TODO: either make this one empty, that means I will need to write a function which inserts all the classes form the declaration list into it
