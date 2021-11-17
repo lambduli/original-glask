@@ -31,8 +31,7 @@
 - ## Semantic Analysis and Transformation
   - merge all binding groups (at first each one only contains single equation) into a single group
   - check that all data constructors which are operators and defined as POST/PRE-fix are always unary (consider having the similar requirement on binary infix operators)
-  - check that all type synonyms are fully applied `WIP`
-  - check type contexts validity (read Haskell Report for that)
+  - check type contexts validity (read Haskell Report for that and consult my Parser.y - specificaly Class\Instance declarations)
     - basic structure checking is done by the parser - add better error reporting in the future
   - transform the binding groups into `Implicit` or `Explicit` according the type annotations
   - type synonym substitution
@@ -60,32 +59,22 @@
 
 
 # Next Steps:
+- Transform the `Term` to the `AST`
+  - Take care of the Kinds in Type Variables (again consider removing them altogether)
+  - When translating `Term'Decl` into `AST` I need to handle class and instance declarations -> store the class/instance type variable in the environment and use `local` to continue in translation
 - Keep adding tests for the Lexer and the Parser
-- Define the `Term->AST` monad transformer stack - based on ExceptT
 - Change the Parser State monad to something possibly also based on the ExceptT -> so I can report syntactic and semantic errors better
 - Prepare the implementation of the Shunting Yard Algorithm
 - Desugar list and tuple patterns
 - Figure out the tuple constructors
 - Other possible stuff 
-- Transform the `Term` to the `AST`
-  - Take care of the Kinds in Type Variables (again consider removing them altogether)
 
 - ## Analyses:
-  - Constructor analysis (on `Term`) - collect names of constructor's fields (mainly)
-    - later I need to figure out whether I want to collect types in the `Term'Type` form or if I want to repeat the constructor analysis on the `AST` and collect the typing annotations in that form
-    In that case - I could refactor the analysis into universal part ==> that will function as an `fmap` or similar and the specific part (for each analysis) which will say what to do with the wanted parts
-  - Fixity analysis (on `Term`) - collect names of operators and functions and their fixity, associativity and precedence information
   - Dependency Analysis will need to be perfored for every `let ... = ... in ...` expression --> I will isolate it into the function and return the result in some reasonable shape to be used for the specific thing
   - Dependency Analysis for Types
   - Dependency Analysis
   - Dependency Analysis for Type Class declarations (no cyclic dependencies)
-
-> Can I do all the analyses AFTER the `Term->AST` transformations?
-> Or is there something I need to analyze before I go from Term to AST?
-
-The answer seems to be no. I think I could first transform the stuff, while doing so, I will also collect some information, like specific tuple constructors which need to be put inside the typing context, kinding context, type constant context and so on.
-
-
+  - Type Synonyms - find any cyclic synonyms
 
 
 # Questions:
