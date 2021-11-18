@@ -50,7 +50,8 @@ qualify t = [] :=> t
 
 
 
-
+-- TODO: Would it be possible to move this thing somewhere up the structure, so that it can be used by multiple modules?
+--        I have the same thing for `Translate a`
 letters :: [String]
 letters = [1..] >>= flip replicateM ['a'..'z']
 
@@ -62,6 +63,9 @@ fresh = do
   return (letters !! counter)
 
 
+-- TODO: I think it would be best to somehow figure these two out.
+--        It seems like the `real'fresh` really does what is needed (fresh even when there are some already),
+--        but right now, the fact that both exist, feels awkward.
 real'fresh :: [String] -> a -> Infer String
 real'fresh vars var = do
   Infer'State { count = counter } <- get
@@ -72,6 +76,7 @@ real'fresh vars var = do
     else return name
 
 
+-- TODO: Either remove both `extend` and `remove` or move them into some shared Utils module
 extend :: (Ord a) => Map.Map a b -> (a, b) -> Map.Map a b
 extend env (ty'var, scheme) = Map.insert ty'var scheme env
 
@@ -80,6 +85,9 @@ remove :: (Ord a) => Map.Map a b -> a -> Map.Map a b
 remove env var = Map.delete var env
 
 
+-- TODO: I really feel like generalizing all the merge'into'... and put'in'... and lookup'...
+--        is the best way to go around. Then put them in some shared Utils module and use them
+--        across all parts of the pipeline.
 merge'into't'env :: [(String, Scheme)] -> Infer a -> Infer a
 merge'into't'env bindings m = do
   let scope e@Infer'Env{ type'env = t'env } = e{ type'env = Map.fromList bindings `Map.union` t'env}
@@ -136,6 +144,15 @@ lookup'k'env var = do
 --   local scope m
 
 
+{-  TODO: Here is a BIG TODO - I need to go over the paper THIH and see if I can replace all my
+          uses of instantiate and close'over with what Jones does.
+          Reason: it seems that Jones always closes and generalizes only over explicitly specified variables.
+          That might seem like extra work, but there's moment in the inference where it really comes in handy.
+          I think it's related to the inference of explicitly annotated expressions. Not sure.
+          So I wonder, if for the sake of being consistent I should replace my somehow autonomous functions with those from THIH.
+          I really think it is worth considering.
+          Probably also includes `normalize` and `generalize`? I am not sure what they do at this moment. Inspect yourself later.
+-}
 instantiate :: Scheme -> Infer (Qualified Type)
 instantiate (For'All vars qual'type) = do
   let params = map (\ (T'V name _) -> name) vars
