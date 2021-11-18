@@ -3,6 +3,7 @@
 
 module Compiler.Syntax.ToAST where
 
+import qualified Data.Map.Strict as Map
 
 import qualified Data.Set as Set
 import Data.List (intersperse, replicate, find)
@@ -10,7 +11,6 @@ import Data.Maybe
 import Control.Monad.Trans.Reader
 import Control.Monad.Except
 import Control.Monad.State
-import qualified Data.Map.Strict as Map
 
 
 import Compiler.Syntax.Term
@@ -544,10 +544,17 @@ instance To'AST Term'Decl Declaration where
     return $ AST.Fixity fixity level name
 
   to'ast (Term.Class cl'name var'name t'preds t'decls) = do
-    -- TODO: Here I also need to register all the type variables
-    -- since it is a class declaration, there's going to be just the one `var'name`
-    preds <- to'ast t'preds
-    decls <- to'ast t'decls
+    {-  NOTE: My current implementation doesn't allow nested/scoped classes
+              That means, that I don't need to worry about scoped type variables.
+              Simply - the class' type variable is not going to be scoped.
+              Later I could introduce scoped/nested class declarations
+              then I would need to revisit this place and fix it.
+     -}
+    fresh'name <- fresh
+
+    -- NOTE: I don't know if I need to register the variable to translate predicates, but it shouldn't hurt
+    preds <- put'in'k'env (var'name, K'Var fresh'name) (to'ast t'preds)
+    decls <- put'in'k'env (var'name, K'Var fresh'name) (to'ast t'decls)
     return $ AST.Class cl'name var'name preds decls
 
   to'ast (Term.Instance t'qual'pred t'decls) = do
@@ -555,6 +562,14 @@ instance To'AST Term'Decl Declaration where
     decls <- to'ast t'decls
     return $ AST.Instance qual'pred decls
 
+
+-- TODO: this function is just duplicate code of (multiple) helper functions in the Infer.hs in Utils module
+-- do something about it
+-- I could write them as general as possible (and useful) and put them all in some shared Utils module
+put'in'k'env :: (String, Kind) -> Translate a -> Translate a
+put'in'k'env (var'name, kind) m = do
+  let scope e@Trans'Env.Trans'Env{ Trans'Env.kind'context = k'ctx } = e{ Trans'Env.kind'context = Map.insert var'name kind $ Map.delete var'name k'ctx }
+  local scope m
 
 instance (To'AST a b) => To'AST ([Term'Pred], a) (Qualified b) where
   to'ast (t'preds, a) = do
