@@ -49,7 +49,7 @@ instance Show Declaration where
   show (Fixity fix prec name)
     = show fix ++ " " ++ show prec ++ " " ++ name
   show (Class name param supers type'decls)
-    = "TODO: implement class"
+    = "class " ++ show supers ++ " => " ++ name ++ " " ++ param ++ " where " ++ show type'decls
   show (Instance qual'pred decls)
     = "TODO: implement instance"
 
