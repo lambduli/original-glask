@@ -49,7 +49,10 @@ init'k'env = Map.fromList
   , ("Double" , K'Star) 
   , ("Char"   , K'Star) 
   , ("Unit"   , K'Star)
-  , ("(->)"   , K'Star `K'Arr` (K'Star `K'Arr` K'Star)) ]
+  , ("(->)"   , K'Star `K'Arr` (K'Star `K'Arr` K'Star))
+  , ("[]"     , K'Star `K'Arr` K'Star) ]
+  -- TODO: Questions - do I want to have the List type here?
+  -- Or do I define list in the prelude in some (more or less) "hacky" way?
 
 
 type Type'Env = Map.Map Name Scheme
