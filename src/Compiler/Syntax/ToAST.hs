@@ -586,10 +586,6 @@ instance To'AST Term'Decl Declaration where
     -- NOTE: I don't know if I need to register the variable to translate predicates, but it shouldn't hurt
     qual'preds <- merge'into'k'env assignments (to'ast t'qual'pred)
     decls <- merge'into'k'env assignments (to'ast t'decls)
-
-
-    -- qual'pred <- to'ast t'qual'pred
-    -- decls <- to'ast t'decls
     return $ AST.Instance qual'preds decls
 
 
