@@ -1,6 +1,8 @@
 module Main where
 
 import System.IO
+import Data.List
+
 
 import Compiler.Parser.Parser (parse'module)
 
@@ -78,7 +80,7 @@ load file'name = do
           print class'env
           
           putStrLn "All Declarations:"
-          print declarations
+          putStrLn $ intercalate "\n" $ map show declarations
           return ()
 
 

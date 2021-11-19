@@ -3,6 +3,8 @@ module Main where
   class Bar b
 
 ; class () => Foo a where { foo :: a }
+
+; instance (Show a) => Baz ([] a) where { baz = 23 :: a }
   
 ; type Foo = Int
   
