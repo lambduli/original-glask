@@ -558,9 +558,39 @@ instance To'AST Term'Decl Declaration where
     return $ AST.Class cl'name var'name preds decls
 
   to'ast (Term.Instance t'qual'pred t'decls) = do
-    qual'pred <- to'ast t'qual'pred
-    decls <- to'ast t'decls
-    return $ AST.Instance qual'pred decls
+    {-  NOTE: My current implementation doesn't allow nested/scoped instances
+              That means, that I don't need to worry about scoped type variables.
+              Simply - the instance's type variable is not going to be scoped.
+              Later I could introduce scoped/nested instance declarations
+              then I would need to revisit this place and fix it.
+    -}
+     {- NOTE: The `t'qual'pred` thing is a pair of [Term'Pred] and Term'Pred
+              The list represents context and the second value is THE instance.
+              Regarding type variables - there can be type variables in both of those.
+              Importantly, I think I always need to use all the free variables from the list part
+              inside the second part. (But I think I don't need to worry about it here. It's going to be checked in the process of typechecking.)
+              What it means for me, I find all the free variables in both of those - using union.
+        EXAMPLES:
+          instance Foo (Either a b)
+          instance (Show a, Show b, Num a, Num b) => Foo (Either a b)
+     -}
+    let (t'preds, t'pred) = t'qual'pred
+    let variables = Set.toList $ free'vars t'preds `Set.union` free'vars t'pred
+    let names = map (\ (Term'Id'Var name) -> name) variables
+    -- NOTE: the lambda is not total, but `free'vars` should never give Term'Id'Const _
+
+    fresh'names <- mapM (const fresh) variables
+    let kinds = map K'Var fresh'names
+    let assignments = zip names kinds
+
+    -- NOTE: I don't know if I need to register the variable to translate predicates, but it shouldn't hurt
+    qual'preds <- merge'into'k'env assignments (to'ast t'qual'pred)
+    decls <- merge'into'k'env assignments (to'ast t'decls)
+
+
+    -- qual'pred <- to'ast t'qual'pred
+    -- decls <- to'ast t'decls
+    return $ AST.Instance qual'preds decls
 
 
 -- TODO: this function is just duplicate code of (multiple) helper functions in the Infer.hs in Utils module
@@ -570,6 +600,14 @@ put'in'k'env :: (String, Kind) -> Translate a -> Translate a
 put'in'k'env (var'name, kind) m = do
   let scope e@Trans'Env.Trans'Env{ Trans'Env.kind'context = k'ctx } = e{ Trans'Env.kind'context = Map.insert var'name kind $ Map.delete var'name k'ctx }
   local scope m
+
+-- TODO: same as the function above
+merge'into'k'env :: [(String, Kind)] -> Translate a -> Translate a
+merge'into'k'env bindings m = do
+  let scope e@Trans'Env.Trans'Env{ Trans'Env.kind'context = k'ctx } = e{ Trans'Env.kind'context = Map.fromList bindings `Map.union` k'ctx}
+    -- (k'env, Map.fromList bindings `Map.union` t'env, ali'env)
+  local scope m
+
 
 instance (To'AST a b) => To'AST ([Term'Pred], a) (Qualified b) where
   to'ast (t'preds, a) = do
