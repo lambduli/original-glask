@@ -42,6 +42,7 @@ empty'an'env = Infer'Env init'k'env init't'env init'c'env
 
 type Kind'Env = Map.Map Name Kind
 
+-- TODO: I think I should move this thing somewhere more top level so that it can be better shared between other modules
 init'k'env :: Kind'Env
 init'k'env = Map.fromList
   [ ("Bool"   , K'Star) 
