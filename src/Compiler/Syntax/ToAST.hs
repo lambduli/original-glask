@@ -521,23 +521,33 @@ instance To'AST Term'Decl Declaration where
     -- now I keep only those type variables which are not scoped and are therefore seen for the first time
     let only'actually'free = filter (`Map.member` kind'context) free'variables
     -- those need to be assigned a new and fresh Kind Variable
-    new'kind'context <- Map.fromList <$> mapM (\ name -> return (name, K'Var <$> fresh)) only'actually'free
+    fresh'names <- mapM (const fresh) only'actually'free -- fresh name for each one of actually free type variables
+    let kinds = map K'Var fresh'names -- fresh kind variable for every fresh name
+    let assignments = zip only'actually'free kinds -- put them together to create a list of kind assignments
 
-    -- now, this new kind context needs to be merged into a current invironment and
-    -- with use of `local` the translation of the whole Qualified Type Term shall proceed
-    -- TODO: continue with that and correct following lines
+    -- now, thos new kind assigmemnts needs to be merged into a current invironment and
 
-    qual'type <- to'ast t'qual'type
+    qual'type <- merge'into'k'env assignments (to'ast t'qual'type)
     return $ AST.Signature $ AST.T'Signature name qual'type
 
   to'ast (Term.Data'Decl name params t'constr'decls) = do
-    -- TODO: Here I also need to register all the type variables
-    constr'decls <- to'ast t'constr'decls
+    {-  `params` are type variable names which need to be assigned a fresh kind variable each -}
+    fresh'names <- mapM (const fresh) params
+    let kinds = map K'Var fresh'names
+    let assignments = zip params kinds
+
+    constr'decls <- merge'into'k'env assignments (to'ast t'constr'decls)
+
     return $ AST.Data'Decl name params constr'decls
 
   to'ast (Term.Type'Alias name params t'type) = do
-    -- TODO: Here I also need to register all the type variables
-    type' <- to'ast t'type
+    {-  `params` are type variable names which need to be assigned a fresh kind variable each -}
+    fresh'names <- mapM (const fresh) params
+    let kinds = map K'Var fresh'names
+    let assignments = zip params kinds
+
+    type' <- merge'into'k'env assignments (to'ast t'type)
+
     return $ AST.Type'Alias name params type'
 
   to'ast (Term.Fixity fixity level name) = do
