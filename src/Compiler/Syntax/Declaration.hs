@@ -51,7 +51,7 @@ instance Show Declaration where
   show (Class name param supers type'decls)
     = "class " ++ show supers ++ " => " ++ name ++ " " ++ param ++ " where " ++ show type'decls
   show (Instance qual'pred decls)
-    = "TODO: implement instance"
+    = "instance " ++ show qual'pred ++ " where " ++ show decls
 
 
 data Constr'Decl
