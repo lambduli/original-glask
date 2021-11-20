@@ -41,12 +41,17 @@ import {-# SOURCE #-} Compiler.Syntax.Expression
     then the rhs would possibly contain a lambda abstraction.
     Or many nested.
 
-    The thing is - I have the head of the declaration as an expression.
+    The current situation is - I have the head of the declaration as an expression.
     That means - it's an Application Term containing a list of Expression Terms.
     That Application Term needs to be translated to the Pattern Application Term.
     And it also means the correct association must be decided using Shunting Yard Algorithm.
     This step will then produce Pattern AST. And that is in the form of a tree.
     So producing a list of Patterns seems counter productive and counter intuitive.
+
+    Sat 20.11.2021
+    What is important is how do I infer the bindings?
+    And it seems to work on list of patterns and not a pattern tree or a tree of nested lambdas.
+    So I will probably keep the shape of the Match with `patterns` being `[Pattern]`
  -}
 
 
