@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 94bc6c27cd0392f9d99f0e143ffcff0dc5597aae0b326e6606d85bf22102cfec
+-- hash: 6d47076195b7afc4e6808fedc81acda6f5fe39bf1478312829f5cc65fa9f8352
 
 name:           glask
 version:        0.1.0.0
@@ -39,6 +39,7 @@ library
       Compiler.Analysis.Syntactic.FixityEnv
       Compiler.Analysis.Syntactic.SynonymAnalysis
       Compiler.Analysis.Syntactic.SynonymEnv
+      Compiler.Analysis.Syntactic.Types
       Compiler.Analysis.TypeSystem.Ambiguity
       Compiler.Analysis.TypeSystem.Assumption
       Compiler.Analysis.TypeSystem.Binding
