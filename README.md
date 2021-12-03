@@ -4,7 +4,7 @@
 # TODO:
 - ## Lexer
 - ## Parsing Stage 1
-  - resolve all shift/reduce conflicts (16)
+  - resolve all shift/reduce conflicts (10)
 - ## Parsing Stage 2
   - construct application trees from application lists (Extended Shunting Yard Algorithm)
 
@@ -27,7 +27,6 @@
   - check that all data constructors which are operators and defined as POST/PRE-fix are always unary (consider having the similar requirement on binary infix operators)
   - check type contexts validity (read Haskell Report for that and consult my Parser.y - specificaly Class\Instance declarations)
     - basic structure checking is done by the parser - add better error reporting in the future
-  - transform the binding groups into `Implicit` or `Explicit` according the type annotations
   - type synonym substitution
     But I think it would be nice to collect kind constraints from non expanded synonyms and type annotations mentioning them for better error reporting maybe?
     How to make sure that the error mentioning the synonym is found and reported before the error from the expanded type?
@@ -48,6 +47,7 @@
 
 - ## Type Analysis
   - Most of the inference / type analysis is implemented
+  - I still need to implement the inference for the top level stuff I think? - that should be my current priority
   - Write tests
 
 - # Notes on the implementation
@@ -74,22 +74,19 @@
 
 
 # Next Steps:
-- Transform the `Term` to the `AST`
-  - Take care of the Kinds in Type Variables (again consider removing them altogether)
-  - When translating `Term'Decl` into `AST` I need to handle class and instance declarations -> store the class/instance type variable in the environment and use `local` to continue in translation
+- Transform the `Term` to the `AST` (I think the Kind Variables in the Types are handled now)
 - Keep adding tests for the Lexer and the Parser
 - Change the Parser State monad to something possibly also based on the ExceptT -> so I can report syntactic and semantic errors better
 - Prepare the implementation of the Shunting Yard Algorithm
 - Desugar list and tuple patterns
 - Figure out the tuple constructors
-- Other possible stuff 
+- Other possible stuff
 
 - ## Analyses:
   - Dependency Analysis will need to be perfored for every `let ... = ... in ...` expression --> I will isolate it into the function and return the result in some reasonable shape to be used for the specific thing
   - Dependency Analysis for Types
   - Dependency Analysis
   - Dependency Analysis for Type Class declarations (no cyclic dependencies)
-  - Type Synonyms - find any cyclic synonyms
 
 
 # Questions:
