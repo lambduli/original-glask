@@ -14,6 +14,31 @@ import Compiler.Syntax
 import Compiler.Syntax.Expression
 
 
+{-  MOTE: This function takes a list of Declarations and sorts them in the Topological Order using Data.Graph module. -}
+sort :: [Bind'Group] -> [[Bind'Group]]
+sort bind'groups = sorted
+  where
+    indexer :: Map.Map String Int
+    indexer = Map.empty
+
+    dependencies :: [(Bind'Group, Int, Set.Set Int)]
+    dependencies = depends'on bind'groups indexer
+
+    graph :: [(Bind'Group, Int, [Int])]
+    graph = map (\ (a, b, c) -> (a, b, Set.toList c)) dependencies
+
+    sccs :: [SCC Bind'Group]
+    sccs = stronglyConnComp graph
+
+    scc'to'list :: SCC Bind'Group -> [Bind'Group]
+    scc'to'list (AcyclicSCC bg) = [bg]
+    scc'to'list (CyclicSCC bgs) = bgs
+
+    sorted :: [[Bind'Group]]
+    sorted = map scc'to'list sccs
+
+
+
 -- takze implementacne
 -- budu potrebovat funkci, co umi prolezt vsechny Expression a posbirat promenny
 -- budu muset prochazet i Patterny?
@@ -135,7 +160,7 @@ group'declarations decls = sccs
 
     
     dependencies :: [(Bind'Group, Int, Set.Set Int)]
-    dependencies = depends'on decls indexer
+    dependencies = depends'on bind'groups indexer
 
     graph :: [(Bind'Group, Int, [Int])]
     graph = map (\ (a, b, c) -> (a, b, Set.toList c)) dependencies
@@ -143,6 +168,24 @@ group'declarations decls = sccs
     
     sccs :: [SCC Bind'Group]
     sccs = stronglyConnComp graph
+
+    -- TODO: the following functions are a subject to a code duplication, they also work with some assumptions
+    --        it is best explained in the Let section in this file
+    only'binds :: [Declaration]
+    only'binds = filter is'binding decls
+
+    bind'groups :: [Bind'Group]
+    bind'groups = map binding'to'bind'group only'binds
+
+    is'binding :: Declaration -> Bool
+    is'binding (Binding _) = True
+    is'binding _ = False
+
+    binding'to'bind'group :: Declaration -> Bind'Group
+    binding'to'bind'group (Binding b'group) = b'group
+    binding'to'bind'group _ = error "Internal Error - Impossible case happened. Check a class method `depends'on`."
+    -- If that error ever occurs - it means that the filtering wasn't correct or was skipped.
+    -- only'binds is supposed to always only contain list of Bindings
 
 
 -- Depends type class represents a relation between two types
@@ -152,21 +195,27 @@ class Depends a b where
   depends'on :: a -> Map.Map String Int -> b
 
 
-instance {-# OVERLAPPING #-} Depends [Declaration] [(Bind'Group, Int, Set.Set Int)] where
-  depends'on decls indexer'glob
+instance {-# OVERLAPPING #-} Depends [Bind'Group] [(Bind'Group, Int, Set.Set Int)] where
+  depends'on bind'groups indexer'glob
     = dependencies
       where
-        only'binds :: [Declaration]
-        only'binds = filter is'binding decls
+        -- only'binds :: [Declaration]
+        -- only'binds = filter is'binding decls
 
 
-        only'bind'groups :: [Bind'Group]
-        only'bind'groups = map binding'to'bind'group only'binds
+        -- only'bind'groups :: [Bind'Group]
+        -- only'bind'groups = map binding'to'bind'group only'binds
 
 
-        is'binding :: Declaration -> Bool
-        is'binding (Binding _) = True
-        is'binding _ = False
+        -- is'binding :: Declaration -> Bool
+        -- is'binding (Binding _) = True
+        -- is'binding _ = False
+
+        -- binding'to'bind'group :: Declaration -> Bind'Group
+        -- binding'to'bind'group (Binding b'group) = b'group
+        -- binding'to'bind'group _ = error "Internal Error - Impossible case happened. Check a class method `depends'on`."
+        -- -- If that error ever occurs - it means that the filtering wasn't correct or was skipped.
+        -- -- only'binds is supposed to always only contain list of Bindings
 
 
         index'bindings :: [Bind'Group] -> Map.Map String Int
@@ -180,19 +229,13 @@ instance {-# OVERLAPPING #-} Depends [Declaration] [(Bind'Group, Int, Set.Set In
 
 
         indexer :: Map.Map String Int
-        indexer = index'bindings only'bind'groups `Map.union` indexer'glob
+        indexer = index'bindings bind'groups `Map.union` indexer'glob
         -- takes the left biased union
         -- that means we prefer the local binding of the variable
 
 
-        binding'to'bind'group :: Declaration -> Bind'Group
-        binding'to'bind'group (Binding b'group) = b'group
-        binding'to'bind'group _ = error "Internal Error - Impossible case happened. Check a class method `depends'on`."
-        -- If that error ever occurs - it means that the filtering wasn't correct or was skipped.
-        -- only'binds is supposed to always only contain list of Bindings
-
         dependencies :: [(Bind'Group, Int, Set.Set Int)]
-        dependencies = map make'dependency only'bind'groups
+        dependencies = map make'dependency bind'groups
 
 
         make'dependency :: Bind'Group -> (Bind'Group, Int, Set.Set Int)
@@ -252,7 +295,7 @@ instance Depends Expression (Set.Set Int) where
   depends'on (Let decls body) indexer
     = let
         decls'deps :: [(Bind'Group, Int, Set.Set Int)]
-        decls'deps = depends'on decls indexer
+        decls'deps = depends'on bind'groups indexer
         {-  ^ computes dependencies inside the local declaration definitions
             the result contains references for both current scope (indexer) and local scope
             (the indexer hidden inside the depends'on {which should be implemented as a method
@@ -277,6 +320,30 @@ instance Depends Expression (Set.Set Int) where
             to the result of depends'on called on body to combine all the dependencies together. -}
       in all'combined
       where
+        -- NOTE: Think about what is happening here
+        --        Right now, I am working wiht an assumption, that this module is going to be only used to analyze dependencies of expressions
+        --        so I am ignoring local fixity, type and so on declarations
+        --        I think that is a good strategy - first :- some of those can not be locally declared, second :- if they should be explicitly ignored, this level is the correct place
+        --        it, however, leads to some code duplication, this explicit filtering of local declarations needs to happen here and on the top level too
+        --        strictly speaking - if I was willing to rely on the correctness of the preceding part of the pipeline, I could just assume that there are no forbidden local declarations
+        --        I think it's better not to. I may want to allow local fixity declarations, classes, type synonyms, ...
+        only'binds :: [Declaration]
+        only'binds = filter is'binding decls
+
+        bind'groups :: [Bind'Group]
+        bind'groups = map binding'to'bind'group only'binds
+
+        is'binding :: Declaration -> Bool
+        is'binding (Binding _) = True
+        is'binding _ = False
+
+        binding'to'bind'group :: Declaration -> Bind'Group
+        binding'to'bind'group (Binding b'group) = b'group
+        binding'to'bind'group _ = error "Internal Error - Impossible case happened. Check a class method `depends'on`."
+        -- If that error ever occurs - it means that the filtering wasn't correct or was skipped.
+        -- only'binds is supposed to always only contain list of Bindings
+
+
         make'loc'indexer :: [(Bind'Group, Int, Set.Set Int)] -> Map.Map String Int
         make'loc'indexer deps = Map.fromList indexes
           where
@@ -297,4 +364,4 @@ instance Depends Expression (Set.Set Int) where
 
   -- -- This should always produce an empty Set. But just to be sure.
   -- depends'on (Intro name exprs) indexer
-  --   = depends'on exprs indexer
+    -- = depends'on exprs indexer
