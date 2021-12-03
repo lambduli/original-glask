@@ -18,6 +18,10 @@ import qualified Compiler.Analysis.Syntactic.ConstructorAnalysis as Constructors
 import qualified Compiler.Analysis.Syntactic.SynonymAnalysis as Synonyms
 import qualified Compiler.Analysis.Syntactic.Types as Types
 
+import qualified Compiler.Analysis.Syntactic.Annotations as Annotations
+import qualified Compiler.Analysis.Syntactic.Bindings as Bindings
+
+import qualified Compiler.Analysis.Semantic.DependencyAnalysis as Dependencies
 import qualified Compiler.Analysis.Semantic.Class as Classes
 
 import Compiler.Syntax.ToAST
@@ -31,6 +35,10 @@ import Compiler.Syntax.Term
 import Compiler.Syntax
 
 import Compiler.Analysis.Semantic.SemanticError
+
+import Compiler.Analysis.TypeSystem.Program
+import Compiler.Analysis.TypeSystem.Binding
+import Compiler.Analysis.TypeSystem.Utils.Infer (close'over)
 
 
 main :: IO ()
@@ -69,6 +77,8 @@ load file'name = do
           -- I need to split binding declarations into - explicitly typed (also includes instance bindings) and implicitly typed
           -- then I need to do the dependency analysis on those two groups and figure out the order in which I will infer them
           -- then I "just" do the inference
+          let program :: Program
+              program = to'program declarations
 
           -- TODO: I also need to do the Kind inference, probably even before type inference
           -- figure out the order in which I need to infer the Kinds of `data` and `type` declarations
@@ -162,3 +172,35 @@ translate'to'ast :: [Term'Decl] -> Int -> TE.Translate'Env -> Either Semantic'Er
 translate'to'ast declarations counter trans'env
   = -- TODO: now to run the translation using some sort of run'X function
   run'translate counter trans'env (to'ast declarations :: Translate [Declaration])
+
+
+-- NOTE:  this function should be somewhere else
+--        I still think, that having to translate from the AST to the Program, Binding'Group and so on, immediately after doing so much work to get the AST is sort of awkward
+--        but then again, the AST is not entirely lost, I just replace [Declaration] with Program ([[Explicit], [[Implicit]]] or something like that) which is reasonable
+--        the type inference doesn't need to concern itself with other declarations
+--        BUT then again - maybe it would be reasonable to merge the process of collecting kind constraints and type constraints on the top level point of view
+--        Then I would need to include type declarations into the collection given to the "constraint finding process"
+--        so that would maybe mean something like: I give some function the whole [Declaration] collection
+--        and IT will split it into a Program and the rest (for type declarations) [I won't need fixity declarations at this point]
+--        that would somehow solve my issue with exposing the detail of sorting and transforming to Program on this TOP LEVEL
+to'program :: [Declaration] -> Program
+to'program decls = [(explicits, implicits)]
+  where
+    annotations :: Map.Map Name (Qualified Type)
+    annotations = Annotations.extract decls
+
+    bindings :: Map.Map Name Bind'Group
+    bindings = Bindings.extract decls
+
+    explicit'map :: Map.Map Name (Qualified Type, Bind'Group)
+    explicit'map = Map.intersectionWith (,) annotations bindings
+
+    implicit'map :: Map.Map Name Bind'Group
+    implicit'map = Map.difference bindings explicit'map
+
+    explicits = map (\ (q't, b'g) -> Explicit (close'over q't) b'g) $ Map.elems explicit'map
+
+    implicits = map (map Implicit) $ Dependencies.sort $ Map.elems implicit'map
+
+    -- now bindings are in the maps
+    -- I need just the collections of the values of both maps
