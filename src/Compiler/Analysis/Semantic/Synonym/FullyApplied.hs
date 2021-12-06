@@ -43,8 +43,8 @@ class Find'Error a where
 -- |    Check the first element in the Term'T'App's argument --> if it's a Term'T'Id I need to check if it's Term'Id'Const
 -- |    if it is --> check whether it is a known Type Synonym (in the Synonym'Env) --> if yes, check that it is applied to as many arguments as the number in the Synonym'Env declares.
 -- |    if it isn't --> return an Error (Synonym'Not'Partially'Applied'Synonyms)
-analyze :: Synonym'Env -> [Term'Decl] -> [Semantic'Error]
-analyze syn'env term'decls
+check :: Synonym'Env -> [Term'Decl] -> [Semantic'Error]
+check syn'env term'decls
   = concatMap (\ decl -> runReader (find decl) syn'env) term'decls
 
 

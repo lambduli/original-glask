@@ -1,4 +1,4 @@
-module Compiler.Analysis.Syntactic.FixityAnalysis where
+module Compiler.Analysis.Syntactic.Fixity where
 
 
 import qualified Data.Map.Strict as Map
@@ -12,8 +12,8 @@ import Compiler.Syntax.Term
 import Compiler.Analysis.Syntactic.FixityEnv
 
 
-analyze :: [Term'Decl] -> Fixity'Env
-analyze decls = Map.fromList $ mapMaybe collect decls
+extract :: [Term'Decl] -> Fixity'Env
+extract decls = Map.fromList $ mapMaybe collect decls
 
 
 {- NOTE:

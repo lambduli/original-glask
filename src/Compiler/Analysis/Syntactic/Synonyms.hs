@@ -1,4 +1,4 @@
-module Compiler.Analysis.Syntactic.SynonymAnalysis where
+module Compiler.Analysis.Syntactic.Synonyms where
 
 import qualified Data.Map.Strict as Map
 import Data.Maybe
@@ -16,8 +16,8 @@ import Compiler.Analysis.Syntactic.SynonymEnv
   Because type synonyms must be fully applied - as per syntactic rule - for it to be a predicative. (I think that is what it's about.)
 -}
 
-analyze :: [Term'Decl] -> Synonym'Env
-analyze decls = Map.fromList $ mapMaybe collect decls
+extract :: [Term'Decl] -> Synonym'Env
+extract decls = Map.fromList $ mapMaybe collect decls
 
 
 collect :: Term'Decl -> Maybe (Name, Int)

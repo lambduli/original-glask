@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections #-}
 
-module Compiler.Analysis.Syntactic.ConstructorAnalysis where
+module Compiler.Analysis.Syntactic.Constructors where
 
 
 import qualified Data.Map.Strict as Map
@@ -14,8 +14,8 @@ import Compiler.Analysis.Syntactic.ConstrEnv
 import Compiler.Analysis.Syntactic.FieldEnv
 
 
-analyze :: [Term'Decl] -> (Constr'Env, Field'Env)
-analyze decls = (constr'env, field'env)
+extract :: [Term'Decl] -> (Constr'Env, Field'Env)
+extract decls = (constr'env, field'env)
   where
     constr'env = Map.fromList $ concat $ mapMaybe collect decls
     

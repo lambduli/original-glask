@@ -14,8 +14,8 @@ import Compiler.Analysis.TypeSystem.InferenceEnv
 -}
 
 
-analyze :: [Declaration] -> Class'Env
-analyze declarations = Class'Env{ classes = classes, defaults = [] } -- TODO: add actual defaults as needed
+extract :: [Declaration] -> Class'Env
+extract declarations = Class'Env{ classes = classes, defaults = [] } -- TODO: add actual defaults as needed
   where
     is'class :: Declaration -> Bool
     is'class (Class _ _ _ _) = True

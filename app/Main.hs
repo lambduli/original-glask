@@ -13,9 +13,9 @@ import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
 import qualified Compiler.Analysis.Semantic.Synonym.Cycles as Cycles
 import qualified Compiler.Analysis.Semantic.Synonym.FullyApplied as Applied
 
-import qualified Compiler.Analysis.Syntactic.FixityAnalysis as Fixity
-import qualified Compiler.Analysis.Syntactic.ConstructorAnalysis as Constructors
-import qualified Compiler.Analysis.Syntactic.SynonymAnalysis as Synonyms
+import qualified Compiler.Analysis.Syntactic.Fixity as Fixity
+import qualified Compiler.Analysis.Syntactic.Constructors as Constructors
+import qualified Compiler.Analysis.Syntactic.Synonyms as Synonyms
 import qualified Compiler.Analysis.Syntactic.Types as Types
 
 import qualified Compiler.Analysis.Syntactic.Annotations as Annotations
@@ -71,7 +71,7 @@ load file'name = do
           -- TODO: now when I have the list of Declarations in AST form
           -- I need to call inference
           -- for the inference I am going to need to build things like class environment and instance environment
-          let class'env = Classes.analyze declarations
+          let class'env = Classes.extract declarations
 
 
           -- I need to split binding declarations into - explicitly typed (also includes instance bindings) and implicitly typed
@@ -108,14 +108,14 @@ build'trans'env declarations = do
   -- build the environment for the to'ast translation
   -- also to initialize the translation with some initial state, which should be already prepared somewhere
   let fixities :: Fixity'Env
-      fixities = Fixity.analyze declarations
+      fixities = Fixity.extract declarations
 
   let -- (constructors, fields) :: (Constr'Env, FIeld'Env)
-      (constructors, fields) = Constructors.analyze declarations
+      (constructors, fields) = Constructors.extract declarations
 
 
   let user'kind'context :: Kind'Env
-      (user'kind'context, Types.Counter{ Types.count = count }) = Types.analyze declarations
+      (user'kind'context, Types.Counter{ Types.count = count }) = Types.extract declarations
   -- TODO: now the `count` should be used to initialize the counter in the Translate'State
 
   let kind'context :: Kind'Env
@@ -134,7 +134,7 @@ build'trans'env declarations = do
       -- I don't think it's necessary to translate synonyms to AST too
 
   let synonyms :: Synonym'Env
-      synonyms = Synonyms.analyze declarations
+      synonyms = Synonyms.extract declarations
 
   (TE.Trans'Env{ TE.fixities = fixities, TE.constructors = constructors, TE.fields = fields, TE.kind'context = kind'context, TE.synonyms = synonyms }, count)
 
@@ -144,7 +144,7 @@ build'trans'env declarations = do
 do'semantic'analysis :: [Term'Decl] -> TE.Translate'Env -> Either Semantic'Error ()
 do'semantic'analysis declarations TE.Trans'Env{ TE.synonyms = synonyms } = do
   -- TODO: I can start with semantic analysis
-  let errors = Applied.analyze synonyms declarations
+  let errors = Applied.check synonyms declarations
   raise errors -- only of there are any
 
   let errors = Cycles.analyze synonyms declarations

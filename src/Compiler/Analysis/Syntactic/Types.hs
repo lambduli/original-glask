@@ -45,8 +45,8 @@ fresh = do
 -- END OF THE TEMPORARY INFRASTRUCTURE
 
 
-analyze :: [Term'Decl] -> (Map.Map Name Kind, Counter)
-analyze t'decls = runState (Map.fromList <$> mapMaybeM collect t'decls) Counter{ count = 1 }
+extract :: [Term'Decl] -> (Map.Map Name Kind, Counter)
+extract t'decls = runState (Map.fromList <$> mapMaybeM collect t'decls) Counter{ count = 1 }
 
 -- NOTE: first two branches have the same body, maybe factor it out into a helper function?
 collect :: Term'Decl -> Fresh (Maybe (Name, Kind))
