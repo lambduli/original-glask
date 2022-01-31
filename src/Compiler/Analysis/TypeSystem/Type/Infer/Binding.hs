@@ -58,6 +58,7 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
           gs = Set.toList (free'vars t') \\ fs
       let sc' = close'over (qs' :=> t')
           not'entail pred = do
+            -- not <$> entail c'env qs' pred -- this should be the same thing, but more succinctly written
             entailed <- entail c'env qs' pred
             return $ not entailed
       let ps' = runIdentity $ runExceptT $ filterM not'entail (apply subst preds)
@@ -70,8 +71,8 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
               if scheme /= sc' -- TODO: this line is going to break it as it is
                 -- I first need to figure out how to do the comparison correctly, then implement Eq for Scheme manually
               then throwError Signature'Too'General
-              else if not (null retained'preds)
-              then throwError Context'Too'Weak
+              else  if not (null retained'preds)
+                    then throwError Context'Too'Weak
               else return (deferred'preds, cs't, cs'k)
 
 
@@ -121,12 +122,14 @@ infer'impls implicits = do
             let gs'   = gs \\ Set.toList (free'vars retained'preds)
                 scs'  = map (quantify gs' . ([] :=> )) ts' -- NOTE: notice that we are not using close'over - that would quantify over
                 -- all the free variables in the type, but because of the monomorphism restriction
-                -- we must quantify over only some of them
+                -- we must quantify over only some of them -- QUESTION: Which ones can we quantify over and which ones we can't?
                 -- TODO: inspect more later!
             in return (deferred'preds ++ retained'preds, zip is scs', cs't, cs'k)
           else
             let scs'  = map (quantify gs . (retained'preds :=> )) ts' -- qualify each substituted type with retained predicates
             in return (deferred'preds, zip is scs', cs't, cs'k)
+            -- Question:  Why do I return the `cs't` even thought I already solved them?
+            --            Callers of this function will solve them again and again, does it make sense?
 
 
 restricted :: [Implicit] -> Bool
