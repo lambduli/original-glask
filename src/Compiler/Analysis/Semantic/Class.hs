@@ -7,6 +7,7 @@ import Compiler.Syntax
 
 import Compiler.Analysis.TypeSystem.Class
 import Compiler.Analysis.TypeSystem.InferenceEnv
+import Compiler.Analysis.TypeSystem.Type.Constants (t'Int, t'Double)
 
 
 {- This module builds a Class'Env for the Type Inference
@@ -15,7 +16,7 @@ import Compiler.Analysis.TypeSystem.InferenceEnv
 
 
 extract :: [Declaration] -> Class'Env
-extract declarations = Class'Env{ classes = classes, defaults = [] } -- TODO: add actual defaults as needed
+extract declarations = Class'Env{ classes = classes, defaults = [t'Int, t'Double] }
   where
     is'class :: Declaration -> Bool
     is'class (Class _ _ _ _) = True
