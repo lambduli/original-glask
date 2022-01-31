@@ -462,9 +462,11 @@ instance To'AST Term'Decl Declaration where
         pat <- to'ast t'pat :: Translate Pattern
         error "Not Implemented: Operator binding."
 
+      -- TODO:  I am going to implement just a simple variable binding for now.
+      --        That means that there are no arguments -> no patterns.
+      --        I will need to implement the rest later.
       Term'P'Id (Term'Id'Var var'name) -> do
-        pat <- to'ast t'pat
-        return $ AST.Binding $ Bind'Group{ AST.name = var'name, alternatives = [ Match{ patterns = [pat], rhs = expr } ] }
+        return $ AST.Binding $ Bind'Group{ AST.name = var'name, alternatives = [ Match{ patterns = [], rhs = expr } ] }
 
 
       Term'P'App t'pats -> do
