@@ -30,12 +30,14 @@ super cl'env name
       _ -> error "super is still a partial function"
 
 
+-- Question: So what if there are no instances for that particular class? Can I just return an empty list?
+-- 31.1.2022 NOTE: It seems like that's what I should return.
 instances :: Class'Env -> Name -> [Instance]
 instances cl'env name
   = case classes cl'env Map.!? name of
       Just (supers, instances) -> instances
+      Nothing -> [] -- NOTE: This is just temporary, I don't know if I can do this, just checking how things work.
       _ -> error "instances is still a partial function"
-
 
 
 modify :: Class'Env -> Name -> Class -> Class'Env
@@ -119,7 +121,21 @@ by'inst cl'env pred@(Is'In name type') =
       first'defined :: [Instance] -> Solve [Predicate]
       first'defined [] = throwError $ Unexpected "Error: I think I didn't find any instances of the thing."
       first'defined (inst : insts) = do
-        v <- try'inst inst
+        -- v <- try'inst inst -- NOTE: Tohle jsem zakomentoval hodne pozde v noci. Myslim, ze `v` se nikde nepouziva
+        -- a ze to vzniklo z chyby
+        -- myslim, ze je to urcite spatne, protoze kdyz by nahodou `try'inst inst` zpusobylo error
+        -- tak tim, ze je tady uplne nechranenej, tak to proste failne
+        -- tusim, ze jsem tohle psal tesne pred nebo na Petrove prednasce z PPA nekdy zkraje semestru
+        -- nejspis jsem nedaval dost pozor
+        -- TODO: Make sure, that it is - in fact - correct, to delete that line.
+        -- TODO: Predtim, nez to smazu, tak me zajima proc se to chova tak, ze kdyz tahle radka tady je,
+        -- tak zalezi na poradi definice instance pro Num (Int a Double) pro priklad `flop`
+        -- to je skutecne zajimavy
+        -- mam nejakou teorii, ze to je proto, ze tohle sice bouchne, ale v pripade Implicitniho `flopu` je ta chyba osetrena
+        -- nebo spis naopak
+        -- a vyradi to jeden potencialni defaulting
+        -- je divny ale, ze to vyradi jeden z nich (ten prvni? nebo ne?) ale pro ten druhej to uz nebouchne? nebo proc ho to nevyradi?
+        -- zvlastni! 
         catchE (try'inst inst) (const $ first'defined insts)
 
 
@@ -164,7 +180,7 @@ to'hnf cl'env pred
   | otherwise = do
     either'err'or'preds <- tryE $ by'inst cl'env pred
     case either'err'or'preds of
-      Left _ -> throwError $ Unexpected "Failed in context reduction. I think some predicate is unsatisfiable."
+      Left err -> throwError $ Unexpected $ "Failed in context reduction. I think some predicate is unsatisfiable." ++ " | " ++ show err
       Right preds -> to'hnfs cl'env preds
 
 
