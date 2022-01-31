@@ -165,6 +165,12 @@ instantiate (For'All vars qual'type) = do
   return $ apply subst qual'type
 
 
+{-  TODO: Consider removing this function from the codebase.
+          I might be able to use `quantify` instead.
+          I would need to explicitly specify what variables I want to close over.
+          But it might be a better practice.
+          As being explicit might give much more information about what is the intent and what variables should be closed over.
+-}
 close'over :: Qualified Type -> Scheme
 close'over = normalize . generalize Map.empty
 
