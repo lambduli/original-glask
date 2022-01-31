@@ -74,6 +74,8 @@
 
 
 # Next Steps:
+- I need to include declarations inside `type classes` and `instances` in the type checking process too
+- I also need to check that they are included in all the important analyses so far
 - Transform the `Term` to the `AST` (I think the Kind Variables in the Types are handled now)
 - Keep adding tests for the Lexer and the Parser
 - Change the Parser State monad to something possibly also based on the ExceptT -> so I can report syntactic and semantic errors better
