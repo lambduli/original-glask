@@ -1,6 +1,5 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 
-
 module Compiler.Analysis.TypeSystem.Type.Infer.Expression where
 
 
@@ -45,6 +44,7 @@ infer'expr (Abs pattern'param body) = do
   (preds'body, type'body, t'constrs, k'constrs) <- merge'into't'env assumptions'param (infer'expr body)
   return (preds'param ++ preds'body, type'param `type'fn` type'body, t'constrs, k'constrs)
   
+  -- NOTE: I THINK THIS NOTE HAS BEEN RESOLVED AND CAN BE REMOVED. I SHOULD CHECK THAT LATER WHEN I AM BIT MORE FAMILIAR WITH THE CODEBASE.
   -- TODO: I need to rewrite this
   -- I will need to find out how to infer'expr types for patterns
   -- then infer'expr the type of that pattern - which could also bind some variables to types
@@ -186,6 +186,20 @@ infer'expr (Ann expr qual'type) = do
       That means, that when inferring the type of annotated term, I can in fact leave some constraints
       for surrounding context. That might mean I will need to drop the check for the emptiness of retained
       predicates.
+
+      Yes - I've been thinking about it now (27.1.2020) and I think it goes like this.
+      If the Explicitly annotated expression is only "local" then it might be useful to allow this behaviour.
+      So in the case of "local annotation/declaration" I will allow retained predicates to be non empty
+      
+      and I should discarche those predicates which are in the annotation.
+      That is already happening. I am filtering all predicates that are entailed by the context given by the programmer.
+
+      I think it might mean, that I don't really need to call `split`. I just return whatever predicates are NOT entailed.
+      And the outer scope should take care of it.
+      If the top level inference mechanism - concerned with the inference for the whole strongly connected component - for instance
+      gets a non-empty list of deffered predicates/constraints. It should raise and error, reporting that the context for the top-level declaration
+      is too weak.
+      But local type annotations are not forced to state the whole context, they can just state the part of it.
   -}
 
   {-  Original scheme - as given by the programmer - and the Scheme' are then compared.
