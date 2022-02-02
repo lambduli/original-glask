@@ -18,6 +18,8 @@ import qualified Compiler.Analysis.Syntactic.Constructors as Constructors
 import qualified Compiler.Analysis.Syntactic.Synonyms as Synonyms
 import qualified Compiler.Analysis.Syntactic.Types as Types
 
+import qualified Compiler.Analysis.Syntactic.MethodAnnotations as Method'Annotations
+import qualified Compiler.Analysis.Syntactic.MethodBindings as Method'Bindings
 import qualified Compiler.Analysis.Syntactic.Annotations as Annotations
 import qualified Compiler.Analysis.Syntactic.Bindings as Bindings
 
@@ -33,12 +35,18 @@ import Compiler.Analysis.TypeSystem.InferenceEnv
 
 import Compiler.Syntax.Term
 import Compiler.Syntax
+import Compiler.Syntax.HasKind
 
 import Compiler.Analysis.Semantic.SemanticError
 
 import Compiler.Analysis.TypeSystem.Program
+import Compiler.Analysis.TypeSystem.Type.Infer.Program
 import Compiler.Analysis.TypeSystem.Binding
 import Compiler.Analysis.TypeSystem.Utils.Infer (close'over)
+import Compiler.Analysis.TypeSystem.Infer
+import Compiler.Analysis.TypeSystem.InferenceEnv
+import Compiler.Analysis.TypeSystem.Solver.Substitution
+import Compiler.Analysis.TypeSystem.Solver.Substitutable
 
 
 main :: IO ()
@@ -74,26 +82,47 @@ load file'name = do
           let class'env = Classes.extract declarations
 
 
+          -- TODO: I need to inclide all bindings in all type classes and instances into the program too
           -- I need to split binding declarations into - explicitly typed (also includes instance bindings) and implicitly typed
           -- then I need to do the dependency analysis on those two groups and figure out the order in which I will infer them
           -- then I "just" do the inference
           let program :: Program
               program = to'program declarations
 
-          -- TODO: I also need to do the Kind inference, probably even before type inference
-          -- figure out the order in which I need to infer the Kinds of `data` and `type` declarations
-          -- for now - I can just infer them together I think
-          -- but later I could implement Kind Polymorphism --> I would need to first top sort them into SCCs
-          putStrLn "Successfully read the file."
-          
-          putStrLn "-----------------------"
-          
-          putStrLn "Class Environment:"
-          print class'env
-          
-          putStrLn "All Declarations:"
-          putStrLn $ intercalate "\n" $ map show declarations
-          return ()
+          let TE.Trans'Env{ TE.kind'context = k'env } = trans'env
+
+          let infer'env :: Infer'Env
+              infer'env = Infer'Env{ kind'env = k'env, type'env = init't'env, class'env =  class'env }
+
+          -- (Type'Env, [Constraint Kind])
+          case run'infer infer'env (infer'program program) of
+            Left err -> do
+              print err
+            Right (t'env, k'constrs) -> do
+              putStrLn "Inference done. ... Maybe ..."
+
+
+              putStrLn "Program:"
+              print program
+
+
+              putStrLn "Type Environment:"
+              print t'env
+
+              -- TODO: I also need to do the Kind inference, probably even before type inference
+              -- figure out the order in which I need to infer the Kinds of `data` and `type` declarations
+              -- for now - I can just infer them together I think
+              -- but later I could implement Kind Polymorphism --> I would need to first top sort them into SCCs
+              putStrLn "Successfully read the file."
+              
+              putStrLn "-----------------------"
+              
+              putStrLn "Class Environment:"
+              print class'env
+              
+              putStrLn "All Declarations:"
+              putStrLn $ intercalate "\n" $ map show declarations
+              return ()
 
 
 parse :: String -> [Term'Decl]
@@ -110,7 +139,7 @@ build'trans'env declarations = do
   let fixities :: Fixity'Env
       fixities = Fixity.extract declarations
 
-  let -- (constructors, fields) :: (Constr'Env, FIeld'Env)
+  let -- (constructors, fields) :: (Constr'Env, Field'Env)
       (constructors, fields) = Constructors.extract declarations
 
 
@@ -183,14 +212,51 @@ translate'to'ast declarations counter trans'env
 --        so that would maybe mean something like: I give some function the whole [Declaration] collection
 --        and IT will split it into a Program and the rest (for type declarations) [I won't need fixity declarations at this point]
 --        that would somehow solve my issue with exposing the detail of sorting and transforming to Program on this TOP LEVEL
+
+-- TODO:  I need to collect bindings inside type class declarations and instance declarations too
+--        First of -> my current parser doesn't allow type classes to contain a default implementations of methods
+--        For the instance bindings ->
+--          I should collect type annotations from the type classes
+--          I should collect methods (which are strictly untyped)
+--          If I combine those into a Map, it would need to be a Map Name (Qualified Type, [Bind'Group])
+--            because I have potentially many Bind'Groups per each name/qualified type
+--            each name MUST have a qualified type, but it could potentially have no implementations/Bind'Groups
+--          The thing is - I don't really need a Map, I don't think I would ever do an explicit lookup, so maybe a Set or a List would be enough
+--          But anyway - now I should have all the methods from the instances explicitly typed, so I should just transform it into a "special kind of explicits"
+--          special because there is many Bind'Groups per a single type annotations
+--          Maybe I could merge all the Bind'Groups into a single Bind'Group to utilize the existing infrastructure for the type analysis
+--            I don't think I can do that!
+--      !!  I need to 
 to'program :: [Declaration] -> Program
-to'program decls = [(explicits, implicits)]
+to'program decls = Program{ bind'sections = [(explicits, implicits)], methods = methods, method'annotations = m'anns }
   where
+    method'annotations :: [(Name, Qualified Type, Name)]
+    method'annotations = Method'Annotations.extract decls
+
+    m'anns = map (\ (method'n, q't, _) -> (method'n, q't)) method'annotations
+
+    method'bindings :: [(Name, Bind'Group, Type)]
+    method'bindings = Method'Bindings.extract decls
+
+    {-  NOTE:  -}
+    methods :: [Method]
+    methods = map make'method method'bindings
+      where
+        make'method :: (Name, Bind'Group, Type) -> Method
+        make'method (method'name, bind'group, instance'type) =
+          let Just (_, qualified'type, class'var'name) = find (\ (m'n, _, _) -> m'n == method'name) method'annotations -- NOTE: This should always find the result, so the pattern matching on Just (...) should always succeed
+              substitution :: Subst T'V Type
+              substitution = Sub (Map.singleton (T'V class'var'name (kind instance'type)) instance'type) -- NOTE: the Type Variable must have the same Kind as the Instance Type
+              scheme = close'over $ apply substitution qualified'type -- now I have the Type Scheme
+          in Method scheme bind'group
+
+ 
+
     annotations :: Map.Map Name (Qualified Type)
     annotations = Annotations.extract decls
 
     bindings :: Map.Map Name Bind'Group
-    bindings = Bindings.extract decls
+    bindings = Bindings.extract decls -- NOTE: Myslim, ze tohle jde volat jenom tehdy, kdyz uz jsou vsechny Bind Groups mergnuty do jedne - pokud maji stejne jmeno.
 
     explicit'map :: Map.Map Name (Qualified Type, Bind'Group)
     explicit'map = Map.intersectionWith (,) annotations bindings
@@ -201,6 +267,3 @@ to'program decls = [(explicits, implicits)]
     explicits = map (\ (q't, b'g) -> Explicit (close'over q't) b'g) $ Map.elems explicit'map
 
     implicits = map (map Implicit) $ Dependencies.sort $ Map.elems implicit'map
-
-    -- now bindings are in the maps
-    -- I need just the collections of the values of both maps
