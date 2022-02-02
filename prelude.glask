@@ -1,13 +1,28 @@
 module Main where
 { 
-  class Bar b
+  class Num a
 
-; class () => Foo a where { foo :: a }
+; instance Num Int
+; instance Num Double
 
-; instance (Show a) => Baz ([] a) where { baz = 23 :: a }
+
+-- ; instance Num Double -- when I uncomment this line it fails with "Something bad happened: Failed in context reduction. I think some predicate is unsatisfiable."
+
+-- ; class Bar b
+
+-- ; class () => Foo a where
+--   { foo :: a
+--   -- ; foo = 23
+--   }
+
+-- ; instance (Show a) => Baz ([] a) where
+-- { baz = 23 :: a }
   
-; type Foo = Int
+-- ; type Foo = Int
   
-; foo = 23
+; flop = 23 -- I have fixed the bug manifesting for this declaration
+
+-- ; expl :: Double
+-- ; expl = 23
 
 }
