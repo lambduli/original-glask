@@ -1,6 +1,8 @@
 module Compiler.Analysis.TypeSystem.Program where
 
 
+import Compiler.Syntax
+
 import Compiler.Analysis.TypeSystem.BindSection (Bind'Section)
 import Compiler.Analysis.TypeSystem.Binding
 
@@ -16,5 +18,9 @@ import Compiler.Analysis.TypeSystem.Binding
           I should just make that part of the system work with the previous and already-defined representation.
 -}
 
-data Program = Program{ bind'sections :: [Bind'Section], methods :: [Method] }
+data Program
+  = Program
+    { bind'sections :: [Bind'Section]
+    , methods :: [Method]
+    , method'annotations :: [(Name, Qualified Type)] }
   deriving (Show)
