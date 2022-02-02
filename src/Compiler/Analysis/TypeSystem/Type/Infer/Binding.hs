@@ -25,6 +25,7 @@ import Compiler.Analysis.TypeSystem.Utils.Class
 import Compiler.Analysis.TypeSystem.InferenceEnv
 
 import Compiler.Analysis.TypeSystem.Solver
+import Compiler.Analysis.TypeSystem.Solver.Substitution
 import Compiler.Analysis.TypeSystem.Solver.Substitutable
 
 import Compiler.Analysis.TypeSystem.Type.Infer.Match

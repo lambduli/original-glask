@@ -19,14 +19,7 @@ import {-# SOURCE #-} Compiler.Syntax.Scheme
 
 import Compiler.Analysis.TypeSystem.InferenceEnv
 import Compiler.Analysis.TypeSystem.Constraint
-
-
--- | Substitution -- ordered mapping between a name `k` and a value `v`
-newtype Subst k v = Sub (Map.Map k v)
-  deriving (Eq, Show)
-
-empty'subst :: Subst k a
-empty'subst = Sub Map.empty
+import Compiler.Analysis.TypeSystem.Solver.Substitution
 
 
 --

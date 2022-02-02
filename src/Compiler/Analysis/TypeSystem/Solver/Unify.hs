@@ -11,6 +11,7 @@ import Compiler.Syntax
 
 import Compiler.Analysis.Error
 
+import Compiler.Analysis.TypeSystem.Solver.Substitution
 import Compiler.Analysis.TypeSystem.Solver.Substitutable
 import Compiler.Analysis.TypeSystem.Solver.Solve
 import Compiler.Analysis.TypeSystem.Solver.Bind

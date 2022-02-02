@@ -22,6 +22,7 @@ import Compiler.Analysis.TypeSystem.Constraint
 import Compiler.Analysis.TypeSystem.InferenceEnv
 
 import Compiler.Analysis.TypeSystem.Solver.Solve
+import Compiler.Analysis.TypeSystem.Solver.Substitution
 import Compiler.Analysis.TypeSystem.Solver.Substitutable
 import Compiler.Analysis.TypeSystem.Solver.Occurs
 import Compiler.Analysis.TypeSystem.Solver.Composable

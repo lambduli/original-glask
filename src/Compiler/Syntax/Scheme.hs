@@ -9,6 +9,7 @@ import Compiler.Syntax.Qualified
 
 
 import Compiler.Analysis.TypeSystem.Solver.Substitutable
+import Compiler.Analysis.TypeSystem.Solver.Substitution
 
 
 data Scheme

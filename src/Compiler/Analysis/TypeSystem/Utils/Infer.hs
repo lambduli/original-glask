@@ -21,6 +21,7 @@ import Compiler.Analysis.TypeSystem.InferenceState
 import Compiler.Analysis.TypeSystem.Ambiguity
 
 import Compiler.Analysis.TypeSystem.Solver.Solve
+import Compiler.Analysis.TypeSystem.Solver.Substitution
 import Compiler.Analysis.TypeSystem.Solver.Substitutable
 
 import Compiler.Analysis.TypeSystem.Utils.Class
