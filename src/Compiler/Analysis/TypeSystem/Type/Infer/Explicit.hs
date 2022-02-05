@@ -70,8 +70,8 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
           case runIdentity $ runExceptT $ split c'env fs gs preds' of
             Left err -> throwError err
             Right (deferred'preds, retained'preds) -> do
-              if scheme /= sc' -- TODO: this line is going to break it as it is
-                -- I first need to figure out how to do the comparison correctly, then implement Eq for Scheme manually
+              if scheme /= sc'
+              {- TODO:  If I want to know exactly what user-denoted type variable in the `scheme` does correspond to some non-variable type, I can use `match` to create a one-way substitution. -}
               then throwError Signature'Too'General
               else  if not (null retained'preds)
                     then throwError Context'Too'Weak
