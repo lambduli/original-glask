@@ -9,7 +9,8 @@ import Compiler.Analysis.TypeSystem.Constraint
 import Compiler.Analysis.TypeSystem.Binding
 import Compiler.Analysis.TypeSystem.BindSection
 
-import Compiler.Analysis.TypeSystem.Type.Infer.Binding
+import Compiler.Analysis.TypeSystem.Type.Infer.Explicit
+import Compiler.Analysis.TypeSystem.Type.Infer.Implicit
 
 import Compiler.Analysis.TypeSystem.Utils.Infer
 
