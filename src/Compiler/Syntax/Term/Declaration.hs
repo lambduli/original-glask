@@ -1,8 +1,9 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module Compiler.Syntax.Term.Declaration where
 
 
 import Compiler.Syntax.Name
-import Compiler.Syntax.Declaration hiding (Binding)
 import Compiler.Syntax.Fixity
 
 import {-# SOURCE #-} Compiler.Syntax.Term.Expression

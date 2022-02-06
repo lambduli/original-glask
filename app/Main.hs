@@ -3,6 +3,7 @@ module Main where
 import System.IO
 import Data.List
 import qualified Data.Map.Strict as Map
+import Data.Tuple.Extra
 
 
 import Compiler.Parser.Parser (parse'module)
@@ -88,11 +89,15 @@ load file'name = do
           -- then I "just" do the inference
           let program :: Program
               program = to'program declarations
+              m'anns = method'annotations program
+              type'env = Map.union init't'env $ Map.fromList $ map (second close'over) m'anns
+
 
           let TE.Trans'Env{ TE.kind'context = k'env } = trans'env
 
+          -- TODO: Ja potrebuju 
           let infer'env :: Infer'Env
-              infer'env = Infer'Env{ kind'env = k'env, type'env = init't'env, class'env =  class'env }
+              infer'env = Infer'Env{ kind'env = k'env, type'env = type'env, class'env =  class'env }
 
           -- (Type'Env, [Constraint Kind])
           case run'infer infer'env (infer'program program) of

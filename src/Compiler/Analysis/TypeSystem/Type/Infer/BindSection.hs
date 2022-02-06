@@ -38,3 +38,13 @@ infer'seq ti (bs : bss) = do
   (ps, as', cs't, cs'k) <- ti bs
   (qs, as'', cs't', cs'k') <- merge'into't'env as' (infer'seq ti bss)
   return (ps ++ qs, as' ++ as'', cs't ++ cs't', cs'k ++ cs'k')
+
+
+{-  TODO: Probably change the name and put the function some better place? -}
+-- Its purpose is for method type elaboration
+check'seq :: (a -> Infer ([Predicate], [Constraint Type], [Constraint Kind])) -> [a] -> Infer ([Predicate], [Constraint Type], [Constraint Kind])
+check'seq _ [] = return ([], [], [])
+check'seq ti (bs : bss) = do
+  (ps, cs't, cs'k) <- ti bs
+  (qs, cs't', cs'k') <- check'seq ti bss
+  return (ps ++ qs, cs't ++ cs't', cs'k ++ cs'k')

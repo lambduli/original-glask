@@ -6,23 +6,28 @@ module Main where
 ; instance Num Double
 
 
--- ; instance Num Double -- when I uncomment this line it fails with "Something bad happened: Failed in context reduction. I think some predicate is unsatisfiable."
+; class Fractional a
+
+; instance Fractional Double
+
+
 
 -- ; class Bar b
 
--- ; class () => Foo a where
---   { foo :: a
---   -- ; foo = 23
---   }
+; class () => Foo a where
+  { foo :: a -> b -> a
+  -- ; foo x y = x
+  }
 
 -- ; instance (Show a) => Baz ([] a) where
 -- { baz = 23 :: a }
   
--- ; type Foo = Int
+-- ; type Foo = Int -- Type Aliases/Synonym expansion is not implemented yet
   
-; flop = 23 -- I have fixed the bug manifesting for this declaration
+; int = 23 -- I have fixed the bug manifesting for this declaration
+; double = 23.7
 
--- ; expl :: Double
--- ; expl = 23
+; expl :: Double
+; expl = 23
 
 }
