@@ -95,9 +95,11 @@ load file'name = do
 
           let TE.Trans'Env{ TE.kind'context = k'env } = trans'env
 
-          -- TODO: Ja potrebuju 
           let infer'env :: Infer'Env
               infer'env = Infer'Env{ kind'env = k'env, type'env = type'env, class'env =  class'env }
+
+          putStrLn "Program:"
+          print program
 
           -- (Type'Env, [Constraint Kind])
           case run'infer infer'env (infer'program program) of
@@ -105,10 +107,6 @@ load file'name = do
               print err
             Right (t'env, k'constrs) -> do
               putStrLn "Inference done. ... Maybe ..."
-
-
-              putStrLn "Program:"
-              print program
 
 
               putStrLn "Type Environment:"
