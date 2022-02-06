@@ -16,7 +16,7 @@ infer'pat :: Pattern -> Infer ([Predicate], Type, [Assumption Scheme])
 infer'pat (P'Var name) = do
   fresh'name <- fresh
   let t'var = T'Var (T'V fresh'name K'Star)
-  return ([], t'var, [])
+  return ([], t'var, [(name, to'scheme t'var)])
 
 infer'pat (P'Con name patterns) = do
   undefined

@@ -43,17 +43,6 @@ infer'expr (Abs pattern'param body) = do
   (preds'param, type'param, assumptions'param) <- infer'pat pattern'param
   (preds'body, type'body, t'constrs, k'constrs) <- merge'into't'env assumptions'param (infer'expr body)
   return (preds'param ++ preds'body, type'param `type'fn` type'body, t'constrs, k'constrs)
-  
-  -- NOTE: I THINK THIS NOTE HAS BEEN RESOLVED AND CAN BE REMOVED. I SHOULD CHECK THAT LATER WHEN I AM BIT MORE FAMILIAR WITH THE CODEBASE.
-  -- TODO: I need to rewrite this
-  -- I will need to find out how to infer'expr types for patterns
-  -- then infer'expr the type of that pattern - which could also bind some variables to types
-  -- this needs to come together with the result - so infer'expr on Pattern will also give the bindings
-  -- so that I can put them inside the t'env and infer'expr the type of the body
-  -- fresh'name <- fresh
-  -- let t'var = T'Var (T'V fresh'name K'Star)
-  -- (preds, type', t'constrs, k'constrs) <- put'in't'env (x, For'All [] ([] :=> t'var)) (infer'expr body)
-  -- return (preds, t'var `type'fn` type', t'constrs, k'constrs)
 
 -- TODO: check if it's really valid
 infer'expr (App left right) = do
