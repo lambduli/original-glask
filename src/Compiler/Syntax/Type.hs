@@ -70,6 +70,14 @@ instance Show Type where
     -- = "(" ++ show left ++ ") -> " ++ show res'type
   -- show (TyArr arg'type res'type)
     -- = show arg'type ++ " -> " ++ show res'type
+
+  -- (a -> b) -> c ... -> (-> a b) c ... (-> ((-> a) b)) c
+  show (T'App (T'App (T'Con (T'C "(->)" _)) t'left@(T'App (T'App (T'Con (T'C "(->)" _)) _) _)) t'right)
+    = "(" ++ show t'left ++ ") -> " ++ show t'right
+  -- a -> b ... -> a b ... (-> a) b
+  show (T'App (T'App (T'Con (T'C "(->)" _)) t'left) t'right)
+    = show t'left ++ " -> " ++ show t'right
+
   show (T'App t'left t'right@(T'App _ _))
     = show t'left ++ " (" ++ show t'right ++ ")"
   show (T'App t'left t'right)
