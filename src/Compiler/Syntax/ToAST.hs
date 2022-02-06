@@ -562,11 +562,22 @@ instance To'AST Term'Decl Declaration where
               Later I could introduce scoped/nested class declarations
               then I would need to revisit this place and fix it.
      -}
-    fresh'name <- fresh
+    {-  TODO: I need to register all free type variables in all type annotations within + (just in case) the class type parameter the class declaration. -}
+    let f'vs :: Term.Term'Decl -> Set.Set Term'Id
+        f'vs (Term.Signature _ (t'context, t'type)) = free'vars t'context `Set.union` free'vars t'type
+    {-  WARNING: The function `f'vs` is partial.  -}
+
+    let f't'vs = Set.insert (Term'Id'Var var'name) $ foldl Set.union Set.empty $ map f'vs t'decls -- TODO: the foldl expression is terrible - refactor pls
+    let free'variables = map (\ (Term'Id'Var name) -> name) $ Set.toList f't'vs
+
+    -- those need to be assigned a new and fresh Kind Variable
+    fresh'names <- mapM (const fresh) free'variables -- fresh name for each one of actually free type variables
+    let kinds = map K'Var fresh'names -- fresh kind variable for every fresh name
+    let assignments = zip free'variables kinds -- put them together to create a list of kind assignments
 
     -- NOTE: I don't know if I need to register the variable to translate predicates, but it shouldn't hurt
-    preds <- put'in'k'env (var'name, K'Var fresh'name) (to'ast t'preds)
-    decls <- put'in'k'env (var'name, K'Var fresh'name) (to'ast t'decls)
+    preds <- merge'into'k'env assignments (to'ast t'preds)
+    decls <- merge'into'k'env assignments (to'ast t'decls)
     return $ AST.Class cl'name var'name preds decls
 
   to'ast (Term.Instance t'qual'pred t'decls) = do
