@@ -10,4 +10,5 @@ data Predicate = Is'In Name Type
 
 
 instance Show Predicate where
-  show (Is'In class'name type') = show type' ++ " is instance of " ++ class'name
+  show (Is'In class'name type')
+    = class'name ++ " " ++ show type'
