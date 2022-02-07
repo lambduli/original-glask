@@ -45,8 +45,11 @@ fresh = do
 -- END OF THE TEMPORARY INFRASTRUCTURE
 
 
+{-  TODO: Implement the Extract type class for [a], Term'Decl and for Term'Expr.
+          I think each time it's going to accept a tuple containing the Counter too.  -}
 extract :: [Term'Decl] -> (Map.Map Name Kind, Counter)
 extract t'decls = runState (Map.fromList <$> mapMaybeM collect t'decls) Counter{ count = 1 }
+
 
 -- NOTE: first two branches have the same body, maybe factor it out into a helper function?
 collect :: Term'Decl -> Fresh (Maybe (Name, Kind))
