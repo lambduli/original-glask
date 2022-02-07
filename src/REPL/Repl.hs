@@ -7,7 +7,6 @@ import Data.List.Extra (trim)
 import Data.Functor.Identity
 import Control.Monad.Except
 
-
 import Compiler.Analysis.TypeSystem.Infer
 import Compiler.Analysis.TypeSystem.Program
 import Compiler.Analysis.TypeSystem.InferenceEnv
@@ -22,7 +21,6 @@ import Compiler.Analysis.TypeSystem.Solver
 import Compiler.Analysis.TypeSystem.Solver.Substitutable
 import Compiler.Analysis.TypeSystem.Solver.Substitution
 import Compiler.Analysis.TypeSystem.Utils.Class
-import Compiler.Analysis.TypeSystem.Utils.Infer
 import Compiler.Analysis.TypeSystem.Solver.Composable
 import Compiler.Analysis.TypeSystem.Utils.Infer (close'over)
 
@@ -131,7 +129,7 @@ infer expr i'env = do
   -- s' <- runIdentity $ runExceptT $ default'subst c'env [] rs :: Either Error (Subst T'V Type)
   let s' = Sub Map.empty
 
-  subst' <- runIdentity $ runExceptT ((s' :: Subst T'V Type) `merge` (subst :: Subst T'V Type))
+  subst' <- runIdentity $ runExceptT (s' `merge` subst)
 
   let scheme = close'over $ apply subst' rs :=> apply subst' type'
 

@@ -34,11 +34,13 @@ import Compiler.Analysis.Syntactic.FixityEnv
 import Compiler.Analysis.Syntactic.FieldEnv
 import Compiler.Analysis.Syntactic.SynonymEnv
 import Compiler.Analysis.TypeSystem.InferenceEnv
+import Compiler.Analysis.Syntactic.Types
 
 import Compiler.Syntax.Term
 import Compiler.Syntax
 import Compiler.Syntax.HasKind
 
+import Compiler.Analysis.Error
 import Compiler.Analysis.Semantic.SemanticError
 
 import Compiler.Analysis.TypeSystem.Program
@@ -60,73 +62,72 @@ load file'name = do
   handle <- openFile file'name ReadMode
   contents <- hGetContents handle
 
-  let term'decls = parse contents
-  let (trans'env, counter) = build'trans'env term'decls
-
-  case do'semantic'analysis term'decls trans'env of
+  case load'declarations contents of
     Left sem'err -> do
-      print sem'err
-      return ()
+      putStrLn $ "Semantic Error: " ++ show sem'err
 
-    Right () -> do
-      case translate term'decls counter trans'env of
-        Left sem'err -> do
-          print sem'err
-          return ()
+    Right (decls, trans'env, counter) ->
+      case process'declarations decls trans'env counter of
+        Left err -> do
+          putStrLn $ "Error: " ++ show err
+        Right (program, infer'env, class'env, trans'env, counter) -> do
+          putStrLn "Successfully loaded the prelude."
+      
+          -- putStrLn "Class Environment:"
+          -- print class'env
 
-        Right declarations -> do
-          -- TODO: now when I have the list of Declarations in AST form
-          -- I need to call inference
-          -- for the inference I am going to need to build things like class environment and instance environment
-          let class'env = Classes.extract declarations
+          -- putStrLn "All Declarations:"
+          -- putStrLn $ intercalate "\n" $ map show declarations
 
-
-          -- TODO: I need to inclide all bindings in all type classes and instances into the program too
-          -- I need to split binding declarations into - explicitly typed (also includes instance bindings) and implicitly typed
-          -- then I need to do the dependency analysis on those two groups and figure out the order in which I will infer them
-          -- then I "just" do the inference
-          let program :: Program
-              program = to'program declarations
-              m'anns = method'annotations program
-              type'env = Map.union init't'env $ Map.fromList $ map (second close'over) m'anns
-
-
-          let TE.Trans'Env{ TE.kind'context = k'env } = trans'env
-
-          let infer'env :: Infer'Env
-              infer'env = Infer'Env{ kind'env = k'env, type'env = type'env, class'env =  class'env }
-
-          putStrLn "Program:"
-          print program
-
-          -- (Type'Env, [Constraint Kind])
-          case run'infer infer'env (infer'program program) of
-            Left err -> do
-              print err
-            Right (t'env, k'constrs) -> do
-              -- putStrLn "Inference done. ... Maybe ..."
-
-
-              -- putStrLn "Type Environment:"
-              -- print t'env
-
-              -- TODO: I also need to do the Kind inference, probably even before type inference
-              -- figure out the order in which I need to infer the Kinds of `data` and `type` declarations
-              -- for now - I can just infer them together I think
-              -- but later I could implement Kind Polymorphism --> I would need to first top sort them into SCCs
-              putStrLn "Successfully loaded the prelude."
-              
-              -- putStrLn "Class Environment:"
-              -- print class'env
-
-              -- putStrLn "All Declarations:"
-              -- putStrLn $ intercalate "\n" $ map show declarations
-
-              repl (program, infer'env, class'env, trans'env, counter)
+          repl (program, infer'env, class'env, trans'env, counter)
 
 
 parse :: String -> [Term'Decl]
 parse = parse'module
 
 
+load'declarations :: String -> Either Semantic'Error ([Declaration], TE.Translate'Env, Counter)
+load'declarations source = do
+  let term'decls = parse source
+  let (trans'env, counter) = build'trans'env term'decls
 
+  do'semantic'analysis term'decls trans'env
+
+  declarations <- translate term'decls counter trans'env
+
+  return (declarations, trans'env, counter)
+
+
+process'declarations :: [Declaration] -> TE.Translate'Env -> Counter -> Either Error (Program, Infer'Env, Class'Env, TE.Translate'Env, Counter)
+process'declarations declarations trans'env counter = do
+  -- TODO: now when I have the list of Declarations in AST form
+  -- I need to call inference
+  -- for the inference I am going to need to build things like class environment and instance environment
+  let class'env = Classes.extract declarations
+
+
+  -- TODO: I need to inclide all bindings in all type classes and instances into the program too
+  -- I need to split binding declarations into - explicitly typed (also includes instance bindings) and implicitly typed
+  -- then I need to do the dependency analysis on those two groups and figure out the order in which I will infer them
+  -- then I "just" do the inference
+  let program :: Program
+      program = to'program declarations
+      m'anns = method'annotations program
+      type'env = Map.union init't'env $ Map.fromList $ map (second close'over) m'anns
+
+
+  let TE.Trans'Env{ TE.kind'context = k'env } = trans'env
+
+  let infer'env :: Infer'Env
+      infer'env = Infer'Env{ kind'env = k'env, type'env = type'env, class'env =  class'env }
+
+  -- (Type'Env, [Constraint Kind])
+  (t'env, k'constr) <- run'infer infer'env (infer'program program)
+
+
+  -- TODO: I also need to do the Kind inference, probably even before type inference
+  -- figure out the order in which I need to infer the Kinds of `data` and `type` declarations
+  -- for now - I can just infer them together I think
+  -- but later I could implement Kind Polymorphism --> I would need to first top sort them into SCCs
+
+  return (program, infer'env, class'env, trans'env, counter)
