@@ -17,6 +17,7 @@ module Main where
 ; class () => Foo a where
   { foo :: a -> b -> a
   -- ; foo x y = x
+  ; bar :: (a -> b) -> a -> b
   }
 
 -- ; instance (Show a) => Baz ([] a) where
@@ -29,5 +30,7 @@ module Main where
 
 ; expl :: Double
 ; expl = 23
+
+; lambda = \ a b c -> c
 
 }

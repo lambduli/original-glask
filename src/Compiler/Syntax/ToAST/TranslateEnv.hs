@@ -4,13 +4,11 @@ module Compiler.Syntax.ToAST.TranslateEnv where
 import qualified Data.Map.Strict as Map
 
 
-import Compiler.Syntax.Name
-
-import Compiler.Analysis.Syntactic.ConstrEnv
-import Compiler.Analysis.Syntactic.FixityEnv
-import Compiler.Analysis.Syntactic.FieldEnv
-import Compiler.Analysis.Syntactic.SynonymEnv
-import Compiler.Analysis.TypeSystem.InferenceEnv
+import Compiler.Analysis.Syntactic.ConstrEnv ( Constr'Env )
+import Compiler.Analysis.Syntactic.FixityEnv ( Fixity'Env )
+import Compiler.Analysis.Syntactic.FieldEnv ( Field'Env )
+import Compiler.Analysis.Syntactic.SynonymEnv ( Synonym'Env )
+import Compiler.Analysis.TypeSystem.InferenceEnv ( Kind'Env )
 
 
 data Translate'Env = Trans'Env

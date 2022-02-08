@@ -353,6 +353,10 @@ instance To'AST Term'Pat Pattern where
     return P'Wild
 
 
+{-  TODO: I will need to implement instance To'AST [Term'Decl] [Declaration] which is going to be overlapping with the definition below.
+          But I seem to need it to properly implement the merging of binding groups of the same name into a single binding group.
+          It also feels like THIS IS the place where something like that should be implemented. -}
+
 instance To'AST a b => To'AST [a] [b] where
   to'ast as = mapM to'ast as
 
