@@ -43,6 +43,10 @@ executables:
     - -with-rtsopts=-N
     - -Wall
     - -Weverything
+    - -Wno-missing-safe-haskell-mode
+    - -Wno-unsafe
+    - -Wno-safe
+    - -Wno-unused-packages
     dependencies:
     - glask
 
