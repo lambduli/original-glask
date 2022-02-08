@@ -176,9 +176,10 @@ close'over :: Qualified Type -> Scheme
 close'over = normalize . generalize Map.empty
 
 
-{- TODO:  Consider changing the type signature to
-          Scheme -> Infer Scheme
-          because norm'qual'type -}
+{-  TODO: I am not sure why it has to be that involved.
+          It seems to me, that this function should just construct the normalizing substitution.
+          That substitution should then just be applied using a standard and already implemented `apply` method.
+          Is there a reason why such thing would not work?  -}
 normalize :: Scheme -> Scheme
 normalize (For'All vars q't) = For'All (fmap snd ord) (norm'qual'type q't)
   where
@@ -188,12 +189,17 @@ normalize (For'All vars q't) = For'All (fmap snd ord) (norm'qual'type q't)
     -- to take advantage from T'V
 
     norm'qual'type :: Qualified Type -> Qualified Type
-    norm'qual'type (preds :=> ta@(T'App _ _)) = preds :=> norm'type ta
+    norm'qual'type (preds :=> ta@(T'App _ _)) = norm'preds preds :=> norm'type ta
     -- norm'type (TyArr a b) = TyArr (norm'type a) (norm'type b)
-    norm'qual'type qt@(_ :=> (T'Con _)) = qt
-    norm'qual'type (preds :=> tu@(T'Tuple ts)) = preds :=> norm'type tu
-    norm'qual'type (preds :=> tv@(T'Var _)) = preds :=> norm'type tv
-    norm'qual'type _ = error "impossible norm'qual'type"
+    norm'qual'type qt@(_ :=> (T'Con _)) = qt -- the context must be empty
+    norm'qual'type (preds :=> tu@(T'Tuple ts)) = norm'preds preds :=> norm'type tu
+    norm'qual'type (preds :=> tv@(T'Var _)) = norm'preds preds :=> norm'type tv
+
+    norm'preds :: [Predicate] -> [Predicate]
+    norm'preds = map norm'pred
+
+    norm'pred :: Predicate -> Predicate
+    norm'pred (Is'In cl'name type') = Is'In cl'name $ norm'type type'
 
     norm'type :: Type -> Type
     norm'type (T'App a b) = T'App (norm'type a) (norm'type b)
@@ -203,7 +209,6 @@ normalize (For'All vars q't) = For'All (fmap snd ord) (norm'qual'type q't)
       case lookup tv ord of
         Just tvar -> T'Var tvar
         Nothing -> error $ "Type variable " ++ show tv ++ " not in the signature."
-    norm'type _ = error "impossible norm'type"
 
 
 generalize :: Type'Env -> Qualified Type -> Scheme
