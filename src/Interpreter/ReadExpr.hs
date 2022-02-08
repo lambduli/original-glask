@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses  #-}
 
-module REPL.ReadExpr where
+module Interpreter.ReadExpr where
 
 
 import System.IO
@@ -51,15 +51,10 @@ import Compiler.Analysis.TypeSystem.Infer
 
 import Compiler.Analysis.TypeSystem.Solver.Substitution
 import Compiler.Analysis.TypeSystem.Solver.Substitutable
-import Compiler.Analysis.Syntactic.Types
-import qualified Compiler.Analysis.Syntactic.Types as Types
 import Compiler.Syntax.ToAST.TranslateEnv
-import Compiler.Analysis.Syntactic.Types
-import Compiler.Syntax.Term (Term'Expr)
-import Compiler.Syntax (Expression)
 
 
-read'expr :: String -> Translate'Env -> Counter -> Either Semantic'Error Expression
+read'expr :: String -> Translate'Env -> Types.Counter -> Either Semantic'Error Expression
 read'expr input trans'env counter = do
   let term'expr = parse'expr input
 
@@ -99,8 +94,8 @@ read'expr input trans'env counter = do
 
 -- TODO: this function also needs to merge all the binding groups of the same name together
 
-translate :: To'AST a b => a -> Counter -> TE.Translate'Env -> Either Semantic'Error b
-translate a (Counter cntr) trans'env
+translate :: To'AST a b => a -> Types.Counter -> TE.Translate'Env -> Either Semantic'Error b
+translate a (Types.Counter cntr) trans'env
     = run'translate cntr trans'env (to'ast a) -- (to'ast a :: Translate a)
 
 -- translate'to'ast :: [Term'Decl] -> Int -> TE.Translate'Env -> Either Semantic'Error [Declaration]

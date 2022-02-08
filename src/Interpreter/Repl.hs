@@ -1,4 +1,4 @@
-module REPL.Repl where
+module Interpreter.Repl where
 
 
 import System.IO
@@ -12,7 +12,7 @@ import Compiler.Analysis.TypeSystem.Program
 import Compiler.Analysis.TypeSystem.InferenceEnv
 import Compiler.Analysis.TypeSystem.Type.Infer.Expression
 
-import REPL.ReadExpr
+import Interpreter.ReadExpr
 import Compiler.Syntax.ToAST.TranslateEnv
 import Compiler.Analysis.Syntactic.Types
 import Compiler.Analysis.Error
@@ -99,7 +99,7 @@ repl (program, i'env@Infer'Env{ kind'env = k'env, type'env = type'env, class'env
               -- loop
               repl (program, i'env, cl'env, trans'env, counter)
             Right scheme -> do
-              putStrLn $ "         " ++ trim line ++ " :: " ++ show scheme
+              putStrLn $ "          " ++ trim line ++ " :: " ++ show scheme
 
               -- loop
               repl (program, i'env, cl'env, trans'env, counter)
@@ -112,6 +112,7 @@ repl (program, i'env@Infer'Env{ kind'env = k'env, type'env = type'env, class'env
       putStrLn "<expression evaluation is not implemented yet>"
 
 
+-- TODO: move this function into a TypeSystem module (and rename it probably)
 infer :: Expression -> Infer'Env -> Either Error Scheme
 infer expr i'env = do
   -- ([Predicate], Type, [Constraint Type], [Constraint Kind])

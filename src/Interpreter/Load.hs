@@ -1,4 +1,4 @@
-module REPL.Load where
+module Interpreter.Load where
 
 
 import System.IO
@@ -52,9 +52,9 @@ import Compiler.Analysis.TypeSystem.Infer
 import Compiler.Analysis.TypeSystem.Solver.Substitution
 import Compiler.Analysis.TypeSystem.Solver.Substitutable
 
-import REPL.Repl
-import REPL.Analyses
-import REPL.ReadExpr
+import Interpreter.Repl
+import Interpreter.Analyses
+import Interpreter.ReadExpr
 
 
 load :: String -> IO ()
@@ -115,7 +115,6 @@ process'declarations declarations trans'env counter = do
       m'anns = method'annotations program
       type'env = Map.union init't'env $ Map.fromList $ map (second close'over) m'anns
 
-
   let TE.Trans'Env{ TE.kind'context = k'env } = trans'env
 
   let infer'env :: Infer'Env
@@ -130,4 +129,8 @@ process'declarations declarations trans'env counter = do
   -- for now - I can just infer them together I think
   -- but later I could implement Kind Polymorphism --> I would need to first top sort them into SCCs
 
-  return (program, infer'env, class'env, trans'env, counter)
+  -- NOTE:  I need to merge the alread-known with the newly-inferred
+  --        In essence - built-in typing context + method types merging with inferred Implicits + checked Explicits
+  let type'env' = type'env `Map.union` t'env
+
+  return (program, infer'env{ type'env = type'env' }, class'env, trans'env, counter)

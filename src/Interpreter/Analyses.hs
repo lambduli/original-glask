@@ -1,4 +1,4 @@
-module REPL.Analyses where
+module Interpreter.Analyses where
 
 
 import System.IO
