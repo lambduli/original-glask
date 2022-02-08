@@ -525,7 +525,7 @@ instance To'AST Term'Decl Declaration where
     -- so first I need to get the kind context
     kind'context <- asks TE.kind'context
     -- now I keep only those type variables which are not scoped and are therefore seen for the first time
-    let only'actually'free = filter (`Map.member` kind'context) free'variables
+    let only'actually'free = filter (not . (`Map.member` kind'context)) free'variables
     -- those need to be assigned a new and fresh Kind Variable
     fresh'names <- mapM (const fresh) only'actually'free -- fresh name for each one of actually free type variables
     let kinds = map K'Var fresh'names -- fresh kind variable for every fresh name
@@ -579,10 +579,13 @@ instance To'AST Term'Decl Declaration where
     let kinds = map K'Var fresh'names -- fresh kind variable for every fresh name
     let assignments = zip free'variables kinds -- put them together to create a list of kind assignments
 
+    let Just cl'param'kind = lookup var'name assignments -- NOTE: I've just put the var'name into the Set of free type variables, it must be there for me to look it up.
+
     -- NOTE: I don't know if I need to register the variable to translate predicates, but it shouldn't hurt
     preds <- merge'into'k'env assignments (to'ast t'preds)
     decls <- merge'into'k'env assignments (to'ast t'decls)
-    return $ AST.Class cl'name var'name preds decls
+
+    return $ AST.Class cl'name (T'V var'name cl'param'kind) preds decls
 
   to'ast (Term.Instance t'qual'pred t'decls) = do
     {-  NOTE: My current implementation doesn't allow nested/scoped instances

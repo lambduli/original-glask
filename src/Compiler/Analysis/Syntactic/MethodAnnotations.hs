@@ -18,7 +18,8 @@ extract declarations = concat $ mapMaybe collect declarations
           That way it will collect all annotations from within the class declaration list for me.
 -}
 collect :: Declaration -> Maybe [(Name, Qualified Type, Name)]
-collect (Class _ var'name _ declarations)
-  = return $ mapMaybe ((fmap (\ (name, q't) -> (name, q't, var'name))) . Annotations.collect) declarations
+collect (Class cl'name t@(T'V var'name k) _ declarations)
+  -- TODO: I need to qualify the method type with the Predicate stating that the class variable is in the current class
+  = return $ mapMaybe (fmap (\ (name, context :=> type') -> (name, (Is'In cl'name (T'Var t) : context) :=> type', var'name)) . Annotations.collect) declarations
 collect _
   = Nothing
