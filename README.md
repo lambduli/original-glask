@@ -47,7 +47,6 @@
 
 - ## Type Analysis
   - Most of the inference / type analysis is implemented
-  - I still need to implement the inference for the top level stuff I think? - that should be my current priority
   - Write tests
 
 - # Notes on the implementation
@@ -74,8 +73,7 @@
 
 
 # Next Steps:
-- I need to include declarations inside `type classes` and `instances` in the type checking process too
-- I also need to check that they are included in all the important analyses so far
+- I also need to check that they (class declarations and instance declarations) are included in all the important analyses so far
 - Transform the `Term` to the `AST` (I think the Kind Variables in the Types are handled now)
 - Keep adding tests for the Lexer and the Parser
 - Change the Parser State monad to something possibly also based on the ExceptT -> so I can report syntactic and semantic errors better
