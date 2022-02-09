@@ -7,22 +7,23 @@ import Data.List.Extra (trim)
 import Data.Functor.Identity
 import Control.Monad.Except
 
-import Compiler.Analysis.TypeSystem.Infer
-import Compiler.Analysis.TypeSystem.Program
-import Compiler.Analysis.TypeSystem.InferenceEnv
-import Compiler.Analysis.TypeSystem.Type.Infer.Expression
-
 import Interpreter.ReadExpr
 import Compiler.Syntax.ToAST.TranslateEnv
 import Compiler.Analysis.Syntactic.Types
-import Compiler.Analysis.Error
 import Compiler.Syntax
-import Compiler.Analysis.TypeSystem.Solver
-import Compiler.Analysis.TypeSystem.Solver.Substitutable
-import Compiler.Analysis.TypeSystem.Solver.Substitution
-import Compiler.Analysis.TypeSystem.Utils.Class
-import Compiler.Analysis.TypeSystem.Solver.Composable
-import Compiler.Analysis.TypeSystem.Utils.Infer (close'over)
+
+import Compiler.TypeSystem.Infer
+import Compiler.TypeSystem.Program
+import Compiler.TypeSystem.InferenceEnv
+import Compiler.TypeSystem.Type.Infer.Expression
+
+import Compiler.TypeSystem.Error
+import Compiler.TypeSystem.Solver
+import Compiler.TypeSystem.Solver.Substitutable
+import Compiler.TypeSystem.Solver.Substitution
+import Compiler.TypeSystem.Utils.Class
+import Compiler.TypeSystem.Solver.Composable
+import Compiler.TypeSystem.Utils.Infer (close'over)
 
 
 read'cmd'or'expr :: IO String

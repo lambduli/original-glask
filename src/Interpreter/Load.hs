@@ -33,24 +33,25 @@ import Compiler.Syntax.ToAST
 import Compiler.Analysis.Syntactic.FixityEnv
 import Compiler.Analysis.Syntactic.FieldEnv
 import Compiler.Analysis.Syntactic.SynonymEnv
-import Compiler.Analysis.TypeSystem.InferenceEnv
+import Compiler.TypeSystem.InferenceEnv
 import Compiler.Analysis.Syntactic.Types
 
 import Compiler.Syntax.Term
 import Compiler.Syntax
 import Compiler.Syntax.HasKind
 
-import Compiler.Analysis.Error
 import Compiler.Analysis.Semantic.SemanticError
 
-import Compiler.Analysis.TypeSystem.Program
-import Compiler.Analysis.TypeSystem.Type.Infer.Program
-import Compiler.Analysis.TypeSystem.Binding
-import Compiler.Analysis.TypeSystem.Utils.Infer (close'over)
-import Compiler.Analysis.TypeSystem.Infer
+import Compiler.TypeSystem.Error
 
-import Compiler.Analysis.TypeSystem.Solver.Substitution
-import Compiler.Analysis.TypeSystem.Solver.Substitutable
+import Compiler.TypeSystem.Program
+import Compiler.TypeSystem.Type.Infer.Program
+import Compiler.TypeSystem.Binding
+import Compiler.TypeSystem.Utils.Infer (close'over)
+import Compiler.TypeSystem.Infer
+
+import Compiler.TypeSystem.Solver.Substitution
+import Compiler.TypeSystem.Solver.Substitutable
 
 import Interpreter.Repl
 import Interpreter.Analyses

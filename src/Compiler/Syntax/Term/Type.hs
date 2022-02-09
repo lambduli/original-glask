@@ -7,7 +7,7 @@ import qualified Data.Set as Set
 
 import Compiler.Syntax.Term.Identifier
 
-import Compiler.Analysis.TypeSystem.Solver.Substitutable
+import Compiler.TypeSystem.Solver.Substitutable
 
 
 data Term'Type

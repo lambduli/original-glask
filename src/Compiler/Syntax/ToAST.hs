@@ -28,8 +28,8 @@ import Compiler.Syntax.ToAST.ESYA
 import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
 import Compiler.Syntax.ToAST.Utils.Translate
 import Compiler.Analysis.Semantic.SemanticError
-import Compiler.Analysis.TypeSystem.Type.Constants
-import Compiler.Analysis.TypeSystem.Solver.Substitutable
+import Compiler.TypeSystem.Type.Constants
+import Compiler.TypeSystem.Solver.Substitutable
 
 
 class To'AST a b where
