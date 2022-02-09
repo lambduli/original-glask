@@ -114,13 +114,19 @@ instance To'AST Term'Expr Expression where
   --  So - REFACTOR PLS.
   --
   to'ast (Term'E'Labeled'Constr name field'assigns) = do
+    -- first check that the constructor `name` is actually declared
     constr'env <- asks Trans'Env.constructors
     case constr'env Map.!? name of
-      Nothing -> throwError $ Not'In'Scope'Data name
+      Nothing ->
+        throwError $ Not'In'Scope'Data name
+
+      -- so the constructor name belongs to the positional constructor
       Just (Constr _) -> do
-        if null field'assigns -- Constr {}
-        then return $ Const name -- Constr
-        else throwError $ Wrong'Fields name $ map fst field'assigns -- error
+        if null field'assigns -- Constr {} <-- this is awkward but generally allowed
+        then return $ Const name -- Constr <-- I will alow it
+        else throwError $ Wrong'Fields name $ map fst field'assigns -- error <-- trying to invoke a non-record data-constructor as a record one
+
+      -- this is the right shape
       Just Record{ fields = fields } -> do
         {-  I need to go over field'assigns and check that each of them is actual field of the current constructor. -}
         {-  That is - to check that the code is not trying to use any field which is not technically a field of the constructor. -}
@@ -147,12 +153,6 @@ instance To'AST Term'Expr Expression where
                 -- then I can just construct the Application
                 let app = foldl App (Const name) values
                 return app
-
-  -- NOTE: think about qualifying the field names, maybe I could make it so that field names are qualified
-  -- with the type prefix --> so there can be multiple fields in the same module (of the same name)
-  -- and maybe with the help of type classes I can figure out how to have the same field names in the single data type
-  -- like each constructor has a field named `foo` (or not necessarily each)
-  -- that seems like a simple class desurgaring
 
   to'ast (Term'E'Labeled'Update t'expr field'assigns) = do
   {-  First I need to identify which specific Constructor all the fields mentioned in the field'assigns belong to.
@@ -248,18 +248,18 @@ look'for'constr field'assigns t'expr = do
 
           And because it is not allowed to make patterns like: `((Cons head) tail)`
           I don't need to worry about collapsing the Pattern Applications.
-          In this case it would be possible to collapse correctly.
-          But what if the constructor is an operator: `(head :) tail`
-            this might seem like almost understandable, but in Haskell, this doesn't work.
-            Also - with my postfix operators, it may be possible to make it work just fine.
-            But realize that the `:` is probably POST-fix constructor (binary) in this example
-            (otherwise it wouldn't make sense and would not parse)
-            and `head :` means it is partially applied, so it still waits for another argument
-            then the whole expression is applied to another argument - all good right?
-            Except that the POST-fix constructor operator `:` somehow finds itself
-            in the middle, in a very strange position.
-            It should look like this: `head tail :`. Puting the POST-fix `:` anywhere else
-            than at the end is just unreasonable.
+                In this case it would be possible to collapse correctly.
+                But what if the constructor is an operator: `(head :) tail`
+                  this might seem like almost understandable, but in Haskell, this doesn't work.
+                  Also - with my postfix operators, it may be possible to make it work just fine.
+                  But realize that the `:` is probably POST-fix constructor (binary) in this example
+                  (otherwise it wouldn't make sense and would not parse)
+                  and `head :` means it is partially applied, so it still waits for another argument
+                  then the whole expression is applied to another argument - all good right?
+                  Except that the POST-fix constructor operator `:` somehow finds itself
+                  in the middle, in a very strange position.
+                  It should look like this: `head tail :`. Puting the POST-fix `:` anywhere else
+                  than at the end is just unreasonable.
 
         So - when translating Term'P'App I first need to use ESYA to create the correct structure
           then I should always obtain a Term'P'App (because I don't have an Infix App Pattern)
@@ -329,6 +329,8 @@ instance To'AST Term'Pat Pattern where
     --      which will produce a valid Pattern value and it will type check
     error "Not implemented: Pattern Application Term --> AST"
 
+  {-  Example: Constr'Name{ foo = <pattern> } -}
+  --  TODO: Implement after you refactor the record stuff in Expression
   to'ast (Term'P'Labeled name t'fields) = do
     {-  This will be translated into a (P'Con Name [Pattern]).
         For such desugar I need to have a Constructor Analysis information ready.
