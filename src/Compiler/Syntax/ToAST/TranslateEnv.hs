@@ -8,7 +8,8 @@ import Compiler.Analysis.Syntactic.ConstrEnv ( Constr'Env )
 import Compiler.Analysis.Syntactic.FixityEnv ( Fixity'Env )
 import Compiler.Analysis.Syntactic.FieldEnv ( Field'Env )
 import Compiler.Analysis.Syntactic.SynonymEnv ( Synonym'Env )
-import Compiler.Analysis.TypeSystem.InferenceEnv ( Kind'Env )
+
+import Compiler.TypeSystem.InferenceEnv ( Kind'Env )
 
 
 data Translate'Env = Trans'Env

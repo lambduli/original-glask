@@ -1,4 +1,4 @@
-module Interpreter.Repl where
+module Compiler.Interpreter.Repl where
 
 
 import System.IO
@@ -7,7 +7,8 @@ import Data.List.Extra (trim)
 import Data.Functor.Identity
 import Control.Monad.Except
 
-import Interpreter.ReadExpr
+import Compiler.Interpreter.ReadExpr
+
 import Compiler.Syntax.ToAST.TranslateEnv
 import Compiler.Analysis.Syntactic.Types
 import Compiler.Syntax

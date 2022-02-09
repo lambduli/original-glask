@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 58fb9c4f43ec621761bdb7ef47e8ff96ae4536157ad332bffbb578a2766c8767
+-- hash: b999a6d473cb1d1ce7506f6e021adb8c1e35eb1aa0e885f966f93a38cc082541
 
 name:           glask
 version:        0.1.0.0
@@ -27,7 +27,6 @@ source-repository head
 
 library
   exposed-modules:
-      Compiler.Analysis.Error
       Compiler.Analysis.Extract
       Compiler.Analysis.Semantic.Class
       Compiler.Analysis.Semantic.DependencyAnalysis
@@ -46,39 +45,10 @@ library
       Compiler.Analysis.Syntactic.SynonymEnv
       Compiler.Analysis.Syntactic.Synonyms
       Compiler.Analysis.Syntactic.Types
-      Compiler.Analysis.TypeSystem.Ambiguity
-      Compiler.Analysis.TypeSystem.Assumption
-      Compiler.Analysis.TypeSystem.Binding
-      Compiler.Analysis.TypeSystem.BindSection
-      Compiler.Analysis.TypeSystem.Class
-      Compiler.Analysis.TypeSystem.Constraint
-      Compiler.Analysis.TypeSystem.Infer
-      Compiler.Analysis.TypeSystem.InferenceEnv
-      Compiler.Analysis.TypeSystem.InferenceState
-      Compiler.Analysis.TypeSystem.Kind.Infer.Type
-      Compiler.Analysis.TypeSystem.Program
-      Compiler.Analysis.TypeSystem.Solver
-      Compiler.Analysis.TypeSystem.Solver.Bind
-      Compiler.Analysis.TypeSystem.Solver.Composable
-      Compiler.Analysis.TypeSystem.Solver.Inject
-      Compiler.Analysis.TypeSystem.Solver.Occurs
-      Compiler.Analysis.TypeSystem.Solver.Solve
-      Compiler.Analysis.TypeSystem.Solver.Substitutable
-      Compiler.Analysis.TypeSystem.Solver.Substitution
-      Compiler.Analysis.TypeSystem.Solver.Unify
-      Compiler.Analysis.TypeSystem.Type.Constants
-      Compiler.Analysis.TypeSystem.Type.Infer.BindSection
-      Compiler.Analysis.TypeSystem.Type.Infer.Declaration
-      Compiler.Analysis.TypeSystem.Type.Infer.Explicit
-      Compiler.Analysis.TypeSystem.Type.Infer.Expression
-      Compiler.Analysis.TypeSystem.Type.Infer.Implicit
-      Compiler.Analysis.TypeSystem.Type.Infer.Literal
-      Compiler.Analysis.TypeSystem.Type.Infer.Match
-      Compiler.Analysis.TypeSystem.Type.Infer.Method
-      Compiler.Analysis.TypeSystem.Type.Infer.Pattern
-      Compiler.Analysis.TypeSystem.Type.Infer.Program
-      Compiler.Analysis.TypeSystem.Utils.Class
-      Compiler.Analysis.TypeSystem.Utils.Infer
+      Compiler.Interpreter.Analyses
+      Compiler.Interpreter.Load
+      Compiler.Interpreter.ReadExpr
+      Compiler.Interpreter.Repl
       Compiler.Lexer
       Compiler.Lexer.Lexer
       Compiler.Lexer.LexerState
@@ -118,6 +88,40 @@ library
       Compiler.Syntax.ToAST.TranslateState
       Compiler.Syntax.ToAST.Utils.Translate
       Compiler.Syntax.Type
+      Compiler.TypeSystem.Ambiguity
+      Compiler.TypeSystem.Assumption
+      Compiler.TypeSystem.Binding
+      Compiler.TypeSystem.BindSection
+      Compiler.TypeSystem.Class
+      Compiler.TypeSystem.Constraint
+      Compiler.TypeSystem.Error
+      Compiler.TypeSystem.Infer
+      Compiler.TypeSystem.InferenceEnv
+      Compiler.TypeSystem.InferenceState
+      Compiler.TypeSystem.Kind.Infer.Type
+      Compiler.TypeSystem.Program
+      Compiler.TypeSystem.Solver
+      Compiler.TypeSystem.Solver.Bind
+      Compiler.TypeSystem.Solver.Composable
+      Compiler.TypeSystem.Solver.Inject
+      Compiler.TypeSystem.Solver.Occurs
+      Compiler.TypeSystem.Solver.Solve
+      Compiler.TypeSystem.Solver.Substitutable
+      Compiler.TypeSystem.Solver.Substitution
+      Compiler.TypeSystem.Solver.Unify
+      Compiler.TypeSystem.Type.Constants
+      Compiler.TypeSystem.Type.Infer.BindSection
+      Compiler.TypeSystem.Type.Infer.Declaration
+      Compiler.TypeSystem.Type.Infer.Explicit
+      Compiler.TypeSystem.Type.Infer.Expression
+      Compiler.TypeSystem.Type.Infer.Implicit
+      Compiler.TypeSystem.Type.Infer.Literal
+      Compiler.TypeSystem.Type.Infer.Match
+      Compiler.TypeSystem.Type.Infer.Method
+      Compiler.TypeSystem.Type.Infer.Pattern
+      Compiler.TypeSystem.Type.Infer.Program
+      Compiler.TypeSystem.Utils.Class
+      Compiler.TypeSystem.Utils.Infer
       Interpreter.Analyses
       Interpreter.Load
       Interpreter.ReadExpr

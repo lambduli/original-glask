@@ -5,7 +5,7 @@ module Compiler.Syntax.Term.Predicate where
 
 import Compiler.Syntax.Name
 
-import Compiler.Analysis.TypeSystem.Solver.Substitutable
+import Compiler.TypeSystem.Solver.Substitutable
 import Compiler.Syntax.Term.Identifier
 
 import Compiler.Syntax.Term.Type

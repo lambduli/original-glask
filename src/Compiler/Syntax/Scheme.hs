@@ -8,8 +8,8 @@ import Compiler.Syntax.Type
 import Compiler.Syntax.Qualified
 
 
-import Compiler.Analysis.TypeSystem.Solver.Substitutable
-import Compiler.Analysis.TypeSystem.Solver.Substitution
+import Compiler.TypeSystem.Solver.Substitutable
+import Compiler.TypeSystem.Solver.Substitution
 
 
 data Scheme

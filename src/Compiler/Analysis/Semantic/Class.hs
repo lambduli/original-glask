@@ -5,9 +5,9 @@ import Data.Bifunctor
 
 import Compiler.Syntax
 
-import Compiler.Analysis.TypeSystem.Class
-import Compiler.Analysis.TypeSystem.InferenceEnv
-import Compiler.Analysis.TypeSystem.Type.Constants (t'Int, t'Double)
+import Compiler.TypeSystem.Class
+import Compiler.TypeSystem.InferenceEnv
+import Compiler.TypeSystem.Type.Constants (t'Int, t'Double)
 
 
 {- This module builds a Class'Env for the Type Inference
