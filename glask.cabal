@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d75cdfb2191b2a0e20e22d514995820d959479ba0160f688af157f11c173f4ad
+-- hash: b999a6d473cb1d1ce7506f6e021adb8c1e35eb1aa0e885f966f93a38cc082541
 
 name:           glask
 version:        0.1.0.0
@@ -45,6 +45,10 @@ library
       Compiler.Analysis.Syntactic.SynonymEnv
       Compiler.Analysis.Syntactic.Synonyms
       Compiler.Analysis.Syntactic.Types
+      Compiler.Interpreter.Analyses
+      Compiler.Interpreter.Load
+      Compiler.Interpreter.ReadExpr
+      Compiler.Interpreter.Repl
       Compiler.Lexer
       Compiler.Lexer.Lexer
       Compiler.Lexer.LexerState

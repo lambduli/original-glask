@@ -1,4 +1,4 @@
-module Interpreter.Load where
+module Compiler.Interpreter.Load where
 
 
 import System.IO
@@ -7,7 +7,7 @@ import qualified Data.Map.Strict as Map
 import Data.Tuple.Extra
 
 
-import Compiler.Parser.Parser
+import Compiler.Parser.Parser (parse'module)
 
 import Compiler.Syntax.ToAST.Translate
 import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
@@ -47,15 +47,15 @@ import Compiler.TypeSystem.Error
 import Compiler.TypeSystem.Program
 import Compiler.TypeSystem.Type.Infer.Program
 import Compiler.TypeSystem.Binding
-import Compiler.TypeSystem.Utils.Infer
+import Compiler.TypeSystem.Utils.Infer (close'over)
 import Compiler.TypeSystem.Infer
 
 import Compiler.TypeSystem.Solver.Substitution
 import Compiler.TypeSystem.Solver.Substitutable
 
-import Interpreter.Repl
-import Interpreter.Analyses
-import Interpreter.ReadExpr
+import Compiler.Interpreter.Repl
+import Compiler.Interpreter.Analyses
+import Compiler.Interpreter.ReadExpr
 
 
 load :: String -> IO ()
