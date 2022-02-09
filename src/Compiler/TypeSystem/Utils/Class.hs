@@ -35,7 +35,6 @@ instances cl'env name
   = case classes cl'env Map.!? name of
       Just (supers, instances) -> instances
       Nothing -> [] -- NOTE: This is just temporary, I don't know if I can do this, just checking how things work.
-      _ -> error "instances is still a partial function"
 
 
 modify :: Class'Env -> Name -> Class -> Class'Env
