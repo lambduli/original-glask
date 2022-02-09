@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a6282fd3ee33ae9af97502bcd9f763e3e753d299d40b422e59eea4ac467dd526
+-- hash: 58fb9c4f43ec621761bdb7ef47e8ff96ae4536157ad332bffbb578a2766c8767
 
 name:           glask
 version:        0.1.0.0
@@ -19,6 +19,7 @@ license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     src/Compiler/Lexer/Lexer.x
+    src/Compiler/Parser/Parser.y
 
 source-repository head
   type: git

@@ -8,6 +8,7 @@ copyright:           "2021 Taskkill"
 
 extra-source-files:
 - src/Compiler/Lexer/Lexer.x
+- src/Compiler/Parser/Parser.y
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
