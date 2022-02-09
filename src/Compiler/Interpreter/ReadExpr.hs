@@ -9,7 +9,7 @@ import qualified Data.Map.Strict as Map
 import Data.Tuple.Extra
 
 
-import Compiler.Parser.Parser (parse'expr)
+import Compiler.Parser.Parser
 
 import Compiler.Syntax.ToAST.Translate
 import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
@@ -56,7 +56,7 @@ import Compiler.Syntax.ToAST.TranslateEnv
 
 read'expr :: String -> Translate'Env -> Types.Counter -> Either Semantic'Error Expression
 read'expr input trans'env counter = do
-  let term'expr = parse'expr input
+  let term'expr = parse'expr input :: Term'Expr
 
   -- checking kind of analysis
   -- NOTE:  This would normally check that all synonyms are fully applied and their definitions are not cyclic in any way.
@@ -67,18 +67,6 @@ read'expr input trans'env counter = do
 
   -- translating to the AST form
   translate term'expr counter trans'env
-
-  -- let class'env = Classes.extract declarations
-
-  -- let program :: Program
-  --     program = to'program declarations
-  --     m'anns = method'annotations program
-  --     type'env = Map.union init't'env $ Map.fromList $ map (second close'over) m'anns
-
-  -- let TE.Trans'Env{ TE.kind'context = k'env } = trans'env
-
-  -- let infer'env :: Infer'Env
-  --     infer'env = Infer'Env{ kind'env = k'env, type'env = type'env, class'env =  class'env }
 
 
 -- NOTE and TODO:
@@ -153,7 +141,6 @@ to'program decls = Program{ bind'sections = [(explicits, implicits)], methods = 
               scheme = close'over $ apply substitution qualified'type -- now I have the Type Scheme
           in Method scheme bind'group
 
- 
 
     annotations :: Map.Map Name (Qualified Type)
     annotations = Annotations.extract decls

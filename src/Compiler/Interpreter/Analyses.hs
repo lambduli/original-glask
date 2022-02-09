@@ -7,7 +7,7 @@ import qualified Data.Map.Strict as Map
 import Data.Tuple.Extra
 
 
-import Compiler.Parser.Parser (parse'module)
+import Compiler.Parser.Parser
 
 import Compiler.Syntax.ToAST.Translate
 import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
