@@ -63,7 +63,7 @@ instance Show Type where
   show (T'Var (T'V name kind'))
     = name -- ignoring the kind of the type variable
   show (T'Con (T'C name kind'))
-    = "(" ++ name ++ " :: " ++ show kind' ++ ")" -- ignoring the kind of the type constant
+    = name -- ignoring the kind of the type constant
   show (T'Tuple types)
     = "(" ++ intercalate ", " (map show types) ++ ")"
   -- show (TyArr left@(TyArr _ _) res'type)
