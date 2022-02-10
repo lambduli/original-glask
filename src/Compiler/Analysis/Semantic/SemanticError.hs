@@ -20,6 +20,8 @@ data Semantic'Error
   | Synonym'Cycle [(Name, Type)]
   | Many'Errors [Semantic'Error]
 
+  | Internal String
+
 
 
 -- TODO: actually implement proper Show
@@ -41,3 +43,5 @@ instance Show Semantic'Error where
         prnt (name, type') = "  type " ++ name ++ " = " ++ show type'
   show (Many'Errors errs)
     = "Semantic Errors: " ++ intercalate "\n" (map show errs)
+  show (Internal message)
+    = "INTERNAL Semantic Error: " ++ message
