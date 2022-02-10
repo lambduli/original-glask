@@ -50,6 +50,9 @@ infer'expr (App left right) = do
   fresh'name <- fresh
   let t'var = T'Var (T'V fresh'name K'Star)
   return (preds'l ++ preds'r, t'var, cs'l ++ cs'r ++ [t'l `Unify` (t'r `type'fn` t'var)], k'cs'l ++ k'cs'r)
+  -- TODO:  Instead of directly calling `Unify` I should write a helper function returning (Constraint Type, Constraint Kind)
+  --        That function would take two types and create the Type Constraint as usual
+  --        but it will also produce a Kind constraint enforcing that Kinds of those two Types must unify too.
 
 -- TODO: check if it's really valid
 infer'expr (Infix'App left op right) = do
@@ -71,7 +74,7 @@ infer'expr (Infix'App left op right) = do
 
   return  (preds'l ++ preds'op ++ preds'r
           , t'res
-          , (t'whole `Unify` t'op) : t'cs'l ++ t'cs'op ++ t'cs'r
+          , (t'whole `Unify` t'op) : t'cs'l ++ t'cs'op ++ t'cs'r -- TODO: replace `Unify` with the new function
           , k'cs'l ++ k'cs'op ++ k'cs'r)
 
 -- TODO: check if it's really valid
@@ -88,7 +91,7 @@ infer'expr (If condition then' else') = do
   (preds'cond, t1, c1, k'c1) <- infer'expr condition
   (preds'tr, t2, c2, k'c2) <- infer'expr then'
   (preds'fl, t3, c3, k'c3) <- infer'expr else'
-  return (preds'cond ++ preds'tr ++ preds'fl, t2, (t1 `Unify` t'Bool) : (t2 `Unify` t3) : c1 ++ c2 ++ c3, k'c1 ++ k'c2 ++ k'c3)
+  return (preds'cond ++ preds'tr ++ preds'fl, t2, (t1 `Unify` t'Bool) : (t2 `Unify` t3) : c1 ++ c2 ++ c3, k'c1 ++ k'c2 ++ k'c3) -- TODO: replace `Unify` with the new function
 
 infer'expr (Let decls body) = do
   -- I will need to do some dependency analysis to split the declarations into groups
@@ -238,7 +241,7 @@ infer'expr (Case expr matches) = do
   -- That same thing must be a type of the expr.
   -- So instead - I must take the list of list of types (but in this case it's a list of singletons)
   -- and map that to [Constraint Type] by - for each singleton - unifying that singleton element with a type'expr.
-  let t'cs'patterns = [ type'expr `Unify` type'patt | ([type'patt], _, _, _, _, _) <- results ]
+  let t'cs'patterns = [ type'expr `Unify` type'patt | ([type'patt], _, _, _, _, _) <- results ] -- TODO: replace `Unify` with the new function
 
   -- Then I need to take a list of types (types of the right hand sides) and map that to the list of
   -- (Constraint Type) by unifying them all with a new fresh variable.
@@ -247,7 +250,7 @@ infer'expr (Case expr matches) = do
   fresh'name <- fresh
   let t'var = T'Var (T'V fresh'name K'Star)
   {- Now assert that Types of all Right Hand Sides are the same thing. -}
-  let t'cs'rhs's = [ t'var `Unify` type'rhs | (_, type'rhs, _, _, _, _) <- results ]
+  let t'cs'rhs's = [ t'var `Unify` type'rhs | (_, type'rhs, _, _, _, _) <- results ] -- TODO: replace `Unify` with the new function
 
   -- Now I need to concatenate all the Predicates coming both from Pattern and Right Hand Side.
   {- I think I can mix them together, because from the standpoint of the whole expression - it doesn't

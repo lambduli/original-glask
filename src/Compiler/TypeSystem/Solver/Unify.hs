@@ -35,9 +35,9 @@ class Unify a k x where
   match :: a -> a -> Solve (Subst k x) -- only one-way-going unification
 
 
--- TODO: try to find a way to get rid of (the need for) this class and method
-class Unify'Many k a b where
-  unify'many :: a b -> a b -> Solve (Subst k b)
+-- -- TODO: try to find a way to get rid of (the need for) this class and method
+-- class Unify'Many k a b where
+--   unify'many :: a b -> a b -> Solve (Subst k b)
 
 
 {-               a   k   x       -}
@@ -53,7 +53,7 @@ instance Unify Type T'V Type where
   -- TODO: use the k's to make sure we are unifying only Type Variable of specific Kind with the Type of the same Kind
 
   unify (T'App t1 t2) (T'App t3 t4)
-    = [t1, t2] `unify'many` [t3, t4]
+    = [t1, t2] `unify` [t3, t4]
 
   unify l@(T'Con t'con'l) r@(T'Con t'con'r)
     | t'con'l == t'con'r = return empty'subst
@@ -63,7 +63,7 @@ instance Unify Type T'V Type where
   unify (T'Tuple ts'left) (T'Tuple ts'right)
     = if length ts'left /= length ts'right
       then throwError $ Type'Shape'Mismatch (T'Tuple ts'left) (T'Tuple ts'right)
-      else ts'left `unify'many` ts'right
+      else ts'left `unify` ts'right
 
   unify t1 t2
     = throwError $ Type'Shape'Mismatch t1 t2
@@ -71,8 +71,12 @@ instance Unify Type T'V Type where
   match t1 t2 | t1 == t2
     = return empty'subst
 
-  match (T'Var var) t | kind var == kind t
-    = var `bind` t
+  match (T'Var var) t
+    = throwError $ Unexpected "I wanted this to break. Find me and let the comments and notes guide you." -- I want it to explode when this case is triggered
+
+  -- match (T'Var var) t | kind var == kind t -- I don't think I can actually do that
+  --   = var `bind` t
+    -- I think, they sometimes might not be the same Kind Variable
 
   match (T'App l r) (T'App l' r') = do
     sub'l <- l `match` l'
@@ -81,6 +85,8 @@ instance Unify Type T'V Type where
 
   match (T'Con con'l) (T'Con con'r) | con'l == con'r
     = return empty'subst
+
+  -- TODO: there's T'Tuple missing - I guess I expected I will make it into a user-defined Type so probably not need to handle it here then...
 
   match t1 t2
     = throwError $ Type'Shape'Mismatch t1 t2
@@ -98,7 +104,7 @@ instance Unify Kind String Kind where
     = v `bind` k
 
   unify (K'Arr k1 k2) (K'Arr k3 k4)
-    = [k1, k2] `unify'many` [k3, k4]
+    = [k1, k2] `unify` [k3, k4]
 
   unify K'Star K'Star
     = return empty'subst
@@ -123,30 +129,63 @@ instance Unify Kind String Kind where
     = throwError $ Kind'Shape'Mismatch k1 k2
 
 
-instance Unify'Many T'V [] Type where
-  unify'many [] []
+instance Unify [Type] T'V Type where
+  unify [] []
     = return empty'subst
 
-  unify'many (t'l : ts'l) (t'r : ts'r) = do
+  unify (t'l : ts'l) (t'r : ts'r) = do
     su1 <- t'l `unify` t'r
-    su2 <- apply su1 ts'l `unify'many` apply su1 ts'r
+    su2 <- apply su1 ts'l `unify` apply su1 ts'r
     return (su2 `compose` su1)
 
-  unify'many t'l t'r
+  unify t'l t'r
     = throwError $ Type'Unif'Count'Mismatch t'l t'r
 
+  
+  match = undefined -- TODO: I guess fix later.
 
-instance Unify'Many String [] Kind where
-  unify'many [] []
+
+-- instance Unify'Many T'V [] Type where
+--   unify'many [] []
+--     = return empty'subst
+
+--   unify'many (t'l : ts'l) (t'r : ts'r) = do
+--     su1 <- t'l `unify` t'r
+--     su2 <- apply su1 ts'l `unify'many` apply su1 ts'r
+--     return (su2 `compose` su1)
+
+--   unify'many t'l t'r
+--     = throwError $ Type'Unif'Count'Mismatch t'l t'r
+
+
+
+instance Unify [Kind] String Kind where
+  unify [] []
     = return empty'subst
   
-  unify'many (t'l : ts'l) (t'r : ts'r) = do
+  unify (t'l : ts'l) (t'r : ts'r) = do
     su1 <- t'l `unify` t'r
-    su2 <- apply su1 ts'l `unify'many` apply su1 ts'r
+    su2 <- apply su1 ts'l `unify` apply su1 ts'r
     return (su2 `compose` su1)
   
-  unify'many t'l t'r
+  unify t'l t'r
     = throwError $ Kind'Unif'Count'Mismatch t'l t'r
+
+
+  match = undefined -- TODO: fix later
+
+
+-- instance Unify'Many String [] Kind where
+--   unify'many [] []
+--     = return empty'subst
+  
+--   unify'many (t'l : ts'l) (t'r : ts'r) = do
+--     su1 <- t'l `unify` t'r
+--     su2 <- apply su1 ts'l `unify'many` apply su1 ts'r
+--     return (su2 `compose` su1)
+  
+--   unify'many t'l t'r
+--     = throwError $ Kind'Unif'Count'Mismatch t'l t'r
 
 
 instance Unify Predicate T'V Type where
