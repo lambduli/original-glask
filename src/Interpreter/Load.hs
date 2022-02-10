@@ -7,7 +7,7 @@ import qualified Data.Map.Strict as Map
 import Data.Tuple.Extra
 
 
-import Compiler.Parser.Parser
+import Compiler.Parser (parse'module)
 
 import Compiler.Syntax.ToAST.Translate
 import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
@@ -27,6 +27,7 @@ import qualified Compiler.Analysis.Syntactic.Bindings as Bindings
 
 import qualified Compiler.Analysis.Semantic.DependencyAnalysis as Dependencies
 import qualified Compiler.Analysis.Semantic.Class as Classes
+import qualified Compiler.Analysis.Semantic.Data as Data
 
 import Compiler.Syntax.ToAST
 
@@ -83,13 +84,9 @@ load file'name = do
           repl (program, infer'env, class'env, trans'env, counter)
 
 
-parse :: String -> [Term'Decl]
-parse = parse'module
-
-
 load'declarations :: String -> Either Semantic'Error ([Declaration], TE.Translate'Env, Counter)
 load'declarations source = do
-  let term'decls = parse source
+  let term'decls = parse'module source
   let (trans'env, counter) = build'trans'env term'decls
 
   do'semantic'analysis term'decls trans'env
@@ -107,6 +104,10 @@ process'declarations declarations trans'env counter = do
   let class'env = Classes.extract declarations
 
 
+  -- TODO: I need to extract `Type Assumptions` about all data constructors in the list of Declarations
+  let constr'assumptions = Data.extract declarations
+
+
   -- TODO: I need to inclide all bindings in all type classes and instances into the program too
   -- I need to split binding declarations into - explicitly typed (also includes instance bindings) and implicitly typed
   -- then I need to do the dependency analysis on those two groups and figure out the order in which I will infer them
@@ -114,7 +115,7 @@ process'declarations declarations trans'env counter = do
   let program :: Program
       program = to'program declarations
       m'anns = method'annotations program
-      type'env = Map.union init't'env $ Map.fromList $ map (second close'over) m'anns
+      type'env = Map.union init't'env $ Map.union (Map.fromList constr'assumptions) $ Map.fromList $ map (second close'over) m'anns
 
   let TE.Trans'Env{ TE.kind'context = k'env } = trans'env
 
