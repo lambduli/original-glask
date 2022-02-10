@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b999a6d473cb1d1ce7506f6e021adb8c1e35eb1aa0e885f966f93a38cc082541
+-- hash: 7f477eddead384b4869e0892f89b85b11f7e508f8e9583550f9662b1fe9cada0
 
 name:           glask
 version:        0.1.0.0
@@ -29,6 +29,7 @@ library
   exposed-modules:
       Compiler.Analysis.Extract
       Compiler.Analysis.Semantic.Class
+      Compiler.Analysis.Semantic.Data
       Compiler.Analysis.Semantic.DependencyAnalysis
       Compiler.Analysis.Semantic.SemanticError
       Compiler.Analysis.Semantic.Synonym.Cycles
@@ -45,10 +46,6 @@ library
       Compiler.Analysis.Syntactic.SynonymEnv
       Compiler.Analysis.Syntactic.Synonyms
       Compiler.Analysis.Syntactic.Types
-      Compiler.Interpreter.Analyses
-      Compiler.Interpreter.Load
-      Compiler.Interpreter.ReadExpr
-      Compiler.Interpreter.Repl
       Compiler.Lexer
       Compiler.Lexer.Lexer
       Compiler.Lexer.LexerState
@@ -56,6 +53,7 @@ library
       Compiler.Lexer.Position
       Compiler.Lexer.Token
       Compiler.Lexer.Utils
+      Compiler.Parser
       Compiler.Parser.Parser
       Compiler.Parser.Utils
       Compiler.Syntax
