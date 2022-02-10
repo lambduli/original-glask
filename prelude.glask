@@ -11,6 +11,10 @@ module Main where
 ; instance Fractional Double
 
 
+; data Maybe a = Nothing | Just a
+
+; data Record a = Rec { a :: Int, b :: Maybe a }
+
 
 -- ; class Bar b
 
@@ -32,5 +36,13 @@ module Main where
 ; expl = 23
 
 ; lambda = \ a b c -> c
+
+
+; require :: Num a => a -> a
+; require = \ x -> x
+
+; ok = require 23
+
+-- ; not'ok = require 'a'
 
 }
