@@ -45,14 +45,12 @@ infer'expr (Abs pattern'param body) = do
 
 -- TODO: check if it's really valid
 infer'expr (App left right) = do
-  (preds'l, t'l, cs'l, k'cs'l) <- infer'expr left
-  (preds'r, t'r, cs'r, k'cs'r) <- infer'expr right
+  (preds'l, t'l, t'cs'l, k'cs'l) <- infer'expr left
+  (preds'r, t'r, t'cs'r, k'cs'r) <- infer'expr right
   fresh'name <- fresh
   let t'var = T'Var (T'V fresh'name K'Star)
-  return (preds'l ++ preds'r, t'var, cs'l ++ cs'r ++ [t'l `Unify` (t'r `type'fn` t'var)], k'cs'l ++ k'cs'r)
-  -- TODO:  Instead of directly calling `Unify` I should write a helper function returning (Constraint Type, Constraint Kind)
-  --        That function would take two types and create the Type Constraint as usual
-  --        but it will also produce a Kind constraint enforcing that Kinds of those two Types must unify too.
+  let (t'c, k'c) = t'l `unify'types` (t'r `type'fn` t'var)
+  return (preds'l ++ preds'r, t'var, t'c : t'cs'l ++ t'cs'r, k'c : k'cs'l ++ k'cs'r)
 
 -- TODO: check if it's really valid
 infer'expr (Infix'App left op right) = do
@@ -72,10 +70,12 @@ infer'expr (Infix'App left op right) = do
 
   let t'whole = t'l `type'fn` (t'r `type'fn` t'res)
 
+  let (t'c, k'c) = t'whole `unify'types` t'op
+
   return  (preds'l ++ preds'op ++ preds'r
           , t'res
-          , (t'whole `Unify` t'op) : t'cs'l ++ t'cs'op ++ t'cs'r -- TODO: replace `Unify` with the new function
-          , k'cs'l ++ k'cs'op ++ k'cs'r)
+          , t'c : t'cs'l ++ t'cs'op ++ t'cs'r
+          , k'c : k'cs'l ++ k'cs'op ++ k'cs'r)
 
 -- TODO: check if it's really valid
 infer'expr (Tuple exprs) = do
@@ -88,10 +88,15 @@ infer'expr (Tuple exprs) = do
 
 -- TODO: check if it's really valid
 infer'expr (If condition then' else') = do
-  (preds'cond, t1, c1, k'c1) <- infer'expr condition
-  (preds'tr, t2, c2, k'c2) <- infer'expr then'
-  (preds'fl, t3, c3, k'c3) <- infer'expr else'
-  return (preds'cond ++ preds'tr ++ preds'fl, t2, (t1 `Unify` t'Bool) : (t2 `Unify` t3) : c1 ++ c2 ++ c3, k'c1 ++ k'c2 ++ k'c3) -- TODO: replace `Unify` with the new function
+  (preds'cond, t1, t'c1, k'c1) <- infer'expr condition
+  (preds'tr, t2, t'c2, k'c2) <- infer'expr then'
+  (preds'fl, t3, t'c3, k'c3) <- infer'expr else'
+  let (t'c, k'c) = t1 `unify'types` t'Bool
+  let (t'b, k'b) = t2 `unify'types` t3
+  return  (preds'cond ++ preds'tr ++ preds'fl
+          , t2
+          , t'c : t'b : t'c1 ++ t'c2 ++ t'c3
+          , k'c : k'b : k'c1 ++ k'c2 ++ k'c3)
 
 infer'expr (Let decls body) = do
   -- I will need to do some dependency analysis to split the declarations into groups
@@ -241,7 +246,8 @@ infer'expr (Case expr matches) = do
   -- That same thing must be a type of the expr.
   -- So instead - I must take the list of list of types (but in this case it's a list of singletons)
   -- and map that to [Constraint Type] by - for each singleton - unifying that singleton element with a type'expr.
-  let t'cs'patterns = [ type'expr `Unify` type'patt | ([type'patt], _, _, _, _, _) <- results ] -- TODO: replace `Unify` with the new function
+  let (t'cs'patterns, k'cs'patterns) = unzip [ type'expr `unify'types` type'patt | ([type'patt], _, _, _, _, _) <- results ]
+
 
   -- Then I need to take a list of types (types of the right hand sides) and map that to the list of
   -- (Constraint Type) by unifying them all with a new fresh variable.
@@ -250,7 +256,7 @@ infer'expr (Case expr matches) = do
   fresh'name <- fresh
   let t'var = T'Var (T'V fresh'name K'Star)
   {- Now assert that Types of all Right Hand Sides are the same thing. -}
-  let t'cs'rhs's = [ t'var `Unify` type'rhs | (_, type'rhs, _, _, _, _) <- results ] -- TODO: replace `Unify` with the new function
+  let (t'cs'rhs's, k'cs'rhs's) = unzip [ t'var `unify'types` type'rhs | (_, type'rhs, _, _, _, _) <- results ]
 
   -- Now I need to concatenate all the Predicates coming both from Pattern and Right Hand Side.
   {- I think I can mix them together, because from the standpoint of the whole expression - it doesn't
@@ -265,7 +271,10 @@ infer'expr (Case expr matches) = do
                     : t'cs'rhs's
                     : t'cs'expr
                     : [ t'cs'patts | (_, _, _, _, t'cs'patts, _) <- results ]
-  let k'cs = concat $ k'cs'expr : [ k'cs'patts | (_, _, _, _, _, k'cs'patts) <- results ]
+  let k'cs = concat $ k'cs'expr
+                    : k'cs'patterns
+                    : k'cs'rhs's
+                    : [ k'cs'patts | (_, _, _, _, _, k'cs'patts) <- results ]
   
   -- Now I have taken care of all the memebers of each tuple.
   return (preds, t'var, t'cs, k'cs)

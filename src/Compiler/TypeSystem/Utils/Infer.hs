@@ -22,6 +22,7 @@ import Compiler.TypeSystem.Solver.Solve
 import Compiler.TypeSystem.Solver.Substitution
 import Compiler.TypeSystem.Solver.Substitutable
 import Compiler.TypeSystem.Utils.Class
+import Compiler.TypeSystem.Constraint
 
 
 -- NOTE: temporarily I will put it here
@@ -217,6 +218,10 @@ generalize env qual'type
       vars = Set.toList $ fvt `Set.difference` fve
 
 
+
+
+{-  Utilities for working with Type Contexts  -}
+
 {-                   fixed     gs        preds 
 fixed - variables which APPEAR in the typing context (we shouldn't quantify over those, I think)
 gs - set of variables we would like to quantify over
@@ -248,3 +253,12 @@ default'subst :: Class'Env -> [T'V] -> [Predicate] -> Solve (Subst T'V Type)
 default'subst cl'env vars preds = do
   pairs <- with'defaults (zip . map fst) cl'env vars preds
   return $ Sub $ Map.fromList pairs
+
+
+
+
+{-  Utilities for generating Unification Constraints  -}
+
+infix 4 `unify'types`
+unify'types :: Type -> Type -> (Constraint Type, Constraint Kind)
+a `unify'types` b = (a `Unify` b, kind a `Unify` kind b)
