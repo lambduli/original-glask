@@ -22,7 +22,7 @@ data Declaration
   -- I think this one actually might not be that usefull
   -- I can use combination of Signature and Binding
   | Signature Signature -- Name (Qualified Type)           -- id :: a -> a
-  | Data'Decl Name [Name] [Constr'Decl]       -- Data type declaration -- name type'params list'of'consturctors'with'params
+  | Data'Decl T'C [T'V] [Constr'Decl]         -- Data type declaration -- name type'params list'of'consturctors'with'params
   | Type'Alias Name [Name] Type               -- type String = List Char
   | Fixity Fixity Int Name                    -- infix 5 +
   | Class Name T'V [Predicate] [Declaration] -- class (Super1 a, ... , SuperN a) ==> Name a where { list of Signatures }
@@ -42,8 +42,8 @@ instance Show Declaration where
     -- = name ++ " :: " ++ show type' ++ "\n" ++ name ++ " = " ++ show expr
   show (Signature (T'Signature name qual'type))
     = name ++ " :: " ++ show qual'type
-  show (Data'Decl name params constrs)
-    = "data " ++ name ++ " " ++ unwords params ++ " = " ++ intercalate " | " (map show constrs)
+  show (Data'Decl (T'C name k) params constrs)
+    = "data " ++ name ++ " " ++ unwords (map (\ (T'V n k) -> n) params) ++ " = " ++ intercalate " | " (map show constrs)
   show (Type'Alias name params type')
     = "type " ++ name ++ " = " ++ show type'
   show (Fixity fix prec name)

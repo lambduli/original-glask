@@ -395,19 +395,20 @@ instance To'AST a b => To'AST (Name, a) (Name, b) where
    -}
 instance To'AST Term'Type Type where
   to'ast (Term'T'Id (Term'Id'Var var)) = do
-    typing'context <- asks TE.kind'context
+    kinding'context <- asks TE.kind'context
     -- NOTE: even though this type variable should always be in the context
     --        I might make a mistake in the implementation -> better be safe.
-    case typing'context Map.!? var of
-      Nothing -> error "Unexpected behaviour: While assigning a Kind to a type variable, I have approached a type variable which is not in the typing context."
+    
+    case kinding'context Map.!? var of
+      Nothing -> throwError $ Internal "Unexpected behaviour: While assigning a Kind to a type variable, I have approached a type variable which is not in the kind context."
       Just kind -> return $ T'Var $ T'V var kind
 
   to'ast (Term'T'Id (Term'Id'Const con)) =  do
-    typing'context <- asks TE.kind'context
+    kinding'context <- asks TE.kind'context
     -- NOTE: even though this type constant should always be in the context
     --        I might make a mistake in the implementation -> better be safe.
-    case typing'context Map.!? con of
-      Nothing -> error "Unexpected behaviour: While assigning a Kind to a type constant, I have approached a type constant which is not in the typing context."
+    case kinding'context Map.!? con of
+      Nothing -> throwError $ Internal "Unexpected behaviour: While assigning a Kind to a type constant, I have approached a type constant which is not in the kind context."
       Just kind -> return $ T'Con $ T'C con kind
 
   to'ast (Term'T'Tuple t'types) = do
@@ -539,6 +540,16 @@ instance To'AST Term'Decl Declaration where
     return $ AST.Signature $ AST.T'Signature name qual'type
 
   to'ast (Term.Data'Decl name params t'constr'decls) = do
+    -- NOTE: Start by getting the Kind of this Type Constructor
+    k'ctxt <- asks TE.kind'context
+    -- NOTE: even though this type variable should always be in the context
+    --        I might make a mistake in the implementation -> better be safe.
+    k <- case k'ctxt Map.!? name of
+      Nothing ->
+        throwError $ Internal "Unexpected behaviour: While translating a Data declaration I have approached a type constructor which is not in the kind context."
+      Just kind ->
+        return kind
+
     {-  `params` are type variable names which need to be assigned a fresh kind variable each -}
     fresh'names <- mapM (const fresh) params
     let kinds = map K'Var fresh'names
@@ -546,7 +557,9 @@ instance To'AST Term'Decl Declaration where
 
     constr'decls <- merge'into'k'env assignments (to'ast t'constr'decls)
 
-    return $ AST.Data'Decl name params constr'decls
+    let k'params = map (uncurry T'V) assignments
+
+    return $ AST.Data'Decl (T'C name k) k'params constr'decls
 
   to'ast (Term.Type'Alias name params t'type) = do
     {-  `params` are type variable names which need to be assigned a fresh kind variable each -}
