@@ -628,7 +628,6 @@ instance To'AST Term'Decl Declaration where
   to'ast (Term.Fixity fixity level name) = do
     return $ AST.Fixity fixity level name
 
-  -- TODO: fix the bug
   to'ast (Term.Class cl'name var'name t'preds t'decls) = do
     {-  NOTE: My current implementation doesn't allow nested/scoped classes
               That means, that I don't need to worry about scoped type variables.
@@ -713,7 +712,6 @@ put'in'k'env (var'name, kind) m = do
 merge'into'k'env :: [(String, Kind)] -> Translate a -> Translate a
 merge'into'k'env bindings m = do
   let scope e@Trans'Env.Trans'Env{ Trans'Env.kind'context = k'ctx } = e{ Trans'Env.kind'context = Map.fromList bindings `Map.union` k'ctx}
-    -- (k'env, Map.fromList bindings `Map.union` t'env, ali'env)
   local scope m
 
 
