@@ -61,12 +61,12 @@ import Interpreter.Expression
 import Interpreter.Program
 
 
-load :: String -> IO ()
-load file'name = do
+load :: String -> Counter -> IO ()
+load file'name counter = do
   handle <- openFile file'name ReadMode
   contents <- hGetContents handle
 
-  case load'declarations contents of
+  case load'declarations contents counter of
     Left sem'err -> do
       putStrLn $ "Semantic Error: " ++ show sem'err
 
@@ -111,13 +111,10 @@ load file'name = do
           repl (program, infer'env, class'env, trans'env{ kind'context = k'e `Map.union` (kind'context trans'env)}, counter)
 
 
-load'declarations :: String -> Either Semantic'Error ([Declaration], TE.Translate'Env, Counter)
-load'declarations source = do
+load'declarations :: String -> Counter -> Either Semantic'Error ([Declaration], TE.Translate'Env, Counter)
+load'declarations source counter = do
   let term'decls = parse'module source
-  let (trans'env, counter) = build'trans'env term'decls -- TODO: FIX COUNTER - tady je fakt potreba aby cela funkce `load'declarations` brala uz nejakej init counter
-  -- protoze neni pripustny, aby si ho nejaka uplne zanorena funkce build'trans'env vyrobila jen tak z niceho, - neni to nejhorsi vec na svete
-  -- ale pokud bych tuhle funkci chtel re-usnout pro nacitani dalsich modulu v momente kdy uz jsem nacetl prelude
-  -- tak tohle by zase delalo problemy a mohl bych se u toho zase zapotit na nekolik hodin
+  let (trans'env, counter') = build'trans'env term'decls counter
 
   do'semantic'analysis term'decls trans'env
 

@@ -55,8 +55,8 @@ import Compiler.TypeSystem.Solver.Substitutable
 
 -- NOTE: ragarding the Int part of the result -- follow the trail of it (out of this function) and read the comments if you don't know why it's there
 --        In the README there's a comment/idea regarding a more proper implementation.
-build'trans'env :: [Term'Decl] -> (TE.Translate'Env, Translate'State)
-build'trans'env declarations = do
+build'trans'env :: [Term'Decl] -> Translate'State -> (TE.Translate'Env, Translate'State)
+build'trans'env declarations tr'state = do
   -- TODO: now I need to run all the analyses, use them to translate to ast
   -- build the environment for the to'ast translation
   -- also to initialize the translation with some initial state, which should be already prepared somewhere
@@ -68,8 +68,7 @@ build'trans'env declarations = do
 
 
   let user'kind'context :: Kind'Env
-      (user'kind'context, counter) = Types.extract declarations
-  -- TODO: now the `count` should be used to initialize the counter in the Translate'State
+      (user'kind'context, tr'state') = Types.extract declarations tr'state
 
   let kind'context :: Kind'Env
       kind'context = init'k'env `Map.union` user'kind'context
@@ -89,7 +88,7 @@ build'trans'env declarations = do
   let synonyms :: Synonym'Env
       synonyms = Synonyms.extract declarations
 
-  (TE.Trans'Env{ TE.fixities = fixities, TE.constructors = constructors, TE.fields = fields, TE.kind'context = kind'context, TE.synonyms = synonyms }, counter)
+  (TE.Trans'Env{ TE.fixities = fixities, TE.constructors = constructors, TE.fields = fields, TE.kind'context = kind'context, TE.synonyms = synonyms }, tr'state')
 
 
 -- TODO: implement checking that every declaration which needs to be unique is in fact unique

@@ -49,8 +49,8 @@ fresh = do
 
 {-  TODO: Implement the Extract type class for [a], Term'Decl and for Term'Expr.
           I think each time it's going to accept a tuple containing the Counter too.  -}
-extract :: [Term'Decl] -> (Map.Map Name Kind, Counter)
-extract t'decls = runState (Map.fromList <$> mapMaybeM collect t'decls) Counter{ counter = 1 }
+extract :: [Term'Decl] -> Counter -> (Map.Map Name Kind, Counter)
+extract t'decls counter = runState (Map.fromList <$> mapMaybeM collect t'decls) counter
 -- TODO: FIX COUNTER - mel bych to brat jako argument zvenku a ne si ho sam nastavit na jednicku
 
 
