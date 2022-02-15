@@ -18,3 +18,4 @@ data Translate'Env = Trans'Env
   , fields :: Field'Env
   , kind'context :: Kind'Env
   , synonyms :: Synonym'Env }
+  deriving (Show)

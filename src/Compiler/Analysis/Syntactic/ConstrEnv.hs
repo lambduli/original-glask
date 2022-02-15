@@ -25,3 +25,4 @@ type Constr'Env = Map.Map Name Constr'Info
 data Constr'Info
   = Constr Name
   | Record { name :: Name, fields :: [Name] }
+  deriving (Show)
