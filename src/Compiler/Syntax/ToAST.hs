@@ -13,6 +13,8 @@ import Control.Monad.Except
 import Control.Monad.State
 
 
+import Compiler.Counter (fresh)
+
 import Compiler.Syntax.Term
 import qualified Compiler.Syntax.Term as Term
 import Compiler.Syntax.Term.Expression
@@ -26,7 +28,6 @@ import Compiler.Analysis.Syntactic.ConstrEnv
 import qualified Compiler.Analysis.Syntactic.ConstrEnv as CE
 import Compiler.Syntax.ToAST.ESYA
 import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
-import Compiler.Syntax.ToAST.Utils.Translate
 import Compiler.Analysis.Semantic.SemanticError
 import Compiler.TypeSystem.Type.Constants
 import Compiler.TypeSystem.Solver.Substitutable

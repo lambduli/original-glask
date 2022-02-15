@@ -11,7 +11,7 @@ import Control.Monad.Reader
 import Control.Monad.Except
 
 
-import Compiler.Counter ( Counter(Counter, counter) )
+import Compiler.Counter ( Counter(Counter, counter), fresh, real'fresh, letters )
 
 import Compiler.Syntax
 
@@ -48,33 +48,6 @@ to'scheme t = For'All [] ([] :=> t)
 {- Qualifies the Type with no Predicates -}
 qualify :: Type -> Qualified Type
 qualify t = [] :=> t
-
-
-
--- TODO: Would it be possible to move this thing somewhere up the structure, so that it can be used by multiple modules?
---        I have the same thing for `Translate a`
-letters :: [String]
-letters = [1..] >>= flip replicateM ['a'..'z']
-
-
-fresh :: Infer String
-fresh = do
-  Counter{ counter = counter } <- get
-  put $ Counter{ counter = counter + 1 }
-  return (letters !! counter)
-
-
--- TODO: I think it would be best to somehow figure these two out.
---        It seems like the `real'fresh` really does what is needed (fresh even when there are some already),
---        but right now, the fact that both exist, feels awkward.
-real'fresh :: [String] -> a -> Infer String
-real'fresh vars var = do
-  Counter{ counter = counter } <- get
-  put $ Counter{ counter = counter + 1 }
-  let name = letters !! counter
-  if name `elem` vars
-    then real'fresh vars var
-    else return name
 
 
 -- TODO: Either remove both `extend` and `remove` or move them into some shared Utils module

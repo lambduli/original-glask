@@ -70,7 +70,7 @@ load file'name counter = do
     Left sem'err -> do
       putStrLn $ "Semantic Error: " ++ show sem'err
 
-    Right (decls, trans'env, counter) -> do
+    Right (decls, trans'env, counter') -> do
       -- putStrLn $ "..................     Prave jsem nacetl deklarace  `load'declarations`   a Counter je " ++ show counter
 
       -- let (Program{ bind'sections = bs, methods = _, method'annotations = m'ans, data'declarations = ds }, ms) = make'program decls trans'env counter
@@ -84,10 +84,10 @@ load file'name counter = do
 
 
       -- putStrLn $ "\n\n load declarations    trans'env   " ++ show trans'env
-      case process'declarations decls trans'env counter of
+      case process'declarations decls trans'env counter' of
         Left err -> do
           putStrLn $ "Error: " ++ show err
-        Right (program, infer'env, class'env, trans'env, counter) -> do
+        Right (program, infer'env, class'env, trans'env, counter'') -> do
           putStrLn "Successfully loaded the prelude."
           putStrLn ""
           -- let Program{ bind'sections = bs, methods = ms, method'annotations = m'ans, data'declarations = ds } = program
@@ -108,7 +108,7 @@ load file'name counter = do
           -- putStrLn "All Declarations:"
           -- putStrLn $ intercalate "\n" $ map show declarations
 
-          repl (program, infer'env, class'env, trans'env{ kind'context = k'e `Map.union` (kind'context trans'env)}, counter)
+          repl (program, infer'env, class'env, trans'env{ kind'context = k'e `Map.union` (kind'context trans'env)}, counter'')
 
 
 load'declarations :: String -> Counter -> Either Semantic'Error ([Declaration], TE.Translate'Env, Counter)
@@ -118,9 +118,9 @@ load'declarations source counter = do
 
   do'semantic'analysis term'decls trans'env
 
-  (declarations, counter') <- translate term'decls counter trans'env
+  (declarations, counter'') <- translate term'decls counter' trans'env
 
-  return (declarations, trans'env, counter')
+  return (declarations, trans'env, counter'')
 
 
 make'program :: [Declaration] -> TE.Translate'Env -> Counter -> (Program, [(Name, Qualified Type)])

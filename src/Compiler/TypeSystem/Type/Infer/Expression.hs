@@ -6,6 +6,8 @@ module Compiler.TypeSystem.Type.Infer.Expression where
 import Control.Monad
 
 
+import Compiler.Counter
+
 import Compiler.Syntax
 import Compiler.Syntax.Expression
 

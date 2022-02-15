@@ -11,6 +11,8 @@ import qualified Data.Set as Set
 import Data.List
 
 
+import Compiler.Counter
+
 import Compiler.Syntax
 
 import Compiler.TypeSystem.Error

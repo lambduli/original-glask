@@ -1,6 +1,8 @@
 module Compiler.TypeSystem.Type.Infer.Pattern where
 
 
+import Compiler.Counter
+
 import Compiler.Syntax
 
 import Compiler.TypeSystem.Infer

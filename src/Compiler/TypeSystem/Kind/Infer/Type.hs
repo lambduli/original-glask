@@ -1,6 +1,8 @@
 module Compiler.TypeSystem.Kind.Infer.Type where
 
 
+import Compiler.Counter
+
 import Data.Tuple.Extra
 import Control.Monad.State
 
