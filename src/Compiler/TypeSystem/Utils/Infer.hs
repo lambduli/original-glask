@@ -50,30 +50,18 @@ qualify :: Type -> Qualified Type
 qualify t = [] :=> t
 
 
--- TODO: Either remove both `extend` and `remove` or move them into some shared Utils module
-extend :: (Ord a) => Map.Map a b -> (a, b) -> Map.Map a b
-extend env (ty'var, scheme) = Map.insert ty'var scheme env
-
-
-remove :: (Ord a) => Map.Map a b -> a -> Map.Map a b
-remove env var = Map.delete var env
-
-
 -- TODO: I really feel like generalizing all the merge'into'... and put'in'... and lookup'...
 --        is the best way to go around. Then put them in some shared Utils module and use them
 --        across all parts of the pipeline.
 merge'into't'env :: [(String, Scheme)] -> Infer a -> Infer a
 merge'into't'env bindings m = do
   let scope e@Infer'Env{ type'env = t'env } = e{ type'env = Map.fromList bindings `Map.union` t'env}
-    -- (k'env, Map.fromList bindings `Map.union` t'env, ali'env)
   local scope m
 
 
 put'in't'env :: (String, Scheme) -> Infer a -> Infer a
 put'in't'env (var, scheme) m = do
-  -- (k'env, _) <- ask
-  let scope e@Infer'Env{ type'env = t'env } = e{ type'env = remove t'env var `extend` (var, scheme) }
-    -- (k'env, remove t'env var `extend` (var, scheme), ali'env)
+  let scope e@Infer'Env{ type'env = t'env } = e{ type'env = Map.insert var scheme (Map.delete var t'env) }
   local scope m
 
 
@@ -91,14 +79,12 @@ lookup't'env var = do
 merge'into'k'env :: [(String, Kind)] -> Infer a -> Infer a
 merge'into'k'env bindings m = do
   let scope e@Infer'Env{ kind'env = k'env } = e{ kind'env = Map.fromList bindings `Map.union` k'env }
-    -- (Map.fromList bindings `Map.union` k'env, t'env, ali'env)
   local scope m
 
 
 put'in'k'env :: (String, Kind) -> Infer a -> Infer a
 put'in'k'env (var, kind') m = do
-  let scope e@Infer'Env{ kind'env = k'env } = e{ kind'env = remove k'env var `extend` (var, kind') }
-    -- (remove k'env var `extend` (var, kind'), t'env, ali'env)
+  let scope e@Infer'Env{ kind'env = k'env } = e{ kind'env = Map.insert var kind' (Map.delete var k'env) }
   local scope m
 
 
@@ -107,15 +93,7 @@ lookup'k'env var = do
   k'env <- asks kind'env
   case Map.lookup var k'env of
     Nothing     -> throwError $ Unbound'Type'Var var
-    Just kind'  -> return kind' -- we don't instantiate kinds
-    -- TODO: do some normalization or something
-    -- change all the free variables in the kind into *
-
-
--- put'in'ali'env :: (String, Type) -> Infer a -> Infer a
--- put'in'ali'env (name, type') m = do
---   let scope e@Infer'Env{ ali'env = a'env } = e{ ali'env = remove a'env name `extend` (name, type') }
---   local scope m
+    Just kind'  -> return kind'
 
 
 {-  TODO: Here is a BIG TODO - I need to go over the paper THIH and see if I can replace all my
