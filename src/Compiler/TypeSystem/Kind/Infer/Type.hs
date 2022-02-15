@@ -24,7 +24,7 @@ infer'type (T'Con (T'C name kind))
 
 infer'type (T'Tuple types) = do
   (kinds, cs'k) <- infer'types types
-  undefined
+  return (K'Star, cs'k)
 
 infer'type (T'App left't right't) = do
   (k'l, cs'l) <- infer'type left't
