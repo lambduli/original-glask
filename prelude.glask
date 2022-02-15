@@ -25,17 +25,9 @@ module Main where
   {
   foo :: (a -> b) -> a -> b
   -- ; foo x y = x
-  ; bar :: (a -> b) -> a -> b
+  ; bar :: (a -> b a) -> a -> b a
   }
 
--- foo :: forall (a :: *?l) (b :: *?m) . Foo (a :: *?l) => (a :: *?l) -> (b :: *?m) -> (a :: *?l)
--- bar :: forall (a :: *?l) (b :: *?m) . Foo (a :: *?l) => ((a :: *?l) -> (b :: *?m)) -> (a :: *?l) -> (b :: *?m)
--- tohle nahore je problem - velkej - ukazuje to, ze kdyz analyzuju type classy a jejich typovy deklarace
--- tak prohledam deklarace a najdu jejich free typy a vsechny je povazuju za stejny
--- `b` ve `foo` a `b` v `bar` jsou ale dve ruzny `b`ecka - to znamena, ze muzou mit uplne jinej Kind
--- ne ale v moji implementaci
--- tohle musim fixnout
--- TODO: FIX IT
 
 -- ; instance (Show a) => Baz ([] a) where
 -- { baz = 23 :: a }
