@@ -1,4 +1,4 @@
-module Compiler.Syntax.ToAST.Translate where
+module Compiler.Syntax.ToAST.Translate (Translate, run'translate) where
 
 
 import Control.Monad.Reader
@@ -32,5 +32,12 @@ type Translate a
 -- that means, however, that I will need to pick the final value of the counter AFTER I collect all the type constructors and assign them a Kind
 -- and use that as a intial value for the counter in the Translate'State
 -- for that exact reason, this parameter needs to be passed through few levels and be used here
-run'translate :: Int -> Translate'Env -> Translate a -> Either Semantic'Error a
-run'translate counter env m = runExcept $ evalStateT (runReaderT m env) Translate'State{ count = counter } -- init'translate'state
+run'translate :: Translate'Env -> Translate a -> Translate'State -> Either Semantic'Error (a, Translate'State)
+run'translate env m tr'state = runExcept $ evalStateT (runReaderT (run'translate' m) env) tr'state -- Translate'State{ count = counter } -- init'translate'state
+
+
+run'translate' :: Translate a -> Translate (a, Translate'State)
+run'translate' m = do
+  a <- m
+  tr'state <- get
+  return (a, tr'state)

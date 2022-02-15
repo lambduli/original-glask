@@ -9,6 +9,8 @@ import Data.Tuple.Extra
 
 import Compiler.Syntax.ToAST.Translate
 import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
+import Compiler.Syntax.ToAST.TranslateState
+
 
 import qualified Compiler.Analysis.Semantic.Synonym.Cycles as Cycles
 import qualified Compiler.Analysis.Semantic.Synonym.FullyApplied as Applied
@@ -53,7 +55,7 @@ import Compiler.TypeSystem.Solver.Substitutable
 
 -- NOTE: ragarding the Int part of the result -- follow the trail of it (out of this function) and read the comments if you don't know why it's there
 --        In the README there's a comment/idea regarding a more proper implementation.
-build'trans'env :: [Term'Decl] -> (TE.Translate'Env, Types.Counter)
+build'trans'env :: [Term'Decl] -> (TE.Translate'Env, Translate'State)
 build'trans'env declarations = do
   -- TODO: now I need to run all the analyses, use them to translate to ast
   -- build the environment for the to'ast translation

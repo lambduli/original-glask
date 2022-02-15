@@ -7,9 +7,16 @@ import qualified Data.Map.Strict as Map
 import Data.Tuple.Extra
 
 
-import Compiler.Parser (parse'module)
+import Compiler.Counter (Counter)
 
+import Compiler.Parser
+
+import Compiler.Syntax
+import Compiler.Syntax.ToAST
+import Compiler.Syntax.ToAST.TranslateEnv
 import Compiler.Syntax.ToAST.Translate
+import Compiler.Syntax.Term
+import Compiler.Syntax.HasKind
 import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
 
 import qualified Compiler.Analysis.Semantic.Synonym.Cycles as Cycles
@@ -29,17 +36,10 @@ import qualified Compiler.Analysis.Semantic.DependencyAnalysis as Dependencies
 import qualified Compiler.Analysis.Semantic.Class as Classes
 import qualified Compiler.Analysis.Semantic.Data as Data
 
-import Compiler.Syntax.ToAST
-
 import Compiler.Analysis.Syntactic.FixityEnv
 import Compiler.Analysis.Syntactic.FieldEnv
 import Compiler.Analysis.Syntactic.SynonymEnv
-import Compiler.TypeSystem.InferenceEnv
 import Compiler.Analysis.Syntactic.Types
-
-import Compiler.Syntax.Term
-import Compiler.Syntax
-import Compiler.Syntax.HasKind
 
 import Compiler.Analysis.Semantic.SemanticError
 
@@ -50,13 +50,15 @@ import Compiler.TypeSystem.Type.Infer.Program
 import Compiler.TypeSystem.Binding
 import Compiler.TypeSystem.Utils.Infer
 import Compiler.TypeSystem.Infer
+import Compiler.TypeSystem.InferenceEnv
 
 import Compiler.TypeSystem.Solver.Substitution
 import Compiler.TypeSystem.Solver.Substitutable
 
 import Interpreter.Repl
 import Interpreter.Analyses
-import Interpreter.ReadExpr
+import Interpreter.Expression
+import Interpreter.Program
 
 
 load :: String -> IO ()
@@ -68,12 +70,37 @@ load file'name = do
     Left sem'err -> do
       putStrLn $ "Semantic Error: " ++ show sem'err
 
-    Right (decls, trans'env, counter) ->
+    Right (decls, trans'env, counter) -> do
+      -- putStrLn $ "..................     Prave jsem nacetl deklarace  `load'declarations`   a Counter je " ++ show counter
+
+      -- let (Program{ bind'sections = bs, methods = _, method'annotations = m'ans, data'declarations = ds }, ms) = make'program decls trans'env counter
+      -- putStrLn ""
+      -- putStrLn "::::::::::"
+      -- putStrLn $ "methods:  " ++ show ms
+      -- putStrLn ""
+      -- putStrLn $ "data'declarations:  " ++ show ds
+      -- putStrLn "::::::::::"
+
+
+
+      -- putStrLn $ "\n\n load declarations    trans'env   " ++ show trans'env
       case process'declarations decls trans'env counter of
         Left err -> do
           putStrLn $ "Error: " ++ show err
         Right (program, infer'env, class'env, trans'env, counter) -> do
           putStrLn "Successfully loaded the prelude."
+          putStrLn ""
+          -- let Program{ bind'sections = bs, methods = ms, method'annotations = m'ans, data'declarations = ds } = program
+          -- putStrLn $ "Program:\n" ++ show program
+          -- putStrLn $ "\nbind'sections:  " ++ show bs
+          -- putStrLn $ "\nmethods:  " ++ show ms
+          -- putStrLn $ "\nmethod'annotations:  " ++ show m'ans
+          -- putStrLn $ "\ndata'declarations:   " ++ show ds
+
+          let k'e = kind'env infer'env
+
+          -- putStrLn $ "\n\n\n type env:  " ++ show (type'env infer'env)
+          -- putStrLn $ "Kind Env:  " ++ show k'e
       
           -- putStrLn "Class Environment:"
           -- print class'env
@@ -81,19 +108,46 @@ load file'name = do
           -- putStrLn "All Declarations:"
           -- putStrLn $ intercalate "\n" $ map show declarations
 
-          repl (program, infer'env, class'env, trans'env, counter)
+          repl (program, infer'env, class'env, trans'env{ kind'context = k'e `Map.union` (kind'context trans'env)}, counter)
 
 
 load'declarations :: String -> Either Semantic'Error ([Declaration], TE.Translate'Env, Counter)
 load'declarations source = do
   let term'decls = parse'module source
-  let (trans'env, counter) = build'trans'env term'decls
+  let (trans'env, counter) = build'trans'env term'decls -- TODO: FIX COUNTER - tady je fakt potreba aby cela funkce `load'declarations` brala uz nejakej init counter
+  -- protoze neni pripustny, aby si ho nejaka uplne zanorena funkce build'trans'env vyrobila jen tak z niceho, - neni to nejhorsi vec na svete
+  -- ale pokud bych tuhle funkci chtel re-usnout pro nacitani dalsich modulu v momente kdy uz jsem nacetl prelude
+  -- tak tohle by zase delalo problemy a mohl bych se u toho zase zapotit na nekolik hodin
 
   do'semantic'analysis term'decls trans'env
 
-  declarations <- translate term'decls counter trans'env
+  (declarations, counter') <- translate term'decls counter trans'env
 
-  return (declarations, trans'env, counter)
+  return (declarations, trans'env, counter')
+
+
+make'program :: [Declaration] -> TE.Translate'Env -> Counter -> (Program, [(Name, Qualified Type)])
+make'program declarations trans'env counter =
+  -- TODO: now when I have the list of Declarations in AST form
+  -- I need to call inference
+  -- for the inference I am going to need to build things like class environment and instance environment
+  let class'env = Classes.extract declarations
+
+
+  -- TODO: I need to extract `Type Assumptions` about all data constructors in the list of Declarations
+      constr'assumptions = Data.extract declarations
+
+
+  -- TODO: I need to inclide all bindings in all type classes and instances into the program too
+  -- I need to split binding declarations into - explicitly typed (also includes instance bindings) and implicitly typed
+  -- then I need to do the dependency analysis on those two groups and figure out the order in which I will infer them
+  -- then I "just" do the inference
+      program :: Program
+      program = to'program declarations
+
+      m'anns = method'annotations program
+
+  in (program, m'anns)
 
 
 process'declarations :: [Declaration] -> TE.Translate'Env -> Counter -> Either Error (Program, Infer'Env, Class'Env, TE.Translate'Env, Counter)
@@ -115,7 +169,7 @@ process'declarations declarations trans'env counter = do
   let program :: Program
       program = to'program declarations
       m'anns = method'annotations program
-      type'env = Map.union init't'env $ Map.union (Map.fromList constr'assumptions) $ Map.fromList $ map (second close'over) m'anns
+      type'env = init't'env `Map.union` (Map.fromList constr'assumptions) `Map.union` (Map.fromList $ map (second close'over) m'anns)
 
   let TE.Trans'Env{ TE.kind'context = k'env } = trans'env
 
@@ -123,7 +177,9 @@ process'declarations declarations trans'env counter = do
       infer'env = Infer'Env{ kind'env = k'env, type'env = type'env, class'env =  class'env }
 
   -- (Type'Env, [Constraint Kind])
-  (t'env, k'constr) <- run'infer infer'env (infer'program program)
+  -- (t'env, k'constr) <- run'infer infer'env (infer'program program)
+
+  (t'env, k'env', cnt) <- infer'whole'program program infer'env counter
 
 
   -- TODO: I also need to do the Kind inference, probably even before type inference
@@ -133,6 +189,8 @@ process'declarations declarations trans'env counter = do
 
   -- NOTE:  I need to merge the alread-known with the newly-inferred
   --        In essence - built-in typing context + method types merging with inferred Implicits + checked Explicits
-  let type'env' = type'env `Map.union` t'env
+  -- let type'env' = t'env `Map.union` type'env
+  --        I no longer need to do this. I made the `infer'whole'program` apply the kind substitution to the both "base type environment" and the "inferred env from the assumptions"
+  --        and union them and return it
 
-  return (program, infer'env{ type'env = type'env' }, class'env, trans'env, counter)
+  return (program, infer'env{ type'env = t'env, kind'env = k'env' }, class'env, trans'env, counter)

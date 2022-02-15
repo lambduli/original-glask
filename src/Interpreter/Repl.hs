@@ -7,7 +7,13 @@ import Data.List.Extra (trim)
 import Data.Functor.Identity
 import Control.Monad.Except
 
-import Interpreter.ReadExpr
+
+import Compiler.Counter (Counter)
+
+
+import Interpreter.Expression (read'expr, infer'type)
+import Interpreter.Type
+
 import Compiler.Syntax.ToAST.TranslateEnv
 import Compiler.Analysis.Syntactic.Types
 import Compiler.Syntax
@@ -24,6 +30,7 @@ import Compiler.TypeSystem.Solver.Substitution
 import Compiler.TypeSystem.Utils.Class
 import Compiler.TypeSystem.Solver.Composable
 import Compiler.TypeSystem.Utils.Infer (close'over)
+import Compiler.Syntax.ToAST.TranslateState (Translate'State)
 
 
 read'cmd'or'expr :: IO String
@@ -86,12 +93,12 @@ repl (program, i'env@Infer'Env{ kind'env = k'env, type'env = type'env, class'env
     ':' : 't' : line -> do
       case read'expr line trans'env counter of
         Left _ -> do
-          putStrLn "Incorrect Format! The :t command must be followed by an expression, not a declaration."
+          putStrLn "Incorrect Format! The :t command must be followed by an expression."
 
           -- loop
           repl (program, i'env, cl'env, trans'env, counter)
-        Right expression -> do
-          let error'or'scheme = infer expression i'env
+        Right (expression, counter') -> do
+          let error'or'scheme = infer'type expression i'env counter'
           -- print
           case error'or'scheme of
             Left err -> do
@@ -99,44 +106,39 @@ repl (program, i'env@Infer'Env{ kind'env = k'env, type'env = type'env, class'env
 
               -- loop
               repl (program, i'env, cl'env, trans'env, counter)
-            Right scheme -> do
+            Right (scheme, counter'') -> do
               putStrLn $ "          " ++ trim line ++ " :: " ++ show scheme
 
               -- loop
-              repl (program, i'env, cl'env, trans'env, counter)
+              repl (program, i'env, cl'env, trans'env, counter'')
 
     -- COMMAND :k(ind)
     ':' : 'k' : line -> do
-      putStrLn "<kind checking is not implemented yet>"
+      case read'type line trans'env counter of
+        Left err -> do
+          putStrLn $ "Error: " ++ show err
+          -- putStrLn "Incorrent Format! The :k command must be followed by an type exression."
+
+          -- loop
+          repl (program, i'env, cl'env, trans'env, counter)
+        
+        Right (type', counter') -> do
+          let error'or'kind = infer'kind type' i'env counter'
+          -- print
+          case error'or'kind of
+            Left err -> do
+              putStrLn $ "Kind Error: " ++ show err
+
+              -- loop
+              repl (program, i'env, cl'env, trans'env, counter')
+
+            Right (kind, counter'') -> do
+              putStrLn $ "          " ++ trim line ++ " :: " ++ show kind
+
+              -- loop
+              repl (program, i'env, cl'env, trans'env, counter'')
+
 
     _ -> do
       putStrLn "<expression evaluation is not implemented yet>"
 
-
--- TODO: move this function into a TypeSystem module (and rename it probably)
-infer :: Expression -> Infer'Env -> Either Error Scheme
-infer expr i'env = do
-  -- ([Predicate], Type, [Constraint Type], [Constraint Kind])
-  (preds, type', cs't, cs'k) <- run'infer i'env (infer'expr expr)
-
-  subst <- run'solve cs't  :: Either Error (Subst T'V Type)
-
-  let Infer'Env{ type'env = t'env, class'env = c'env } = i'env
-  
-  rs <- runIdentity $ runExceptT $ reduce c'env (apply subst preds) :: Either Error [Predicate]
-
-  -- NOTE:  Maybe I don't need to do any defaulting when inferring just a single Expression and inside the REPL?
-  -- TODO:  I need to find out what exactly would that defaulting substitution do to the Expression Type.
-  --        I am pretty sure I saw it also do the monomorphisation restriction. I might want to disable that one in the REPL too.
-  -- s' <- runIdentity $ runExceptT $ default'subst c'env [] rs :: Either Error (Subst T'V Type)
-  let s' = Sub Map.empty
-
-  subst' <- runIdentity $ runExceptT (s' `merge` subst)
-
-  let scheme = close'over $ apply subst' rs :=> apply subst' type'
-
-  return scheme
-
-  -- return $ to'scheme $ apply subst' type'
-
-  -- return (apply subst' $ Map.fromList assumptions, cs'k)

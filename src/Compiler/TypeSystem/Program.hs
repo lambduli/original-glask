@@ -22,5 +22,6 @@ data Program
   = Program
     { bind'sections :: [Bind'Section]
     , methods :: [Method]
-    , method'annotations :: [(Name, Qualified Type)] }
+    , method'annotations :: [(Name, Qualified Type)]
+    , data'declarations :: [Data] }
   deriving (Show)

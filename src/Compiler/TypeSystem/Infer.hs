@@ -1,4 +1,4 @@
-module Compiler.TypeSystem.Infer where
+module Compiler.TypeSystem.Infer (Infer, run'infer) where
 
 
 import qualified Data.Map.Strict as Map
@@ -25,5 +25,12 @@ type Infer a
       a
 
 
-run'infer :: Infer'Env -> Infer a -> Either Error a
-run'infer env m = runExcept $ evalStateT (runReaderT m env) init'infer'state
+run'infer :: Infer'Env -> Infer a -> Infer'State -> Either Error (a, Infer'State)
+run'infer env m i'state = runExcept $ evalStateT (runReaderT (run'infer' m) env) i'state
+
+
+run'infer' :: Infer a -> Infer (a, Infer'State)
+run'infer' m = do
+  a <- m
+  inf'state <- get
+  return (a, inf'state)

@@ -30,6 +30,58 @@ import Compiler.Syntax.ToAST.Utils.Translate
 import Compiler.Analysis.Semantic.SemanticError
 import Compiler.TypeSystem.Type.Constants
 import Compiler.TypeSystem.Solver.Substitutable
+import Compiler.Syntax.ToAST.TranslateState (Translate'State)
+
+
+
+-- NOTE and TODO:
+-- The second argument counter ::Int is just a temporary solution to the problem I have ran into.
+-- When I want to build a Trans'Env I need to collect all user defined type constructors and assign them a Kind build from fresh Kind Variables
+-- BUT, to do that, I need to be inside a State monad. Because I need to be able to increment the counter.
+-- On a first glance, it would seem that I could be inside a Translate monad stack, BUT that is not the case, since I am, at that moment, building
+-- that very thing (collecting all the parts of the Trans'Env)
+-- So I am left with the other choice - I say I am in the context of the State monad which only contains the Counter
+-- that means, however, that I will need to pick the final value of the counter AFTER I collect all the type constructors and assign them a Kind
+-- and use that as a intial value for the counter in the Translate'State
+-- for that exact reason, this parameter needs to be passed through few levels and be used here
+
+-- TODO: this function also needs to merge all the binding groups of the same name together
+
+translate :: To'AST a b => a -> Translate'State -> TE.Translate'Env -> Either Semantic'Error (b, Translate'State)
+translate a trans'state trans'env
+    = run'translate trans'env (to'ast a) trans'state -- (to'ast a :: Translate a)
+
+-- translate'to'ast :: [Term'Decl] -> Int -> TE.Translate'Env -> Either Semantic'Error [Declaration]
+-- translate'to'ast declarations counter trans'env
+--   = -- TODO: now to run the translation using some sort of run'X function
+--   run'translate counter trans'env (to'ast declarations :: Translate [Declaration])
+
+
+-- NOTE:  this function should be somewhere else
+--        I still think, that having to translate from the AST to the Program, Binding'Group and so on, immediately after doing so much work to get the AST is sort of awkward
+--        but then again, the AST is not entirely lost, I just replace [Declaration] with Program ([[Explicit], [[Implicit]]] or something like that) which is reasonable
+--        the type inference doesn't need to concern itself with other declarations
+--        BUT then again - maybe it would be reasonable to merge the process of collecting kind constraints and type constraints on the top level point of view
+--        Then I would need to include type declarations into the collection given to the "constraint finding process"
+--        so that would maybe mean something like: I give some function the whole [Declaration] collection
+--        and IT will split it into a Program and the rest (for type declarations) [I won't need fixity declarations at this point]
+--        that would somehow solve my issue with exposing the detail of sorting and transforming to Program on this TOP LEVEL
+
+-- TODO:  I need to collect bindings inside type class declarations and instance declarations too
+--        First of -> my current parser doesn't allow type classes to contain a default implementations of methods
+--        For the instance bindings ->
+--          I should collect type annotations from the type classes
+--          I should collect methods (which are strictly untyped)
+--          If I combine those into a Map, it would need to be a Map Name (Qualified Type, [Bind'Group])
+--            because I have potentially many Bind'Groups per each name/qualified type
+--            each name MUST have a qualified type, but it could potentially have no implementations/Bind'Groups
+--          The thing is - I don't really need a Map, I don't think I would ever do an explicit lookup, so maybe a Set or a List would be enough
+--          But anyway - now I should have all the methods from the instances explicitly typed, so I should just transform it into a "special kind of explicits"
+--          special because there is many Bind'Groups per a single type annotations
+--          Maybe I could merge all the Bind'Groups into a single Bind'Group to utilize the existing infrastructure for the type analysis
+--            I don't think I can do that!
+--      !!  I need to 
+
 
 
 class To'AST a b where
@@ -400,7 +452,7 @@ instance To'AST Term'Type Type where
     --        I might make a mistake in the implementation -> better be safe.
     
     case kinding'context Map.!? var of
-      Nothing -> throwError $ Internal "Unexpected behaviour: While assigning a Kind to a type variable, I have approached a type variable which is not in the kind context."
+      Nothing -> throwError $ Internal $ "Unexpected behaviour: While assigning a Kind to a type variable, I have approached a type variable `" ++ show var ++ "` which is not in the kind context."
       Just kind -> return $ T'Var $ T'V var kind
 
   to'ast (Term'T'Id (Term'Id'Const con)) =  do
@@ -408,7 +460,7 @@ instance To'AST Term'Type Type where
     -- NOTE: even though this type constant should always be in the context
     --        I might make a mistake in the implementation -> better be safe.
     case kinding'context Map.!? con of
-      Nothing -> throwError $ Internal "Unexpected behaviour: While assigning a Kind to a type constant, I have approached a type constant which is not in the kind context."
+      Nothing -> throwError $ Internal $ "Unexpected behaviour: While assigning a Kind to a type constant, I have approached a type constant `" ++ show con ++ "` which is not in the kind context."
       Just kind -> return $ T'Con $ T'C con kind
 
   to'ast (Term'T'Tuple t'types) = do
@@ -544,6 +596,7 @@ instance To'AST Term'Decl Declaration where
     k'ctxt <- asks TE.kind'context
     -- NOTE: even though this type variable should always be in the context
     --        I might make a mistake in the implementation -> better be safe.
+    --        Or if the user writes :k a -> a   ==> then a will not be recognized as known type variable
     k <- case k'ctxt Map.!? name of
       Nothing ->
         throwError $ Internal "Unexpected behaviour: While translating a Data declaration I have approached a type constructor which is not in the kind context."
@@ -559,7 +612,7 @@ instance To'AST Term'Decl Declaration where
 
     let k'params = map (uncurry T'V) assignments
 
-    return $ AST.Data'Decl (T'C name k) k'params constr'decls
+    return $ AST.Data'Decl $ Data (T'C name k) k'params constr'decls
 
   to'ast (Term.Type'Alias name params t'type) = do
     {-  `params` are type variable names which need to be assigned a fresh kind variable each -}

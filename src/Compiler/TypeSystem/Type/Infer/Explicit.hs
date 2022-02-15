@@ -24,6 +24,7 @@ import Compiler.TypeSystem.Solver
 import Compiler.TypeSystem.Solver.Substitution
 import Compiler.TypeSystem.Solver.Substitutable
 import Compiler.TypeSystem.Type.Infer.Match
+import Compiler.TypeSystem.Kind.Infer.Type (infer'type)
 
 
 
@@ -65,9 +66,24 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
           case runIdentity $ runExceptT $ split c'env fs gs preds' of
             Left err -> throwError err
             Right (deferred'preds, retained'preds) -> do
+              (k, cs'k') <- infer'type t
+
               if scheme /= sc'
               {- TODO:  If I want to know exactly what user-denoted type variable in the `scheme` does correspond to some non-variable type, I can use `match` to create a one-way substitution. -}
               then throwError Signature'Too'General
               else  if not (null retained'preds)
                     then throwError Context'Too'Weak
-              else return (deferred'preds, cs't, cs'k)
+              else return (deferred'preds, cs't, (k `Unify` K'Star) : cs'k ++ cs'k')
+              -- TODO:  FIX - here the `kind` function is not used safely
+              --        the problem is that kind function expects for Type Applications - that the Kind of the Left part will be Kind Arrow
+              --        but that's never going the happen for types given from the user (annotations)
+              --        those types contain fresh Kind Variables and not Kind Arrows in general
+              --        of course - function types will work - since the (->) is builtin type constructor with the correct Kind assigned in the system
+              --        but annotations like foo :: m a
+              --        would break the system because (m :: ?A) and (a :: ?B)
+              --        and the left part definitely does not give Kind Arrow
+              --        therefore I am all in favour of the proposition to change the `kind` method to also produce [Constraint Kind]
+              --        instead of expecting the left kind to be arrow, it can also work with Kind Variable on the left and simply produce additional constraints to make sure
+              --        everything stays sound
+              --
+              -- NOTE: Fixed - or it seems.

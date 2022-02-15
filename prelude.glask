@@ -13,16 +13,29 @@ module Main where
 
 ; data Maybe a = Nothing | Just a
 
-; data Record a = Rec { a :: Int, b :: Maybe a }
+-- ; data Record m a = Rec { a :: Int, b :: Maybe a } -- tohle z nejakyho duvodu priradi `m`ku kind (? -> ?)
+-- ; data Record m a = Rec { a :: Int, b :: Maybe a, c :: m a } -- tady je v poradky ze `m` :: (* -> *)
+; data Record m a = Rec { a :: Int, b :: Maybe a, c :: m a } -- tady je v poradky ze `m` :: (* -> *)
+
 
 
 -- ; class Bar b
 
 ; class () => Foo a where
-  { foo :: a -> b -> a
+  {
+  foo :: (a -> b) -> a -> b
   -- ; foo x y = x
   ; bar :: (a -> b) -> a -> b
   }
+
+-- foo :: forall (a :: *?l) (b :: *?m) . Foo (a :: *?l) => (a :: *?l) -> (b :: *?m) -> (a :: *?l)
+-- bar :: forall (a :: *?l) (b :: *?m) . Foo (a :: *?l) => ((a :: *?l) -> (b :: *?m)) -> (a :: *?l) -> (b :: *?m)
+-- tohle nahore je problem - velkej - ukazuje to, ze kdyz analyzuju type classy a jejich typovy deklarace
+-- tak prohledam deklarace a najdu jejich free typy a vsechny je povazuju za stejny
+-- `b` ve `foo` a `b` v `bar` jsou ale dve ruzny `b`ecka - to znamena, ze muzou mit uplne jinej Kind
+-- ne ale v moji implementaci
+-- tohle musim fixnout
+-- TODO: FIX IT
 
 -- ; instance (Show a) => Baz ([] a) where
 -- { baz = 23 :: a }
@@ -37,6 +50,14 @@ module Main where
 
 ; lambda = \ a b c -> c
 
+; fn :: a -> b -> c -> c
+; fn = \ a b c -> c
+
+
+
+; oog :: m a -> (a -> b) -> m b
+; oog = undefined
+
 
 ; require :: Num a => a -> a
 ; require = \ x -> x
@@ -44,5 +65,7 @@ module Main where
 ; ok = require 23
 
 -- ; not'ok = require 'a'
+
+; undefined = undefined
 
 }
