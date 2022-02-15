@@ -5,7 +5,7 @@ import Data.Bifunctor (Bifunctor(second))
 import Data.Maybe (mapMaybe)
 
 
-import Compiler.Syntax.Declaration (Declaration (Data'Decl))
+import Compiler.Syntax.Declaration (Declaration (Data'Decl), Data(..))
 import Compiler.Syntax (Name, Scheme, T'C (T'C), Type(..), T'V(..), Constr'Decl(..))
 
 import Compiler.TypeSystem.Utils.Infer (close'over, qualify)
@@ -20,7 +20,7 @@ extract declarations = concat $ mapMaybe collect declarations
 
 
 collect :: Declaration -> Maybe [(Name, Scheme)]
-collect (Data'Decl tc@(T'C n k) t'params constr'decls)
+collect (Data'Decl (Data tc@(T'C n k) t'params constr'decls))
   = let res'type = foldl T'App (T'Con tc) $ map T'Var t'params
 
         con'type :: Constr'Decl -> [(Name, Type)]
