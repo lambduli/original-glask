@@ -4,6 +4,8 @@ import qualified Data.Map.Strict as Map
 import Control.Monad.State
 import Control.Monad.Extra
 
+import Compiler.Counter
+
 
 import Compiler.Syntax hiding (Data'Decl, Type'Alias)
 import Compiler.Syntax.Term
@@ -26,7 +28,7 @@ import Compiler.Syntax.ToAST.Translate
     and use it to initialize the Translate's StateT initial value.
     It is kinda weird, I don't think I like it very much, but it is a way to move forward and it should be refactorable in the future when I know better.
  -}
-newtype Counter = Counter{ count :: Int }
+
 
 
 type Fresh a = State Counter a
@@ -39,8 +41,8 @@ letters = [1..] >>= flip replicateM ['a'..'z']
 -- fresh :: Fresh String
 fresh :: State Counter String
 fresh = do
-  Counter{ count = counter } <- get
-  put Counter{ count = counter + 1 }
+  Counter{ counter = counter } <- get
+  put Counter{ counter = counter + 1 }
   return $ '_' : (letters !! counter) -- NOTE: I am prefixing all the fresh names with `_` because I am worried that the names are going to collide before I refactor this code correctly
 -- END OF THE TEMPORARY INFRASTRUCTURE
 
@@ -48,19 +50,21 @@ fresh = do
 {-  TODO: Implement the Extract type class for [a], Term'Decl and for Term'Expr.
           I think each time it's going to accept a tuple containing the Counter too.  -}
 extract :: [Term'Decl] -> (Map.Map Name Kind, Counter)
-extract t'decls = runState (Map.fromList <$> mapMaybeM collect t'decls) Counter{ count = 1 }
+extract t'decls = runState (Map.fromList <$> mapMaybeM collect t'decls) Counter{ counter = 1 }
+-- TODO: FIX COUNTER - mel bych to brat jako argument zvenku a ne si ho sam nastavit na jednicku
 
 
 -- NOTE: first two branches have the same body, maybe factor it out into a helper function?
 collect :: Term'Decl -> Fresh (Maybe (Name, Kind))
 collect (Data'Decl name params t'decls) = do
   fresh'name <- fresh
-  let result'kind = K'Var fresh'name
+  let result'kind = K'Var fresh'name -- TODO: this should just be K'Star -- always
 
   fresh'names'params <- mapM (const fresh) params
   let fresh'kinds = map K'Var fresh'names'params
 
-  let kind = foldl K'Arr result'kind fresh'kinds
+  -- let kind = foldl K'Arr result'kind fresh'kinds -- plain wrong
+  let kind = foldl (flip K'Arr) result'kind fresh'kinds
 
   return $ Just (name, kind)
 

@@ -11,6 +11,8 @@ import Control.Monad.Reader
 import Control.Monad.Except
 
 
+import Compiler.Counter ( Counter(Counter, counter) )
+
 import Compiler.Syntax
 
 import Compiler.TypeSystem.Error
@@ -57,8 +59,8 @@ letters = [1..] >>= flip replicateM ['a'..'z']
 
 fresh :: Infer String
 fresh = do
-  Infer'State { count = counter } <- get
-  put $ Infer'State { count = counter + 1 }
+  Counter{ counter = counter } <- get
+  put $ Counter{ counter = counter + 1 }
   return (letters !! counter)
 
 
@@ -67,8 +69,8 @@ fresh = do
 --        but right now, the fact that both exist, feels awkward.
 real'fresh :: [String] -> a -> Infer String
 real'fresh vars var = do
-  Infer'State { count = counter } <- get
-  put $ Infer'State { count = counter + 1 }
+  Counter{ counter = counter } <- get
+  put $ Counter{ counter = counter + 1 }
   let name = letters !! counter
   if name `elem` vars
     then real'fresh vars var
@@ -155,11 +157,21 @@ lookup'k'env var = do
 instantiate :: Scheme -> Infer (Qualified Type)
 instantiate (For'All vars qual'type) = do
   let params = map (\ (T'V name _) -> name) vars
-  fresh'strs <- mapM (real'fresh params) vars
-  let ty'vars = map (\ name -> T'Var (T'V name K'Star)) fresh'strs -- TODO: the Star kind is incorrect
-  -- it needs to be fixed promptly
-  -- instead -> `vars` will (have to) contain information about which parametrized (quantified) variables have which kinds
-  --
+  fresh'strs <- mapM (\ (T'V n k) -> real'fresh params n >>= \ fresh -> return (fresh, k) ) vars
+  let ty'vars = map (\ (name, k) -> T'Var (T'V name k)) fresh'strs
+  -- NOTE:  So I have fixed the issue where I wrongly instantiated the generic type variables to the Kind *.
+  --        I have come to the conclusion that it is OK for all the instantiations of the same Scheme - resp. their generic type variables -
+  --        to share the same set of Kind Variables.
+  --        My reasoning is following: I don't think it can ever happen that two instantiations of the same Scheme will actually be inferred (and used)
+  --        in such a way that their type parameters can be assigned different Kinds.
+  --        Example: foo :: m a -> (a -> b) -> m b
+  --        I don't think it can ever happen that `m` , `a` , and `b` will be assigned different Kinds for different instantiations.
+  --        That includes Phantom Types.
+  --        data Phantom valid = Data Int
+  --        and then later something like
+  --        read :: String -> Phantom a
+  --        I don't think it is possible for the `a` to be anything else than `*` in any instantiation.
+  --        So the assumptions seems safe and sound.
   let subst = Sub $ Map.fromList $ zip vars ty'vars
   return $ apply subst qual'type
 
