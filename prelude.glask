@@ -19,7 +19,12 @@ module Main where
 
 
 
--- ; class Bar b
+; class Higher m where
+  { pure :: a -> m a }
+
+; illegal :: Higher m => m -> a -> a -- this should be illegal, because `m` is supposed to be of kind * -> * and that means it can't stand as an argument to the function
+; illegal = illegal
+-- TODO: I need to fix this.
 
 ; class () => Foo a where
   {
