@@ -7,6 +7,7 @@ import Data.Foldable.Extra (allM)
 import Control.Monad (filterM)
 
 import Compiler.Syntax
+import Compiler.Syntax.Type
 
 import Compiler.TypeSystem.InferenceEnv
 import Compiler.TypeSystem.Solver.Substitutable

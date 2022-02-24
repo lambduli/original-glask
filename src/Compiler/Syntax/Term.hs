@@ -9,7 +9,7 @@ module Compiler.Syntax.Term
 import Compiler.Syntax.Term.Identifier
 import {-# SOURCE #-} Compiler.Syntax.Term.Expression
 import Compiler.Syntax.Term.Pattern
-import Compiler.Syntax.Term.Type
+import {-# SOURCE #-} Compiler.Syntax.Term.Type
 import Compiler.Syntax.Term.Declaration
 import Compiler.Syntax.Term.Predicate
 

@@ -14,6 +14,7 @@ import Control.Monad.Except
 import Compiler.Counter ( Counter(Counter, counter), fresh, real'fresh, letters )
 
 import Compiler.Syntax
+import Compiler.Syntax.Type
 
 import Compiler.TypeSystem.Error
 import Compiler.TypeSystem.Infer

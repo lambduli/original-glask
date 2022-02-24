@@ -6,6 +6,7 @@ import Control.Monad.Extra
 import qualified Data.Map.Strict as Map
 
 import Compiler.Syntax.Term
+import Compiler.Syntax.Term.Type
 
 import Compiler.Analysis.Syntactic.SynonymEnv
 
@@ -53,6 +54,7 @@ instance Find'Error Term'Decl where
     = find term'expr
     
   find (Signature name (qualifiers, term'type))
+  --  aliases for Constraints are not allowed -- therefore it's not necessary to check term'preds
     = find term'type
     
   find (Data'Decl type'name type'params term'constr'declarations)
@@ -114,6 +116,7 @@ instance Find'Error Term'Expr where
   {- NOTE: I am not sure this way of writing it is the most elegant. I like that it does not feature a `do` though. -}
 
   find (Term'E'Ann term'expr (term'preds, term'type))
+  --  aliases for Constraints are not allowed -- therefore it's not necessary to check term'preds
     = let e = find term'expr
           t = find term'type
       in liftM2 (++) e t
@@ -172,6 +175,10 @@ instance Find'Error Term'Type where
                           else ts'errs
         
         types -> concat <$> mapM find types
+
+  find (Term'T'Forall vars (term'preds, term'type))
+  --  aliases for Constraints are not allowed -- therefore it's not necessary to check term'preds
+    = find term'type
 
 
 instance Find'Error Term'Constr'Decl where

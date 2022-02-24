@@ -8,6 +8,7 @@ module Compiler.TypeSystem.Solver.Unify where
 import Control.Monad.Except
 
 import Compiler.Syntax
+import Compiler.Syntax.Type
 
 import Compiler.TypeSystem.Error
 import Compiler.TypeSystem.Solver.Substitution

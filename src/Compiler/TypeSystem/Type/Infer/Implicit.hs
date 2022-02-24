@@ -14,6 +14,7 @@ import Data.List
 import Compiler.Counter
 
 import Compiler.Syntax
+import Compiler.Syntax.Type
 
 import Compiler.TypeSystem.Error
 import Compiler.TypeSystem.Infer

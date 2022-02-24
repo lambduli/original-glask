@@ -6,6 +6,7 @@ import Data.List
 
 import Compiler.Syntax.Name
 import Compiler.Syntax.Kind
+import Compiler.Syntax.Qualified
 
 
 data T'V = T'V Name Kind
@@ -43,6 +44,7 @@ data Type
   | T'Con T'C
   | T'Tuple [Type]
   | T'App Type Type
+  | T'Forall [T'V] (Qualified Type)
   deriving (Eq)
 
 
@@ -82,3 +84,6 @@ instance Show Type where
     = show t'left ++ " (" ++ show t'right ++ ")"
   show (T'App t'left t'right)
     = show t'left ++ " " ++ show t'right
+
+  show (T'Forall tvs qual'type)
+    = "(forall " ++ unwords (map show tvs) ++ " . " ++ show qual'type ++ ")"

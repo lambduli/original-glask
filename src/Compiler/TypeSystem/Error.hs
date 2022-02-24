@@ -20,6 +20,7 @@ data Error
   | Kind'Unif'Count'Mismatch [Kind] [Kind]
   | Signature'Too'General
   | Context'Too'Weak
+  | Unpredicative T'V Type -- Error reported when predicativity assumption is to be broken. (Unifying type variable with sigma type.)
 
   | Unexpected String -- this is just temporary helper constructor for me to debug stuff ... mostly
   deriving (Eq)
@@ -61,6 +62,9 @@ instance Show Error where
 
   show (Context'Too'Weak)
     = "Context is too weak" -- TODO: add some info about what am I talking about too
+
+  show (Unpredicative t'var type')
+    = "Unpredicative type - type variable '" ++ show t'var ++ "' can't be unified with the poly type '" ++ show type' ++ "'."
 
   show (Unexpected s)
     = "Something bad happened: " ++ s

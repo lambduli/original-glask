@@ -7,7 +7,7 @@ import Compiler.Syntax.Name
 import Compiler.Syntax.Fixity
 
 import {-# SOURCE #-} Compiler.Syntax.Term.Expression
-import Compiler.Syntax.Term.Type
+import {-# SOURCE #-} Compiler.Syntax.Term.Type
 import Compiler.Syntax.Term.Pattern
 import Compiler.Syntax.Term.Predicate
 

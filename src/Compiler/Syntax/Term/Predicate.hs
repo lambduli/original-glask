@@ -8,7 +8,7 @@ import Compiler.Syntax.Name
 import Compiler.TypeSystem.Solver.Substitutable
 import Compiler.Syntax.Term.Identifier
 
-import Compiler.Syntax.Term.Type
+import {-# SOURCE #-} Compiler.Syntax.Term.Type
 
 data Term'Pred = Is'In Name Term'Type
   deriving (Eq)

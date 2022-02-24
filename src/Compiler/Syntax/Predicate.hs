@@ -2,7 +2,7 @@ module Compiler.Syntax.Predicate where
 
 
 import Compiler.Syntax.Name
-import Compiler.Syntax.Type
+import {-# SOURCE #-} Compiler.Syntax.Type
 
 
 data Predicate = Is'In Name Type

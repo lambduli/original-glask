@@ -6,6 +6,7 @@ import Data.Foldable
 
 
 import Compiler.Syntax
+import Compiler.Syntax.Type
 
 import Compiler.TypeSystem.Program
 import Compiler.TypeSystem.Binding

@@ -6,6 +6,7 @@ module Compiler.TypeSystem.Solver.Inject where
 
 
 import Compiler.Syntax
+import Compiler.Syntax.Type
 
 
 class Inject a b where

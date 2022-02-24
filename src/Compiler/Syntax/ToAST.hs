@@ -18,10 +18,12 @@ import Compiler.Counter (fresh)
 import Compiler.Syntax.Term
 import qualified Compiler.Syntax.Term as Term
 import Compiler.Syntax.Term.Expression
+import Compiler.Syntax.Term.Type
 
 import Compiler.Syntax
 import qualified Compiler.Syntax as AST
 import Compiler.Syntax.Expression
+import Compiler.Syntax.Type
 import qualified Compiler.Syntax.ToAST.TranslateEnv as Trans'Env
 import Compiler.Syntax.ToAST.Translate
 import Compiler.Analysis.Syntactic.ConstrEnv
@@ -32,6 +34,7 @@ import Compiler.Analysis.Semantic.SemanticError
 import Compiler.TypeSystem.Type.Constants
 import Compiler.TypeSystem.Solver.Substitutable
 import Compiler.Syntax.ToAST.TranslateState (Translate'State)
+import Data.Sequence (unzipWith)
 
 
 

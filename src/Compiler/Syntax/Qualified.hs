@@ -5,7 +5,7 @@ import Data.List
 
 
 import Compiler.Syntax.Name
-import Compiler.Syntax.Type
+import {-# SOURCE #-} Compiler.Syntax.Type
 import Compiler.Syntax.Predicate
 
 

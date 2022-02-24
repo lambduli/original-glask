@@ -6,7 +6,8 @@ import Data.Maybe (mapMaybe)
 
 
 import Compiler.Syntax.Declaration (Declaration (Data'Decl), Data(..))
-import Compiler.Syntax (Name, Scheme, T'C (T'C), Type(..), T'V(..), Constr'Decl(..))
+import Compiler.Syntax
+import Compiler.Syntax.Type
 
 import Compiler.TypeSystem.Utils.Infer (close'over, qualify)
 import Compiler.TypeSystem.Type.Constants (type'fn)

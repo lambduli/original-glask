@@ -10,6 +10,7 @@ import Control.Monad.Except
 
 
 import Compiler.Syntax
+import Compiler.Syntax.Type
 
 import Compiler.TypeSystem.Error
 

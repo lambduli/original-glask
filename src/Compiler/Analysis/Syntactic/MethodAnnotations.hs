@@ -4,6 +4,7 @@ import qualified Data.Map.Strict as Map
 import Data.Maybe
 
 import Compiler.Syntax
+import Compiler.Syntax.Type
 
 import qualified Compiler.Analysis.Syntactic.Annotations as Annotations
 

@@ -10,6 +10,7 @@ import Compiler.Counter
 
 import Compiler.Syntax
 import Compiler.Syntax.Expression
+import Compiler.Syntax.Type
 
 import Compiler.TypeSystem.Infer
 import Compiler.TypeSystem.Constraint

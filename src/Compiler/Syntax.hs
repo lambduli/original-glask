@@ -29,7 +29,7 @@ import Compiler.Syntax.Predicate
 import Compiler.Syntax.Qualified
 import Compiler.Syntax.Scheme
 import Compiler.Syntax.Signature
-import Compiler.Syntax.Type
+import {-# SOURCE #-} Compiler.Syntax.Type
 import Compiler.Syntax.BindGroup
 import Compiler.Syntax.Instance
 import Compiler.Syntax.Fixity

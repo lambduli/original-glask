@@ -9,6 +9,7 @@ import Control.Monad.Trans.Except (catchE)
 
 
 import Compiler.Syntax
+import Compiler.Syntax.Type
 
 import Compiler.TypeSystem.Error
 import Compiler.TypeSystem.Solver.Substitution

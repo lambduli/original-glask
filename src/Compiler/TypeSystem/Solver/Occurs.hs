@@ -2,6 +2,7 @@ module Compiler.TypeSystem.Solver.Occurs where
 
 
 import Compiler.Syntax
+import Compiler.Syntax.Type
 
 
 class Occurs a where
