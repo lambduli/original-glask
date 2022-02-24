@@ -145,11 +145,33 @@ instance To'AST Term'Expr Expression where
     expr <- to'ast t'expr
     return $ Let decls expr
 
+  -- TODO: refactor - higher-rank
   to'ast (Term'E'Ann t'expr (t'preds, t'type)) = do
-    expr <- to'ast t'expr
-    preds <- to'ast t'preds
-    type' <- to'ast t'type
-    return $ Ann expr (preds :=> type')
+    let free'in'preds = free'vars t'preds
+        free'in'type  = free'vars t'type
+        gen'vars = Set.toList $ free'in'preds `Set.union` free'in'type
+        names = map (\ (Term'Id'Var n) -> n) gen'vars
+    
+    kinds <- mapM (const fresh) gen'vars
+
+    let assumptions = zip gen'vars kinds
+
+    expr  <- merge'into'k'env assumptions (to'ast t'expr)
+    preds <- merge'into'k'env assumptions (to'ast t'preds)
+    type' <- merge'into'k'env assumptions (to'ast t'type)
+
+    when (not $ Set.null $ free'in'type `Set.difference` free'in'preds) (throwError $ Umbiguous'Type preds type')
+    
+    -- if not $ Set.null $ free'in'type `Set.difference` free'in'preds
+    --   then throwError $ Umbiguous'Type preds type'
+    --   else ()
+
+
+    -- NOTE:  I generalize/quantify over such variables which are free in the qualified type
+    --        ScopeTypeVar  -- this doesn't implement scoped type vars -- so if I want them later - I need to refactor this
+    let sigma = T'Forall gen'vars (preds :=> type')
+
+    return $ Ann expr sigma
 
   to'ast (Term'E'Case t'expr t'alts) = do
     expr <- to'ast t'expr
@@ -497,6 +519,18 @@ instance To'AST Term'Type Type where
   to'ast (Term'T'App t'types) = do
     types <- mapM to'ast t'types
     return $ foldl1 T'App types
+
+  to'ast (Term'T'Forall vars t'qual'type) = do
+    fresh'names <- mapM (const fresh) vars
+    
+    let names = map (\ (Term'Id'Var n) -> n) vars
+        kinds = map K'Var fresh'names
+        assumptions = zip names kinds
+        tv's = zipWith T'V names kinds
+    
+    qual'type <- merge'into'k'env assumptions (to'ast t'qual'type)
+    
+    return $ T'Forall tv's qual'type
 
 
 instance To'AST Term'Pred Predicate where

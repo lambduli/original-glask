@@ -33,6 +33,12 @@ instance Occurs Type where
   name `occurs'in` (T'App left right)
     = name `occurs'in` left || name `occurs'in` right
 
+  -- TODO: / NOTE:  Can this actually ever happen? If the invariant holds, this shouldn't need to be implemented right?
+  name `occurs'in` (T'Forall tvs (preds :=> type'))
+    = if all (\ (T'V n _) -> name /= n) tvs -- no shadowing
+      then name `occurs'in` type' -- NOTE:  This assumes that the type is not ambiguous. Ambiguities must be checked beforehand.
+      else False  -- shadowing - so can't occur
+
 
 instance Occurs Kind where
   name `occurs'in` (K'Var varname)

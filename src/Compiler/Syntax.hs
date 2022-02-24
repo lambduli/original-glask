@@ -9,9 +9,9 @@ module Compiler.Syntax
   , Pattern(..)
   , Predicate(..)
   , Qualified(..)
-  , Scheme(..)
+  -- , Scheme(..)
   , Signature(..)
-  , T'V(..), T'C(..), Type(..)
+  , T'V(..), T'C(..), Type(..), Sigma'Type, Rho'Type, Tau'Type
   , Bind'Group(..)
   , Instance
   ) where

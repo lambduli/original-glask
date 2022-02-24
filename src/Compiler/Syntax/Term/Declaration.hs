@@ -3,6 +3,8 @@
 module Compiler.Syntax.Term.Declaration where
 
 
+import qualified Data.Set as Set
+
 import Compiler.Syntax.Name
 import Compiler.Syntax.Fixity
 
@@ -10,6 +12,8 @@ import {-# SOURCE #-} Compiler.Syntax.Term.Expression
 import {-# SOURCE #-} Compiler.Syntax.Term.Type
 import Compiler.Syntax.Term.Pattern
 import Compiler.Syntax.Term.Predicate
+
+import Compiler.TypeSystem.Solver.Substitutable
 
 
 data Term'Decl
@@ -37,3 +41,7 @@ data Term'Constr'Decl
   = Con'Decl Name [Term'Type]
   | Con'Record'Decl Name [(Name, Term'Type)]
   deriving (Eq)
+
+
+instance Term Term'Decl where
+  free'vars _ = Set.empty

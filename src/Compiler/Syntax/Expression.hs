@@ -25,7 +25,7 @@ data Expression
   | Tuple [Expression]
   | If Expression Expression Expression
   | Let [Declaration] Expression
-  | Ann Expression (Qualified Type)
+  | Ann Expression Sigma'Type -- (Qualified Type) -- TODO: higher-rank -- should it be qualified type or should it be just Type with the invariant that it's Forall?
   | Case Expression [Match]
   -- | Intro Name [Expression]
   deriving (Eq)

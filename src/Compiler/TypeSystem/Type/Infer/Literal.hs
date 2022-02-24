@@ -4,6 +4,7 @@ module Compiler.TypeSystem.Type.Infer.Literal where
 import Compiler.Counter
 
 import Compiler.Syntax
+import Compiler.Syntax.Type
 
 import Compiler.TypeSystem.Infer
 import Compiler.TypeSystem.Type.Constants

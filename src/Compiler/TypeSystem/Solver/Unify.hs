@@ -89,6 +89,13 @@ instance Unify Type T'V Type where
 
   -- TODO: there's T'Tuple missing - I guess I expected I will make it into a user-defined Type so probably not need to handle it here then...
 
+  -- TODO: can forall unify with anything? we will know after I read the rest of the PIART
+  --        it may even be impossible but I don't know right now
+  match (T'Forall _ _) _ = do
+    undefined
+  match _ (T'Forall _ _) = do
+    undefined
+
   match t1 t2
     = throwError $ Type'Shape'Mismatch t1 t2
 

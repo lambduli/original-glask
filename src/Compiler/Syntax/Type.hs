@@ -9,6 +9,13 @@ import Compiler.Syntax.Kind
 import Compiler.Syntax.Qualified
 
 
+type Sigma'Type = Type
+
+type Rho'Type = Type
+
+type Tau'Type = Type
+
+
 data T'V = T'V Name Kind
   -- deriving (Eq)
 

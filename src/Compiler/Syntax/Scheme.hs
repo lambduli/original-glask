@@ -12,16 +12,16 @@ import Compiler.TypeSystem.Solver.Substitutable
 import Compiler.TypeSystem.Solver.Substitution
 
 
-data Scheme
-  = For'All [T'V] (Qualified Type) -- TODO: continue here - refactor according the paper
+-- data Scheme
+--   = For'All [T'V] (Qualified Type) -- TODO: continue here - refactor according the paper
   -- deriving (Eq)
 
 
-instance Show Scheme where
-  show (For'All [] qual'type')
-    = show qual'type'
-  show (For'All type'args qual'type')
-    = "forall " ++ unwords (map show type'args) ++ " . " ++ show qual'type'
+-- instance Show Scheme where
+--   show (For'All [] qual'type')
+--     = show qual'type'
+--   show (For'All type'args qual'type')
+--     = "forall " ++ unwords (map show type'args) ++ " . " ++ show qual'type'
 
 
 {- TODO: THINK and VALIDATE carefully
@@ -82,12 +82,12 @@ instance Show Scheme where
     THAT would lead to a potential problem.
 
 -}
-instance Eq Scheme where
-  For'All vars'l qual't'l == For'All vars'r qual't'r = qual't'r == qual't'l'substituted
-    where
-      mapping = zip vars'l $ map T'Var vars'r
+-- instance Eq Scheme where
+--   For'All vars'l qual't'l == For'All vars'r qual't'r = qual't'r == qual't'l'substituted
+--     where
+--       mapping = zip vars'l $ map T'Var vars'r
 
-      sub :: Subst T'V Type
-      sub = Sub $ Map.fromList mapping
+--       sub :: Subst T'V Type
+--       sub = Sub $ Map.fromList mapping
 
-      qual't'l'substituted = apply sub qual't'l
+--       qual't'l'substituted = apply sub qual't'l

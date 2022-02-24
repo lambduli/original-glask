@@ -161,6 +161,9 @@ in'hnf (Is'In class'name type') = hnf type'
     hnf (T'Con con) = False
     hnf (T'App type'l _) = hnf type'l
     hnf (T'Tuple types) = True
+    hnf (T'Forall tvs qual'type) = error "forall inside the predicate -- in'hnf" -- TODO: implement later
+    --  TODO: I am not ever sure it needs to be implemented -- so far it seems like it can't really happen -- specificaly - having a forall inside the Predicate
+
     -- leaving out TyTuple -> I will refactor it out eventually anyway
     -- TODO: I implemented it for now, BUT I am not sure if a Tuple type is in the head normal form
     -- in any case - let's get rid of special case for the Tuple ASAP

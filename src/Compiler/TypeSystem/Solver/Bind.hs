@@ -35,6 +35,11 @@ instance Bind T'V Type where
     -- I don't think infinite type can have any particular Kind
     -- I think that infinite type doesn't have a proper kind in this system
     -- so some better way of reporting that error would be ideal.
+
+    -- NOTE:  I can encode the invariant from the PIART here.
+    --        Type Variable can never be bound to the poly type.
+    -- TODO:  Maybe that could be enough. Think about other ways the polytype could be introduced into the unification process too!
+    | (T'Forall _ _) <- type'   = throwError $ Unpredicative var type'
     | otherwise                 = return $ Sub $ Map.singleton var type'
 
 

@@ -142,10 +142,18 @@ close'over = normalize . generalize Map.empty
           It seems to me, that this function should just construct the normalizing substitution.
           That substitution should then just be applied using a standard and already implemented `apply` method.
           Is there a reason why such thing would not work?  -}
+{-  TODO: In the second stage of the "ExplicitForAll" adoption this function should take into account
+          that there might be types like
+          forall a . a -> (forall b . b -> a)
+          to normalize such types I think it should be done in steps,
+          first normalize the outer foralls and then the inner ones
+          that way the `a` is going to be renamed correctly even inside the nested forall.
+          It even seems like pretty simple operation - but best to be sure it's done correctly.
+-}
 normalize :: Scheme -> Scheme
 normalize (For'All vars q't) = For'All (fmap snd ord) (norm'qual'type q't)
   where
-    pairs = zip (Set.toList . free'vars $ q't) letters
+    pairs = zip vars letters
     ord = map (\ (tv@(T'V tv'name kind'), fresh'name) -> (tv, T'V fresh'name kind')) pairs
     -- NOTE: changed while h-in-h refactoring
     -- to take advantage from T'V
@@ -156,6 +164,8 @@ normalize (For'All vars q't) = For'All (fmap snd ord) (norm'qual'type q't)
     norm'qual'type qt@(_ :=> (T'Con _)) = qt -- the context must be empty
     norm'qual'type (preds :=> tu@(T'Tuple ts)) = norm'preds preds :=> norm'type tu
     norm'qual'type (preds :=> tv@(T'Var _)) = norm'preds preds :=> norm'type tv
+    norm'qual'type (preds :=> f@(T'Forall _ _)) = norm'preds preds :=> norm'type f -- TODO: napada me, ze by to asi spis melo byt tak, ze bych mel prejmenovat ty promenny, ktery jsou v tom volny a jsou urceny k prejmenovani/normalizaci z top level kontextu
+    -- ty zavreny bych asi pak mel v klidu normalizovat pomoci normalize az po tom co to dokoncim - normalize by pak mel splnit to, ze bude jakoukouliv volnou promennou ignorovat
 
     norm'preds :: [Predicate] -> [Predicate]
     norm'preds = map norm'pred
@@ -171,6 +181,8 @@ normalize (For'All vars q't) = For'All (fmap snd ord) (norm'qual'type q't)
       case lookup tv ord of
         Just tvar -> T'Var tvar
         Nothing -> error $ "Type variable " ++ show tv ++ " not in the signature."
+    norm'type (T'Forall tvs (preds :=> type')) = T'Forall tvs (norm'preds preds :=> norm'type type')
+    -- TODO: i tady je potreba zvazit, jestli tohle je OK - i kdyz tohle vypada smysluplne
 
 
 generalize :: Type'Env -> Qualified Type -> Scheme

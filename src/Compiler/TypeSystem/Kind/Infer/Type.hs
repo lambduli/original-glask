@@ -8,6 +8,7 @@ import Control.Monad.State
 
 
 import Compiler.Syntax
+import Compiler.Syntax.Type
 
 import Compiler.TypeSystem.Constraint
 import Compiler.TypeSystem.Infer
@@ -37,6 +38,14 @@ infer'type (T'App left't right't) = do
 
   return (var, constraint : cs'l ++ cs'r)
 
+infer'type (T'Forall tvs (preds :=> type')) = do
+  let assumptions = map (\ (T'V n k) -> (n, k)) tvs
+
+  cs'k'ps <- merge'into'k'env assumptions (infer'preds preds)
+  (k't, cs'k't) <- merge'into'k'env assumptions (infer'type type')
+
+  return (k't, cs'k'ps ++ cs'k't)
+
 
 infer'types :: [Type] -> Infer ([Kind], [Constraint Kind])
 infer'types types = do
@@ -45,3 +54,11 @@ infer'types types = do
       infer'type' (ks, cs) t = do
         (k, cs') <- infer'type t
         return (k : ks, cs' ++ cs)
+
+
+infer'preds :: [Predicate] -> Infer [Constraint Kind]
+infer'preds = undefined
+-- TODO:  v environmentu musim mit vytvoreny Kind Env pro Type Classy
+--        kazda type class ma prirazeny jediny Kind - Kind jejiho parametru
+--        ten vytahnu a vytvorim binding na Kind Typu (typove promenne) uvnitr toho predikatu
+--

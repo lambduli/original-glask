@@ -15,7 +15,7 @@ import Compiler.Syntax.Type
 import Compiler.Syntax.Kind
 import Compiler.Syntax.Qualified
 import Compiler.Syntax.Predicate
-import {-# SOURCE #-} Compiler.Syntax.Scheme
+-- import {-# SOURCE #-} Compiler.Syntax.Scheme
 
 import Compiler.TypeSystem.InferenceEnv
 import Compiler.TypeSystem.Constraint
@@ -70,6 +70,7 @@ instance Term T'V Type where
       free'vars left `Set.union` free'vars right
     T'Tuple ts ->
       foldl (\ set' t' -> Set.union set' (free'vars t')) Set.empty ts
+  
 
 
 -- | Substitution on Kinds
