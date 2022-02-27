@@ -1,17 +1,32 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Compiler.Syntax.Type where
 
 
-import Data.List
+import Data.List ( intercalate )
+import qualified Data.Map.Strict as Map
+import Control.Monad.State ( MonadState )
 
 
-import Compiler.Syntax.Name
-import Compiler.Syntax.Kind
-import Compiler.Syntax.Qualified
+import Compiler.Counter ( real'fresh, Counter )
+
+import Compiler.Syntax.Name ( Name )
+import Compiler.Syntax.Kind ( Kind )
+import Compiler.Syntax.Qualified ( Qualified(..) )
+
+import Compiler.TypeSystem.Solver.Substitution ( Subst(..) )
+import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply) )
+import Compiler.TypeSystem.Infer (Infer)
+import Compiler.TypeSystem.Error ( Error )
+import Compiler.TypeSystem.Solver ( run'solve )
+import Compiler.TypeSystem.Constraint ( Constraint(Match) )
 
 
 type Sigma'Type = Type
 
+
 type Rho'Type = Type
+
 
 type Tau'Type = Type
 
@@ -29,6 +44,13 @@ instance Show T'V where
     when looking up the variables in the process of substitution.
     Otherwise it would be thrown off by different Kind Variables representing the same thing.
     Maybe I will figure out a way, how to get rid of this problem and then I should be able to refactor this back to deriving. -}
+
+{-  TODO: This is just a temporary "fix".
+          It is needed because I need to use (==) to compare mono types within shallow subsumption.
+          Currently I am not doing the Kind inference BEFORE the type inference so my type variables and constants
+          will mostly have Kind variables as their Kinds. That would make them not equal with other instance of the same type.
+          Therefore - this version of Eq instance ignores the Kinds.
+-}
 instance Eq T'V where
   T'V v'l _ == T'V v'r _ = v'l == v'r
 
@@ -75,10 +97,6 @@ instance Show Type where
     = name -- ignoring the kind of the type constant
   show (T'Tuple types)
     = "(" ++ intercalate ", " (map show types) ++ ")"
-  -- show (TyArr left@(TyArr _ _) res'type)
-    -- = "(" ++ show left ++ ") -> " ++ show res'type
-  -- show (TyArr arg'type res'type)
-    -- = show arg'type ++ " -> " ++ show res'type
 
   -- (a -> b) -> c ... -> (-> a b) c ... (-> ((-> a) b)) c
   show (T'App (T'App (T'Con (T'C "(->)" _)) t'left@(T'App (T'App (T'Con (T'C "(->)" _)) _) _)) t'right)
@@ -94,3 +112,71 @@ instance Show Type where
 
   show (T'Forall tvs qual'type)
     = "(forall " ++ unwords (map show tvs) ++ " . " ++ show qual'type ++ ")"
+
+
+{-  SHALLOW SUBSUMPTION -}
+-- sh :: Type -> Type -> Infer Bool
+sh :: MonadState Counter m => Type -> Type -> m Bool
+s@(T'Forall tvs'l q't'l@(ctxt'l :=> t'l)) `sh` (T'Forall tvs'r q't'r) = do   --  SKOL + SPEC + MONO
+  --  co je potreba:
+  --  nejdriv musim instanciovat ten typ napravo - nahradit vsechny kvantifikovany promeny uplne fresh jmeny
+  --  a pak muzu zavolat znova tuhle funkci a skonci to v casu SPEC
+  let params = map (\ (T'V name _) -> name) tvs'l
+
+  fresh'strs <- mapM (\ (T'V n k) -> real'fresh params n >>= \ fresh -> return (fresh, k) ) tvs'r
+
+  let ty'vars = map (\ (name, k) -> T'Var (T'V name k)) fresh'strs
+      mapping = zip tvs'r ty'vars
+      subst   = Sub $ Map.fromList mapping
+
+      (ctxt'r :=> t'r) = apply subst q't'r
+
+  s `sh` t'r
+  {-  TODO: momentalne ignoruju kvalifikatory v typu, je to jenom docasny a nesmim to zapomenout opravit.
+            problem je, ze ja bych potreboval provest kompletni jednostranou unifikaci celyho (Qualified Type) (matching)
+            ale moje Solver infrastruktura neumoznuje vyrobit (Constraint (Qualified Type))
+            to by totiz znamenalo vyrobit list constraintu, ktery po vyreseni vyrobi list constraintu jineho druhu
+            ---> z Constraint (Qualified Type) by vzniklo nekolik (Constraint Type) a nejspis taky (Constraint Predicate)
+            tohle bude komplikovany
+            
+            mozna by to tady slo vyresit tak, ze rucne vyrobim ty constrainty tady - provedu manualni dekonstrukci qualified'type
+            a dostanu constrainty na Type z prave strany :=> a pak contexty budu muset spravne projit a vzdycky svazat ty dva odpovidajici
+            na druhou stranu tam bude mozna trosku problem
+            protoze kdyz mas kontext jako:
+            (Show a, Show b) a druhej (Show d, Show e) - tak neni jasny jak je naparovat
+            takze si myslim, ze realne vyresim ten matching jenom na typech a pak tu substituci vezmu a aplikuju ji na ten typ nalevo
+            tim by se mely vsechny promenne v Predikatech v kontextu spravne prepsat
+            a ja bych pak mel byt schopny uz jenom porovnat dva qualified typy na primou shodu pomoci (==)
+            to mi zni jako dobry zaver
+  
+    -}
+
+
+  --  jelikoz musim dealovat s predikatama v kontextu
+  --  budu muset tu matching substituci vyrobit uz tady
+  --  aplikovat ji na oba dva qualified types
+  --  a pak porovnat ty
+  --  kvuli tomu bude potreba naimplementova korektne Eq pro Qualified
+
+  -- case run'solve' [q't'l `Unify` alpha'renamed'r] :: Either Error (Subst T'V Type) of
+  --   Left err -> return False
+  --   Right subst -> do
+  --     --  uz jenom to, ze jsem tu matching substituci nasel, znamena, ze zleva se jde dostat (pomoci ni) doprava
+  --     --  takze tohle je pro me dostatecny na to abych rekl, ze je to subsumption
+  --     return True
+
+(T'Forall tvs'l a@(ctxt'l :=> t'l)) `sh` rho = do                         --  SPEC
+  --  tady udelam to, ze chci najit matching substitutici zleva doprava
+  --  ten typ napravo necham uplne tak jak je
+  --  pokud ziskam substituci, aplikuju ji na ten typ nalevo
+  --  a zavolam ten posledni MONO case - znova `sh`
+  let constraints = [ t'l `Match` rho ]
+  
+  case run'solve constraints :: Either Error (Subst T'V Type) of
+    Left err -> return False
+    Right subst -> do
+      let t'l'sub = apply subst t'l
+      t'l'sub `sh` rho
+      
+tau'l `sh` tau'r                                          --  MONO
+  = return (tau'l == tau'r)

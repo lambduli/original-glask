@@ -1,31 +1,31 @@
 module Compiler.TypeSystem.Type.Infer.Explicit where
 
 
-import Control.Monad.Except
-import Control.Monad.Reader
-
-import Data.Functor.Identity
-
+import Control.Monad.Except ( filterM, runExceptT, MonadError(throwError) )
+import Control.Monad.Reader ( MonadReader(ask) )
+import Data.Functor.Identity ( Identity(runIdentity) )
 import qualified Data.Set as Set
+import Data.List ( (\\) )
 
-import Data.List
 
+import Compiler.Syntax.BindGroup ( Bind'Group(Bind'Group, name, alternatives) )
+import Compiler.Syntax.Kind ( Kind(K'Star) )
+import Compiler.Syntax.Predicate ( Predicate )
+import Compiler.Syntax.Qualified ( Qualified((:=>)) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( sh, T'V, Type )
 
-import Compiler.Syntax
-
-import Compiler.TypeSystem.Error
-import Compiler.TypeSystem.Infer
-import Compiler.TypeSystem.Constraint
-import Compiler.TypeSystem.Binding
-import Compiler.TypeSystem.Utils.Infer
-import Compiler.TypeSystem.Utils.Class
-import Compiler.TypeSystem.InferenceEnv
-import Compiler.TypeSystem.Solver
-import Compiler.TypeSystem.Solver.Substitution
-import Compiler.TypeSystem.Solver.Substitutable
-import Compiler.TypeSystem.Type.Infer.Match
-import Compiler.TypeSystem.Kind.Infer.Type (infer'type)
-
+import Compiler.TypeSystem.Error ( Error(..) )
+import Compiler.TypeSystem.Infer ( Infer )
+import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
+import Compiler.TypeSystem.Binding ( Explicit(..) )
+import Compiler.TypeSystem.Utils.Infer ( close'over, instantiate, split )
+import Compiler.TypeSystem.Utils.Class ( entail )
+import Compiler.TypeSystem.InferenceEnv ( Infer'Env(Infer'Env, type'env, class'env) )
+import Compiler.TypeSystem.Solver ( run'solve )
+import Compiler.TypeSystem.Solver.Substitution ( Subst )
+import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term(free'vars) )
+import Compiler.TypeSystem.Type.Infer.Match ( infer'matches )
+import Compiler.TypeSystem.Kind.Infer.Type ( infer'type )
 
 
 {-  Description:
@@ -67,13 +67,13 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
             Left err -> throwError err
             Right (deferred'preds, retained'preds) -> do
               (k, cs'k') <- infer'type t
-
-              if scheme /= sc'
+              b <- scheme `sh` sc'
+              if not b
               {- TODO:  If I want to know exactly what user-denoted type variable in the `scheme` does correspond to some non-variable type, I can use `match` to create a one-way substitution. -}
-              then throwError Signature'Too'General
+              then throwError $ Signature'Too'General scheme sc'
               else  if not (null retained'preds)
                     then throwError Context'Too'Weak
-              else return (deferred'preds, cs't, (k `Unify` K'Star) : cs'k ++ cs'k')
+                    else return (deferred'preds, cs't, (k `Unify` K'Star) : cs'k ++ cs'k')
               -- TODO:  FIX - here the `kind` function is not used safely
               --        the problem is that kind function expects for Type Applications - that the Kind of the Left part will be Kind Arrow
               --        but that's never going the happen for types given from the user (annotations)

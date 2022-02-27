@@ -1,10 +1,12 @@
 module Compiler.TypeSystem.Program where
 
 
-import Compiler.Syntax
+import Compiler.Syntax.Declaration ( Data )
+import Compiler.Syntax.Name ( Name )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type )
 
-import Compiler.TypeSystem.BindSection (Bind'Section)
-import Compiler.TypeSystem.Binding
+import Compiler.TypeSystem.BindSection ( Bind'Section )
+import Compiler.TypeSystem.Binding ( Method )
 
 
 {-  NOTE: I am looking at the definition of `Program` and thinking.
@@ -22,6 +24,6 @@ data Program
   = Program
     { bind'sections :: [Bind'Section]
     , methods :: [Method]
-    , method'annotations :: [(Name, Qualified Type)]
+    , method'annotations :: [(Name, Sigma'Type)]
     , data'declarations :: [Data] }
   deriving (Show)

@@ -1,12 +1,10 @@
 module Compiler.Syntax.Qualified where
 
 
-import Data.List
+import Data.List ( intercalate )
 
 
-import Compiler.Syntax.Name
-import {-# SOURCE #-} Compiler.Syntax.Type
-import Compiler.Syntax.Predicate
+import Compiler.Syntax.Predicate ( Predicate )
 
 
 data Qualified t = [Predicate] :=> t

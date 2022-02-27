@@ -1,8 +1,8 @@
 module Compiler.Syntax.Scheme where
 
 
-import Compiler.Syntax.Type
-import Compiler.Syntax.Qualified
+-- import Compiler.Syntax.Type
+-- import Compiler.Syntax.Qualified
 
 
 -- data Scheme

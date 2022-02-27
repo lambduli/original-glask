@@ -1,34 +1,37 @@
 module Compiler.TypeSystem.Type.Infer.Program where
 
 import qualified Data.Map.Strict as Map
-import Control.Monad.Except
-import Control.Monad.Reader
-import Data.Functor.Identity
-import Control.Monad.State
-
-
-import Compiler.Counter
-
-import Compiler.Syntax
-import Compiler.Syntax.Type
-
-
-import Compiler.TypeSystem.Error
-import Compiler.TypeSystem.Program
-import Compiler.TypeSystem.InferenceEnv
-import Compiler.TypeSystem.InferenceState
-import Compiler.TypeSystem.Infer
-import Compiler.TypeSystem.Constraint
-import Compiler.TypeSystem.Type.Infer.BindSection
-import Compiler.TypeSystem.Type.Infer.Method
-import Compiler.TypeSystem.Utils.Class
-import Compiler.TypeSystem.Solver
-import Compiler.TypeSystem.Solver.Substitution
-import Compiler.TypeSystem.Solver.Substitutable
-import Compiler.TypeSystem.Solver.Composable
-import Compiler.TypeSystem.Utils.Infer
+import Control.Monad.Except ( runExceptT, MonadError(throwError) )
+import Control.Monad.Reader ( MonadReader(ask) )
+import Data.Functor.Identity ( Identity(runIdentity) )
+import Control.Monad.State ( MonadState(get) )
 import Control.Monad.Extra (concatMapM)
+
+
+import Compiler.Counter ( Counter(Counter, counter) )
+
+import Compiler.Syntax.Declaration ( Constr'Decl(..), Data(..) )
+import Compiler.Syntax.Kind ( Kind(K'Star) )
+import Compiler.Syntax.Name ( Name )
+import Compiler.Syntax.Qualified ( Qualified((:=>)) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'C(T'C), T'V, Type(..) )
+
+
+import Compiler.TypeSystem.Error ( Error )
+import Compiler.TypeSystem.Program ( Program(..) )
+import Compiler.TypeSystem.InferenceEnv ( Infer'Env(..), Kind'Env, Type'Env )
+import Compiler.TypeSystem.InferenceState ( Infer'State )
+import Compiler.TypeSystem.Infer ( run'infer, Infer )
+import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
+import Compiler.TypeSystem.Type.Infer.BindSection ( check'seq, infer'bind'section, infer'seq )
+import Compiler.TypeSystem.Type.Infer.Method ( infer'method )
 import Compiler.TypeSystem.Kind.Infer.Type (infer'type)
+import Compiler.TypeSystem.Solver ( run'solve )
+import Compiler.TypeSystem.Solver.Substitution ( Subst )
+import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply) )
+import Compiler.TypeSystem.Solver.Composable ( Composable(merge) )
+import Compiler.TypeSystem.Utils.Infer ( default'subst )
+import Compiler.TypeSystem.Utils.Class ( reduce )
 
 
 infer'whole'program :: Program -> Infer'Env -> Infer'State -> Either Error (Type'Env, Kind'Env, Infer'State)
@@ -152,8 +155,8 @@ infer'kinds Program{ data'declarations = data'decls, method'annotations = m'anns
 
         return $ k'c : k'cs ++ constructors'k'cs
 
-      infer'method :: (Name, Qualified Type) -> Infer [Constraint Kind]
-      infer'method a@(n, context :=> type') = do
+      infer'method :: (Name, Sigma'Type) -> Infer [Constraint Kind]
+      infer'method a@(n, T'Forall tvs (context :=> type')) = do
         -- NOTE:  I don't care about the Context
         -- all type variables there are just going to be in Predicates like (Show a), (Read a) and never like (Foo (m a))
         --

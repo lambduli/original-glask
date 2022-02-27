@@ -1,15 +1,15 @@
 module Compiler.Syntax.Scheme where
 
 
-import qualified Data.Map.Strict as Map
+-- import qualified Data.Map.Strict as Map
 
 
-import Compiler.Syntax.Type
-import Compiler.Syntax.Qualified
+-- import Compiler.Syntax.Type
+-- import Compiler.Syntax.Qualified
 
 
-import Compiler.TypeSystem.Solver.Substitutable
-import Compiler.TypeSystem.Solver.Substitution
+-- import Compiler.TypeSystem.Solver.Substitutable
+-- import Compiler.TypeSystem.Solver.Substitution
 
 
 -- data Scheme

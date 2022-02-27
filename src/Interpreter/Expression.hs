@@ -35,18 +35,16 @@ import qualified Compiler.Analysis.Syntactic.Data as Data
 import qualified Compiler.Analysis.Semantic.DependencyAnalysis as Dependencies
 import qualified Compiler.Analysis.Semantic.Class as Classes
 
-import Compiler.Syntax.ToAST
-
 import Compiler.Analysis.Syntactic.FixityEnv
 import Compiler.Analysis.Syntactic.FieldEnv
 import Compiler.Analysis.Syntactic.SynonymEnv
 
+import Compiler.Syntax.ToAST
 import Compiler.Syntax.Term
 import Compiler.Syntax
 import Compiler.Syntax.HasKind
 import Compiler.Syntax.ToAST.TranslateEnv
 import Compiler.Syntax.ToAST.TranslateState
-
 
 import Compiler.Analysis.Semantic.SemanticError
 
@@ -94,7 +92,7 @@ read'expr input trans'env trans'state = do
 
 
 -- TODO: move this function into a TypeSystem module (and rename it probably)
-infer'type :: Expression -> Infer'Env -> Infer'State -> Either Error (Scheme, Infer'State)
+infer'type :: Expression -> Infer'Env -> Infer'State -> Either Error (Sigma'Type, Infer'State)
 infer'type expr i'env i'state = do
   -- ([Predicate], Type, [Constraint Type], [Constraint Kind])
   ((preds, type', cs't, cs'k), i'state') <- run'infer i'env (infer'expr expr) i'state

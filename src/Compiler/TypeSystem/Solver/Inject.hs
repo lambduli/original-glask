@@ -5,8 +5,9 @@
 module Compiler.TypeSystem.Solver.Inject where
 
 
-import Compiler.Syntax
-import Compiler.Syntax.Type
+import Compiler.Syntax.Kind ( Kind(K'Var) )
+import Compiler.Syntax.Name ( Name )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'V, Type(T'Var) )
 
 
 class Inject a b where

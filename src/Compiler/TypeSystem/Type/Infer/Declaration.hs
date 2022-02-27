@@ -1,14 +1,17 @@
 module Compiler.TypeSystem.Type.Infer.Declaration where
 
 
-import Compiler.Syntax
+import Compiler.Syntax.Declaration ( Declaration )
+import Compiler.Syntax.Kind ( Kind )
+import Compiler.Syntax.Predicate ( Predicate )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, Type )
 
-import Compiler.TypeSystem.Infer
-import Compiler.TypeSystem.Constraint
-import Compiler.TypeSystem.Assumption
+import Compiler.TypeSystem.Infer ( Infer )
+import Compiler.TypeSystem.Constraint ( Constraint )
+import Compiler.TypeSystem.Assumption ( Assumption )
 
 
-import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Expression
+import Compiler.Syntax.Type ( Sigma'Type )
 
 
 {-  TODO: I inteded to use this function to infer list of declarations like `let` blocks.
@@ -16,7 +19,7 @@ import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Expression
           This function might be used just to utilize it.
  -}
 
-infer'decls :: [Declaration] -> Infer ([Predicate], [Assumption Scheme], [Constraint Type], [Constraint Kind])
+infer'decls :: [Declaration] -> Infer ([Predicate], [Assumption Sigma'Type], [Constraint Type], [Constraint Kind])
 infer'decls = undefined
 
 {- TODO:

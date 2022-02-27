@@ -1,7 +1,26 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Compiler.Syntax.Type where
 
+import Control.Monad.State ( MonadState )
+import qualified Data.Map.Strict as Map
 
-data T'V
+import {-# SOURCE #-} Compiler.Syntax.Qualified ( Qualified )
+import Compiler.Syntax.Name ( Name )
+import Compiler.Syntax.Kind ( Kind )
+import Compiler.Counter (Counter)
+
+
+type Sigma'Type = Type
+
+
+type Rho'Type = Type
+
+
+type Tau'Type = Type
+
+
+data T'V = T'V Name Kind
 
 
 instance Show T'V
@@ -20,7 +39,7 @@ instance Eq T'V
 instance Ord T'V
 
 
-data T'C
+data T'C = T'C Name Kind
   
 
 instance Eq T'C
@@ -30,6 +49,11 @@ instance Show T'C
 
 
 data Type
+  = T'Var T'V
+  | T'Con T'C
+  | T'Tuple [Type]
+  | T'App Type Type
+  | T'Forall [T'V] (Qualified Type)
 
 
 instance Eq Type
@@ -49,3 +73,6 @@ from type safety standpoint. And how far we can get to the cliff before falling.
 
 
 instance Show Type
+
+
+sh :: MonadState Counter m => Type -> Type -> m Bool

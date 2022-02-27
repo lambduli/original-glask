@@ -1,36 +1,40 @@
 module Compiler.TypeSystem.Type.Infer.Implicit where
 
 
-import Control.Monad.Except
-import Control.Monad.Reader
+import Control.Monad.Except ( zipWithM, runExceptT, MonadError(throwError) )
+import Control.Monad.Reader ( MonadReader(ask) )
 
-import Data.Functor.Identity
+import Data.Functor.Identity ( Identity(runIdentity) )
 
 import qualified Data.Set as Set
 
-import Data.List
+import Data.List ( (\\), intersect, union )
 
 
-import Compiler.Counter
+import Compiler.Counter ( fresh )
 
-import Compiler.Syntax
-import Compiler.Syntax.Type
+import Compiler.Syntax.BindGroup ( Bind'Group(name, alternatives) )
+import Compiler.Syntax.Kind ( Kind(K'Star) )
+import Compiler.Syntax.Match ( Match(patterns) )
+import Compiler.Syntax.Name ( Name )
+import Compiler.Syntax.Predicate ( Predicate )
+import Compiler.Syntax.Qualified ( Qualified((:=>)) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'V(..), Type(..) )
 
-import Compiler.TypeSystem.Error
-import Compiler.TypeSystem.Infer
-import Compiler.TypeSystem.Constraint
-import Compiler.TypeSystem.Binding
-import Compiler.TypeSystem.Utils.Infer
-import Compiler.TypeSystem.Utils.Class
-import Compiler.TypeSystem.InferenceEnv
-import Compiler.TypeSystem.Solver
-import Compiler.TypeSystem.Solver.Substitution
-import Compiler.TypeSystem.Solver.Substitutable
-import Compiler.TypeSystem.Type.Infer.Match
+import Compiler.TypeSystem.Error ( Error )
+import Compiler.TypeSystem.Infer ( Infer )
+import Compiler.TypeSystem.Constraint ( Constraint )
+import Compiler.TypeSystem.Binding ( Implicit(..) )
+import Compiler.TypeSystem.Utils.Infer ( merge'into't'env, quantify, split, to'scheme )
+import Compiler.TypeSystem.InferenceEnv ( Infer'Env(Infer'Env, type'env, class'env) )
+import Compiler.TypeSystem.Solver ( run'solve )
+import Compiler.TypeSystem.Solver.Substitution ( Subst )
+import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term(free'vars) )
+import Compiler.TypeSystem.Type.Infer.Match ( infer'matches )
 
 
 {- Returning a [Constraint Type] might not be strictly necessary -}
-infer'impls :: [Implicit] -> Infer ([Predicate], [(Name, Scheme)], [Constraint Type], [Constraint Kind])
+infer'impls :: [Implicit] -> Infer ([Predicate], [(Name, Sigma'Type)], [Constraint Type], [Constraint Kind])
 infer'impls implicits = do
   let is = map (\ (Implicit b'g) -> name b'g) implicits
   {-  get only the names of the implicit bindings in the same order -}

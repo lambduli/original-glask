@@ -1,17 +1,14 @@
 module Compiler.Syntax.Expression where
 
 
-import Data.List
+import Data.List ( intercalate )
 
-import Compiler.Lexer.Position
-
-import Compiler.Syntax.Name
-import Compiler.Syntax.Literal
-import Compiler.Syntax.Qualified
-import Compiler.Syntax.Type
-import Compiler.Syntax.Declaration
-import Compiler.Syntax.Match
-import Compiler.Syntax.Pattern
+import Compiler.Syntax.Name ( Name )
+import Compiler.Syntax.Literal ( Literal )
+import Compiler.Syntax.Type ( Sigma'Type )
+import Compiler.Syntax.Declaration ( Declaration )
+import Compiler.Syntax.Match ( Match )
+import Compiler.Syntax.Pattern ( Pattern )
 
 
 data Expression

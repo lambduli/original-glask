@@ -1,15 +1,21 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+
 module Compiler.Syntax.Term.Expression where
 
 
-import Compiler.Syntax.Name
-import Compiler.Syntax.Literal
-import Compiler.Syntax.Term.Declaration
-import Compiler.Syntax.Term.Identifier
-import {-# SOURCE #-} Compiler.Syntax.Term.Type
-import Compiler.Syntax.Term.Pattern
-import Compiler.Syntax.Term.Predicate
+import qualified Data.Set as Set
 
-import Compiler.TypeSystem.Solver.Substitutable
+
+import Compiler.Syntax.Name ( Name )
+import Compiler.Syntax.Literal ( Literal )
+import Compiler.Syntax.Term.Declaration ( Term'Decl )
+import Compiler.Syntax.Term.Identifier ( Term'Id )
+import {-# SOURCE #-} Compiler.Syntax.Term.Type ( Term'Type )
+import Compiler.Syntax.Term.Pattern ( Term'Pat )
+import Compiler.Syntax.Term.Predicate ( Term'Pred )
+
+import Compiler.TypeSystem.Solver.Substitutable ( Term(..) )
+
 
 -- TODO: add Positions to specific alternatives for better error reporting
 data Term'Expr
@@ -36,14 +42,16 @@ instance Show Term'Expr where
   show _ = "Not Implemented: Show for Term'Expr"
 
 
-instance Term Term'Expr where
-  free'vars (Term'E'Id Term'Id)
+-- NOTE:  This instance is supposed to find free TYPE variables.
+-- TODO:  Consider refactoring the Parse'Tree/Term structure so that Type and Expression identifiers use different representation.
+instance Term Term'Id Term'Expr where
+  free'vars (Term'E'Id _)
     = Set.empty
   
-  free'vars (Term'E'Op Term'Id)
+  free'vars (Term'E'Op _)
     = Set.empty
   
-  free'vars (Term'E'Lit Literal)
+  free'vars (Term'E'Lit _)
     = Set.empty
   
   free'vars (Term'E'Abst _ t'expr)
@@ -73,9 +81,10 @@ instance Term Term'Expr where
   free'vars (Term'E'Ann t'expr (t'preds, t'type))
     = free'vars t'expr `Set.union` free'vars t'preds `Set.union` free'vars t'type
   
-  free'vars (Term'E'Case Term'Expr [(Term'Pat, Term'Expr)])
+  -- TODO:  Implement later
+  free'vars (Term'E'Case t'expr options)
     = undefined
   
-  free'vars (Term'E'Labeled'Constr Name [(Name, Term'Expr)]) = undefined
+  free'vars (Term'E'Labeled'Constr con'name t'fields) = undefined
   
-  free'vars (Term'E'Labeled'Update Term'Expr [(Name, Term'Expr)]) = undefined
+  free'vars (Term'E'Labeled'Update t'expr t'fields) = undefined

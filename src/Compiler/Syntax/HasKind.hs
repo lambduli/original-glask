@@ -1,8 +1,8 @@
 module Compiler.Syntax.HasKind where
 
 
-import Compiler.Syntax.Kind
-import Compiler.Syntax.Type
+import Compiler.Syntax.Kind ( Kind(..) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(..), T'V(..), Type(..) )
 
 
 class HasKind t where
@@ -27,3 +27,4 @@ instance HasKind Type where
     = case kind t of
       K'Arr _ k -> k
       -- assuming the type is well formed, therefore there's no other option
+  kind (T'Forall tvs qual't) = K'Star

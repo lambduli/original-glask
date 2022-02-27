@@ -1,8 +1,9 @@
 module Compiler.TypeSystem.Solver.Occurs where
 
 
-import Compiler.Syntax
-import Compiler.Syntax.Type
+import Compiler.Syntax.Kind ( Kind(..) )
+import Compiler.Syntax.Qualified ( Qualified((:=>)) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(T'C), T'V(T'V), Type(..) )
 
 
 class Occurs a where

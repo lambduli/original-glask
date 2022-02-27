@@ -1,10 +1,9 @@
 module Compiler.TypeSystem.Error where
 
 
-import Data.List
-
-
-import Compiler.Syntax
+import Compiler.Syntax.Kind ( Kind )
+import Compiler.Syntax.Name ( Name )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'V, Type )
 
 
 data Error
@@ -18,7 +17,7 @@ data Error
   | Kind'Shape'Mismatch Kind Kind
   | Type'Unif'Count'Mismatch [Type] [Type]
   | Kind'Unif'Count'Mismatch [Kind] [Kind]
-  | Signature'Too'General
+  | Signature'Too'General Type Type
   | Context'Too'Weak
   | Unpredicative T'V Type -- Error reported when predicativity assumption is to be broken. (Unifying type variable with sigma type.)
 
@@ -57,8 +56,8 @@ instance Show Error where
   
   show (Kind'Unif'Count'Mismatch _ _) = undefined  -- TODO: FIX this pls!
   
-  show (Signature'Too'General)
-    = "Signature is too general" -- TODO: add some info about what am I talking about too
+  show (Signature'Too'General offered inferred)
+    = "Signature is too general:\n    offered type: '" ++ show offered ++ "'\n    inferred type: '" ++ show inferred ++ "'"
 
   show (Context'Too'Weak)
     = "Context is too weak" -- TODO: add some info about what am I talking about too

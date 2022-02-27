@@ -1,21 +1,23 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Compiler.TypeSystem.Solver.Unify where
 
 
-import Control.Monad.Except
+import Control.Monad.Except ( MonadError(throwError) )
 
-import Compiler.Syntax
-import Compiler.Syntax.Type
+import Compiler.Syntax.Kind ( Kind(..) )
+import Compiler.Syntax.Predicate ( Predicate(..) )
+import Compiler.Syntax.Qualified ( Qualified )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'V, Type(..) )
 
-import Compiler.TypeSystem.Error
-import Compiler.TypeSystem.Solver.Substitution
-import Compiler.TypeSystem.Solver.Substitutable
-import Compiler.TypeSystem.Solver.Solve
-import Compiler.TypeSystem.Solver.Bind
-import Compiler.TypeSystem.Solver.Composable
+import Compiler.TypeSystem.Error ( Error(..) )
+import Compiler.TypeSystem.Solver.Substitution ( empty'subst, Subst )
+import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply) )
+import Compiler.TypeSystem.Solver.Solve ( Solve )
+import Compiler.TypeSystem.Solver.Bind ( Bind(bind) )
+import Compiler.TypeSystem.Solver.Composable ( Composable(merge, compose) )
 
 
 {-  Typing Haskell in Haskell commentary:
@@ -72,11 +74,16 @@ instance Unify Type T'V Type where
   match t1 t2 | t1 == t2
     = return empty'subst
 
-  match (T'Var var) t
-    = throwError $ Unexpected "I wanted this to break. Find me and let the comments and notes guide you." -- I want it to explode when this case is triggered
+  -- match (T'Var var) t
+  --   = throwError $ Unexpected "I wanted this to break. Find me and let the comments and notes guide you." -- I want it to explode when this case is triggered
+  {-  NOTE: I commented the one below at some point and created the one above.
+            The reason for that was simple (I think) - the one below enforces the Kinds to be equal.
+            That wasn't really possible - because I wasn't planning on doing the Kind Inference BEFORE the type inference.
 
-  -- match (T'Var var) t | kind var == kind t -- I don't think I can actually do that
-  --   = var `bind` t
+            I am not really sure why I chose to make just this one explode and not others. But that is what I think I had in mind.
+   -}
+  match (T'Var var) t -- | kind var == kind t -- I don't think I can actually do that
+    = var `bind` t
     -- I think, they sometimes might not be the same Kind Variable
 
   match (T'App l r) (T'App l' r') = do
@@ -149,9 +156,18 @@ instance Unify [Type] T'V Type where
   unify t'l t'r
     = throwError $ Type'Unif'Count'Mismatch t'l t'r
 
-  
-  match = undefined -- TODO: I guess fix later.
 
+  match [] []
+    = return empty'subst
+
+  match (t'l : ts'l) (t'r : ts'r) = do
+    su1 <- t'l `match` t'r
+    su2 <- apply su1 ts'l `match` apply su1 ts'r
+    return (su2 `compose` su1)
+
+  match t'l t'r
+    = throwError $ Type'Unif'Count'Mismatch t'l t'r
+  
 
 -- instance Unify'Many T'V [] Type where
 --   unify'many [] []
@@ -211,3 +227,9 @@ instance Unify Predicate T'V Type where
       lift fn (Is'In name'l type'l) (Is'In name'r type'r)
         | name'l == name'r  = fn type'l type'r
         | otherwise         = throwError $ Unexpected $ "Unification Error: Type Classes `" ++ name'l ++ "` and `" ++ name'r ++ "` differ and can not be unified."
+
+
+instance Unify t T'V Type => Unify (Qualified t) T'V Type where
+  unify = undefined
+
+  match = undefined

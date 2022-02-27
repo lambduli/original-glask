@@ -5,15 +5,17 @@ module Compiler.Syntax.Term.Declaration where
 
 import qualified Data.Set as Set
 
-import Compiler.Syntax.Name
-import Compiler.Syntax.Fixity
 
-import {-# SOURCE #-} Compiler.Syntax.Term.Expression
-import {-# SOURCE #-} Compiler.Syntax.Term.Type
-import Compiler.Syntax.Term.Pattern
-import Compiler.Syntax.Term.Predicate
+import {-# SOURCE #-} Compiler.Syntax.Term.Expression ( Term'Expr )
+import {-# SOURCE #-} Compiler.Syntax.Term.Type ( Term'Type )
+import Compiler.Syntax.Term.Pattern ( Term'Pat )
+import Compiler.Syntax.Term.Predicate ( Term'Pred )
+import Compiler.Syntax.Term.Identifier ( Term'Id )
 
-import Compiler.TypeSystem.Solver.Substitutable
+import Compiler.Syntax.Name ( Name )
+import Compiler.Syntax.Fixity ( Fixity )
+
+import Compiler.TypeSystem.Solver.Substitutable ( Term(..) )
 
 
 data Term'Decl
@@ -43,5 +45,6 @@ data Term'Constr'Decl
   deriving (Eq)
 
 
-instance Term Term'Decl where
+-- TODO:  Implement later
+instance Term Term'Id Term'Decl where
   free'vars _ = Set.empty

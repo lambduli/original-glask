@@ -3,15 +3,15 @@ module Compiler.TypeSystem.Infer (Infer, run'infer) where
 
 import qualified Data.Map.Strict as Map
 
-import Control.Monad.Reader
-import Control.Monad.State
-import Control.Monad.Except
+import Control.Monad.Reader ( ReaderT(runReaderT) )
+import Control.Monad.State ( MonadState(get), evalStateT, StateT )
+import Control.Monad.Except ( Except, runExcept )
 
 
-import Compiler.TypeSystem.Error
+import Compiler.TypeSystem.Error ( Error )
 
-import Compiler.TypeSystem.InferenceEnv
-import Compiler.TypeSystem.InferenceState
+import Compiler.TypeSystem.InferenceEnv ( Infer'Env )
+import Compiler.TypeSystem.InferenceState ( Infer'State )
 
 
 -- | Inference Monad

@@ -73,13 +73,15 @@ load file'name counter = do
     Right (decls, trans'env, counter') -> do
       -- putStrLn $ "..................     Prave jsem nacetl deklarace  `load'declarations`   a Counter je " ++ show counter
 
-      -- let (Program{ bind'sections = bs, methods = _, method'annotations = m'ans, data'declarations = ds }, ms) = make'program decls trans'env counter
+      -- let Program{ bind'sections = bs, methods = _, method'annotations = m'ans, data'declarations = ds } = make'program decls trans'env counter
       -- putStrLn ""
       -- putStrLn "::::::::::"
-      -- putStrLn $ "methods:  " ++ show ms
+      -- putStrLn $ "methods:  " ++ show m'ans
       -- putStrLn ""
       -- putStrLn $ "data'declarations:  " ++ show ds
       -- putStrLn "::::::::::"
+      -- putStrLn ""
+      -- putStrLn $ "bindings:  " ++ show bs
 
 
 
@@ -123,7 +125,7 @@ load'declarations source counter = do
   return (declarations, trans'env, counter'')
 
 
-make'program :: [Declaration] -> TE.Translate'Env -> Counter -> (Program, [(Name, Qualified Type)])
+make'program :: [Declaration] -> TE.Translate'Env -> Counter -> Program
 make'program declarations trans'env counter =
   -- TODO: now when I have the list of Declarations in AST form
   -- I need to call inference
@@ -142,9 +144,9 @@ make'program declarations trans'env counter =
       program :: Program
       program = to'program declarations
 
-      m'anns = method'annotations program
+      -- m'anns = method'annotations program
 
-  in (program, m'anns)
+  in program
 
 
 process'declarations :: [Declaration] -> TE.Translate'Env -> Counter -> Either Error (Program, Infer'Env, Class'Env, TE.Translate'Env, Counter)
@@ -166,7 +168,7 @@ process'declarations declarations trans'env counter = do
   let program :: Program
       program = to'program declarations
       m'anns = method'annotations program
-      type'env = init't'env `Map.union` (Map.fromList constr'assumptions) `Map.union` (Map.fromList $ map (second close'over) m'anns)
+      type'env = init't'env `Map.union` (Map.fromList constr'assumptions) `Map.union` (Map.fromList m'anns)
 
   let TE.Trans'Env{ TE.kind'context = k'env } = trans'env
 

@@ -4,37 +4,51 @@
 module Compiler.Syntax.ToAST where
 
 import qualified Data.Map.Strict as Map
-
 import qualified Data.Set as Set
+
+import Data.Sequence ( unzipWith )
 import Data.List (intersperse, replicate, find)
-import Data.Maybe
-import Control.Monad.Trans.Reader
-import Control.Monad.Except
-import Control.Monad.State
+import Data.Maybe ( mapMaybe )
+import Control.Monad.Trans.Reader ( asks, local )
+import Control.Monad.Except ( when, replicateM, MonadError(throwError) )
+import Control.Monad.State ( when, replicateM )
 
 
-import Compiler.Counter (fresh)
+import Compiler.Counter ( fresh )
 
-import Compiler.Syntax.Term
 import qualified Compiler.Syntax.Term as Term
-import Compiler.Syntax.Term.Expression
-import Compiler.Syntax.Term.Type
+import Compiler.Syntax.Term.Declaration ( Term'Constr'Decl, Term'Decl )
+import Compiler.Syntax.Term.Identifier ( Term'Id(..) )
+import Compiler.Syntax.Term.Pattern ( Term'Pat(..) )
+import Compiler.Syntax.Term.Predicate ( Term'Pred )
+import Compiler.Syntax.Term.Expression ( Term'Expr(..) )
+import Compiler.Syntax.Term.Type ( Term'Type(..) )
 
-import Compiler.Syntax
 import qualified Compiler.Syntax as AST
-import Compiler.Syntax.Expression
-import Compiler.Syntax.Type
+import Compiler.Syntax.BindGroup ( Bind'Group(Bind'Group, alternatives) )
+import Compiler.Syntax.Declaration ( Constr'Decl, Data(Data), Declaration )
+import Compiler.Syntax.Kind ( Kind(K'Var) )
+import Compiler.Syntax.Match ( Match(..) )
+import Compiler.Syntax.Name ( Name )
+import Compiler.Syntax.Pattern ( Pattern(..) )
+import Compiler.Syntax.Predicate ( Predicate )
+import Compiler.Syntax.Qualified ( Qualified(..) )
+import Compiler.Syntax.Type ( T'C(T'C), T'V(..), Type(..) )
+import Compiler.Syntax.Expression ( Expression(..) )
+
+import Compiler.Syntax.ToAST.ESYA ( ESYA(process) )
+import Compiler.Syntax.ToAST.Translate ( run'translate, Translate )
+import Compiler.Syntax.ToAST.TranslateState ( Translate'State )
 import qualified Compiler.Syntax.ToAST.TranslateEnv as Trans'Env
-import Compiler.Syntax.ToAST.Translate
-import Compiler.Analysis.Syntactic.ConstrEnv
+
+import Compiler.TypeSystem.Type.Constants ( type'fn, type'list )
+import Compiler.TypeSystem.Solver.Substitutable ( Term(free'vars) )
+import Compiler.TypeSystem.Utils.Infer ( close'over )
+
+import Compiler.Analysis.Syntactic.ConstrEnv ( Constr'Info(Record, Constr, fields) )
 import qualified Compiler.Analysis.Syntactic.ConstrEnv as CE
-import Compiler.Syntax.ToAST.ESYA
-import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
-import Compiler.Analysis.Semantic.SemanticError
-import Compiler.TypeSystem.Type.Constants
-import Compiler.TypeSystem.Solver.Substitutable
-import Compiler.Syntax.ToAST.TranslateState (Translate'State)
-import Data.Sequence (unzipWith)
+
+import Compiler.Analysis.Semantic.SemanticError ( Semantic'Error(..) )
 
 
 
@@ -51,7 +65,7 @@ import Data.Sequence (unzipWith)
 
 -- TODO: this function also needs to merge all the binding groups of the same name together
 
-translate :: To'AST a b => a -> Translate'State -> TE.Translate'Env -> Either Semantic'Error (b, Translate'State)
+translate :: To'AST a b => a -> Translate'State -> Trans'Env.Translate'Env -> Either Semantic'Error (b, Translate'State)
 translate a trans'state trans'env
     = run'translate trans'env (to'ast a) trans'state -- (to'ast a :: Translate a)
 
@@ -147,20 +161,32 @@ instance To'AST Term'Expr Expression where
 
   -- TODO: refactor - higher-rank
   to'ast (Term'E'Ann t'expr (t'preds, t'type)) = do
-    let free'in'preds = free'vars t'preds
+    let 
+        free'in'preds :: Set.Set Term'Id
+        free'in'preds = free'vars t'preds
+        
+        free'in'type :: Set.Set Term'Id
         free'in'type  = free'vars t'type
+        
+        gen'vars :: [Term'Id]
         gen'vars = Set.toList $ free'in'preds `Set.union` free'in'type
+        
+        names :: [Name]
         names = map (\ (Term'Id'Var n) -> n) gen'vars
     
-    kinds <- mapM (const fresh) gen'vars
+    fresh'names <- mapM (const fresh) names
 
-    let assumptions = zip gen'vars kinds
+    let kinds = map K'Var fresh'names
+
+    let assumptions :: [(Name, Kind)]
+        assumptions = zip names kinds
+        t'vs = zipWith T'V names kinds
 
     expr  <- merge'into'k'env assumptions (to'ast t'expr)
     preds <- merge'into'k'env assumptions (to'ast t'preds)
     type' <- merge'into'k'env assumptions (to'ast t'type)
 
-    when (not $ Set.null $ free'in'type `Set.difference` free'in'preds) (throwError $ Umbiguous'Type preds type')
+    when (not $ Set.null $ free'in'type `Set.difference` free'in'preds) (throwError $ Ambiguous'Type preds type')
     
     -- if not $ Set.null $ free'in'type `Set.difference` free'in'preds
     --   then throwError $ Umbiguous'Type preds type'
@@ -169,7 +195,7 @@ instance To'AST Term'Expr Expression where
 
     -- NOTE:  I generalize/quantify over such variables which are free in the qualified type
     --        ScopeTypeVar  -- this doesn't implement scoped type vars -- so if I want them later - I need to refactor this
-    let sigma = T'Forall gen'vars (preds :=> type')
+    let sigma = T'Forall t'vs (preds :=> type')
 
     return $ Ann expr sigma
 
@@ -473,7 +499,7 @@ instance To'AST a b => To'AST (Name, a) (Name, b) where
    -}
 instance To'AST Term'Type Type where
   to'ast (Term'T'Id (Term'Id'Var var)) = do
-    kinding'context <- asks TE.kind'context
+    kinding'context <- asks Trans'Env.kind'context
     -- NOTE: even though this type variable should always be in the context
     --        I might make a mistake in the implementation -> better be safe.
     
@@ -482,7 +508,7 @@ instance To'AST Term'Type Type where
       Just kind -> return $ T'Var $ T'V var kind
 
   to'ast (Term'T'Id (Term'Id'Const con)) =  do
-    kinding'context <- asks TE.kind'context
+    kinding'context <- asks Trans'Env.kind'context
     -- NOTE: even though this type constant should always be in the context
     --        I might make a mistake in the implementation -> better be safe.
     case kinding'context Map.!? con of
@@ -595,6 +621,26 @@ instance To'AST Term'Decl Declaration where
   --            and then manually transforming it into a [Match] and Binding'Group eventually.
   --            Skipping the step where I translate it using a to'ast directly (calling it at the top level or something like that).
 
+  to'ast (Term.Signature name (context, Term'T'Forall t'ids t'qual'type)) = do
+    {-  TODO: check that `context` is empty. It must be, because if the type itself is EXPLICIT forall,
+              then there must not be any context.
+
+        TODO: It must also be checked that the `tvs` contains all free type variables in the t'qual'type.
+              Either there's going to be forall quantifying over all free type variables - or there must not be the explicit forall.
+    -}
+    -- now I need to assign each variable in the `tvs` fresh kind variable
+    fresh'names <- mapM (const fresh) t'ids
+    
+    let kinds       = map K'Var fresh'names
+        names :: [Name]
+        names       = map (\ (Term'Id'Var n) -> n) t'ids
+        assignments = zip names kinds
+        tvs :: [T'V]
+        tvs         = map (uncurry T'V) assignments
+
+    qual'type <- merge'into'k'env assignments (to'ast t'qual'type)
+    return $ AST.Signature $ AST.T'Signature name $ T'Forall tvs qual'type
+
   to'ast (Term.Signature name t'qual'type) = do
     -- TODO: here is the place where I need to find all the free type variables
     --        keep only those, which are not "scoped" (already in the kind context)
@@ -616,7 +662,7 @@ instance To'AST Term'Decl Declaration where
 
     -- now remove all those variables which are already in the kind context
     -- so first I need to get the kind context
-    kind'context <- asks TE.kind'context
+    kind'context <- asks Trans'Env.kind'context
     -- now I keep only those type variables which are not scoped and are therefore seen for the first time
     let only'actually'free = filter (not . (`Map.member` kind'context)) free'variables
     -- those need to be assigned a new and fresh Kind Variable
@@ -627,11 +673,11 @@ instance To'AST Term'Decl Declaration where
     -- now, thos new kind assigmemnts needs to be merged into a current invironment and
 
     qual'type <- merge'into'k'env assignments (to'ast t'qual'type)
-    return $ AST.Signature $ AST.T'Signature name qual'type
+    return $ AST.Signature $ AST.T'Signature name $ close'over qual'type
 
   to'ast (Term.Data'Decl name params t'constr'decls) = do
     -- NOTE: Start by getting the Kind of this Type Constructor
-    k'ctxt <- asks TE.kind'context
+    k'ctxt <- asks Trans'Env.kind'context
     -- NOTE: even though this type variable should always be in the context
     --        I might make a mistake in the implementation -> better be safe.
     --        Or if the user writes :k a -> a   ==> then a will not be recognized as known type variable

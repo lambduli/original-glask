@@ -9,9 +9,8 @@ module Compiler.Syntax
   , Pattern(..)
   , Predicate(..)
   , Qualified(..)
-  -- , Scheme(..)
   , Signature(..)
-  , T'V(..), T'C(..), Type(..), Sigma'Type, Rho'Type, Tau'Type
+  , T'V(..), T'C(..), Type(..), Sigma'Type, Rho'Type, Tau'Type, sh
   , Bind'Group(..)
   , Instance
   ) where
@@ -27,7 +26,6 @@ import Compiler.Syntax.Name
 import Compiler.Syntax.Pattern
 import Compiler.Syntax.Predicate
 import Compiler.Syntax.Qualified
-import Compiler.Syntax.Scheme
 import Compiler.Syntax.Signature
 import {-# SOURCE #-} Compiler.Syntax.Type
 import Compiler.Syntax.BindGroup

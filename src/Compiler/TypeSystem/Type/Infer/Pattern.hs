@@ -1,20 +1,21 @@
 module Compiler.TypeSystem.Type.Infer.Pattern where
 
 
-import Compiler.Counter
+import Compiler.Counter ( fresh )
 
-import Compiler.Syntax
-import Compiler.Syntax.Type
-
-
-import Compiler.TypeSystem.Infer
-import Compiler.TypeSystem.Constraint
-import Compiler.TypeSystem.Assumption
-import Compiler.TypeSystem.Type.Infer.Literal
-import Compiler.TypeSystem.Utils.Infer
+import Compiler.Syntax.Kind ( Kind(K'Star) )
+import Compiler.Syntax.Pattern ( Pattern(..) )
+import Compiler.Syntax.Predicate ( Predicate )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'V(T'V), Type(T'Var) )
 
 
-infer'pat :: Pattern -> Infer ([Predicate], Type, [Assumption Scheme])
+import Compiler.TypeSystem.Infer ( Infer )
+import Compiler.TypeSystem.Assumption ( Assumption )
+import Compiler.TypeSystem.Type.Infer.Literal ( infer'lit )
+import Compiler.TypeSystem.Utils.Infer ( to'scheme )
+
+
+infer'pat :: Pattern -> Infer ([Predicate], Type, [Assumption Sigma'Type])
 infer'pat (P'Var name) = do
   fresh'name <- fresh
   let t'var = T'Var (T'V fresh'name K'Star)
@@ -41,7 +42,7 @@ infer'pat P'Wild = do
   return ([], t'var, [])
 
 
-infer'pats :: [Pattern] -> Infer ([Predicate], [Type], [Assumption Scheme])
+infer'pats :: [Pattern] -> Infer ([Predicate], [Type], [Assumption Sigma'Type])
 infer'pats pats = do
   psasts <- mapM infer'pat pats
   let preds       = concat  [preds'       | (preds' , _     , _           ) <- psasts]

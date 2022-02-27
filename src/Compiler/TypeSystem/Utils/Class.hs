@@ -2,23 +2,26 @@ module Compiler.TypeSystem.Utils.Class where
 
 
 import qualified Data.Map.Strict as Map
-import Data.Maybe
-import Control.Monad.Except
-import Control.Monad.Extra
+import Data.Maybe ( isJust, isNothing )
+import Control.Monad.Except ( liftM, ExceptT, MonadError(throwError) )
+import Control.Monad.Extra ( liftM, anyM, ifM )
 import Control.Monad.Trans.Except (catchE)
 
 
-import Compiler.Syntax
-import Compiler.Syntax.Type
+import Compiler.Syntax.Instance ( Instance )
+import Compiler.Syntax.Name ( Name )
+import Compiler.Syntax.Predicate ( Predicate(..) )
+import Compiler.Syntax.Qualified ( Qualified((:=>)) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'V, Type(..) )
 
-import Compiler.TypeSystem.Error
-import Compiler.TypeSystem.Solver.Substitution
-import Compiler.TypeSystem.Solver.Substitutable
-import Compiler.TypeSystem.InferenceEnv
-import Compiler.TypeSystem.Class
-import Compiler.TypeSystem.Solver.Solve
-import Compiler.TypeSystem.Solver.Unify
-import Compiler.TypeSystem.Type.Constants
+import Compiler.TypeSystem.Error ( Error(Unexpected) )
+import Compiler.TypeSystem.Solver.Substitution ( Subst )
+import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply) )
+import Compiler.TypeSystem.InferenceEnv ( Class'Env(..) )
+import Compiler.TypeSystem.Class ( Class )
+import Compiler.TypeSystem.Solver.Solve ( Solve )
+import Compiler.TypeSystem.Solver.Unify ( Unify(match, unify) )
+import Compiler.TypeSystem.Type.Constants ( t'Double, t'Int )
 
 
 {- TODO: NOTE: it's partial, I don't quite like that. Fix that later. -}

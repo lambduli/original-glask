@@ -3,19 +3,17 @@ module Compiler.TypeSystem.Kind.Infer.Type where
 
 import Compiler.Counter
 
-import Data.Tuple.Extra
-import Control.Monad.State
+import Control.Monad.State ( foldM )
 
 
-import Compiler.Syntax
-import Compiler.Syntax.Type
+import Compiler.Syntax.Kind ( Kind(..) )
+import Compiler.Syntax.Predicate ( Predicate )
+import Compiler.Syntax.Qualified ( Qualified((:=>)) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(T'C), T'V(T'V), Type(..) )
 
-import Compiler.TypeSystem.Constraint
-import Compiler.TypeSystem.Infer
-
-import Compiler.TypeSystem.Solver.Unify
-
-import Compiler.TypeSystem.Utils.Infer
+import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
+import Compiler.TypeSystem.Infer ( Infer )
+import Compiler.TypeSystem.Utils.Infer ( merge'into'k'env )
 
 
 infer'type :: Type -> Infer (Kind, [Constraint Kind])

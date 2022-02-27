@@ -10,16 +10,15 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 
 
-import Compiler.Syntax.Name
-import Compiler.Syntax.Type
-import Compiler.Syntax.Kind
-import Compiler.Syntax.Qualified
-import Compiler.Syntax.Predicate
--- import {-# SOURCE #-} Compiler.Syntax.Scheme
+import Compiler.Syntax.Name ( Name )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(..), T'V(..), Type(..) )
+import Compiler.Syntax.Kind ( Kind(..) )
+import Compiler.Syntax.Qualified ( Qualified(..) )
+import Compiler.Syntax.Predicate ( Predicate(..) )
 
-import Compiler.TypeSystem.InferenceEnv
-import Compiler.TypeSystem.Constraint
-import Compiler.TypeSystem.Solver.Substitution
+import Compiler.TypeSystem.InferenceEnv ( Kind'Env, Type'Env )
+import Compiler.TypeSystem.Constraint ( Constraint(..) )
+import Compiler.TypeSystem.Solver.Substitution ( Subst(..) )
 
 
 --
@@ -59,6 +58,16 @@ instance Substitutable T'V Type Type where
   apply s (T'Tuple types)
     = T'Tuple $ map (apply s) types
 
+  apply s (T'Forall tvs q't@(preds :=> type')) =
+    -- remove all quantified variables from the substitution and apply it to the qualified type    
+    let s' = s `remove'list` tvs
+        q't' = apply s' q't
+    in  T'Forall tvs q't
+      where
+        remove'list :: Subst T'V Type -> [T'V] -> Subst T'V Type
+        subst `remove'list` [] = subst
+        (Sub s'map) `remove'list` (t'v : t'vs) = Sub (Map.delete t'v s'map) `remove'list` t'vs
+
 
 instance Term T'V Type where
   free'vars type' = case type' of
@@ -70,7 +79,10 @@ instance Term T'V Type where
       free'vars left `Set.union` free'vars right
     T'Tuple ts ->
       foldl (\ set' t' -> Set.union set' (free'vars t')) Set.empty ts
-  
+    T'Forall tvs (preds :=> type') ->
+      let free'in'preds = free'vars preds
+          free'in'type  = free'vars type'
+      in  Set.difference (free'in'preds `Set.union` free'in'type) (Set.fromList tvs)
 
 
 -- | Substitution on Kinds
@@ -99,27 +111,33 @@ instance Term String Kind where
 
 -- | Substitution on Type Schemes
 
-instance Substitutable T'V Scheme Type where
-  apply (Sub s) (For'All varnames type')
-    = For'All varnames $ apply s' type'
-      where s' = Sub $ foldr Map.delete s varnames
+-- instance Substitutable T'V Scheme Type where
+--   apply (Sub s) (For'All varnames type')
+--     = For'All varnames $ apply s' type'
+--       where s' = Sub $ foldr Map.delete s varnames
 
 
-instance Term T'V Scheme where
-  free'vars (For'All vars type')
-    = free'vars type' `Set.difference` Set.fromList vars
+-- instance Term T'V Scheme where
+--   free'vars (For'All vars type')
+--     = free'vars type' `Set.difference` Set.fromList vars
 
 
 -- | Substitution on Constraints
 
 instance Substitutable k a a => Substitutable k (Constraint a) a where
-  apply s (t'l `Unify` t'r)
-    = apply s t'l `Unify` apply s t'r
+  apply s (l `Unify` r)
+    = apply s l `Unify` apply s r
+
+  apply s (l `Match` r)
+    = apply s l `Match` apply s r
 
 
 instance Term k a => Term k (Constraint a) where
-  free'vars (t'l `Unify` t'r)
-    = free'vars t'l `Set.union` free'vars t'r
+  free'vars (l `Unify` r)
+    = free'vars l `Set.union` free'vars r
+
+  free'vars (l `Match` r)
+    = free'vars l `Set.union` free'vars r
 
 
 -- | Substitution on Lists of Substituables
@@ -169,7 +187,7 @@ instance Term String Kind'Env where
 
 -- | Substitution on Qualified Types
 
-instance Substitutable T'V t Type => Substitutable T'V (Qualified t) Type where
+instance (Substitutable T'V Predicate v, Substitutable T'V t v) => Substitutable T'V (Qualified t) v where
   apply subst (preds :=> t)
     = apply subst preds :=> apply subst t
 
@@ -201,9 +219,9 @@ instance Substitutable Name Type'Env Kind where
     = Map.map (apply subst) type'env
 
 
-instance Substitutable Name Scheme Kind where
-  apply subst (For'All varnames type')
-    = For'All (apply subst varnames) (apply subst type')
+-- instance Substitutable Name Scheme Kind where
+--   apply subst (For'All varnames type')
+--     = For'All (apply subst varnames) (apply subst type')
   {-  NOTE: Unlike the case of Type Substitution on Scheme, Kind Substitution does not need to be stripped of the substitutions of close-over variables.  -}
 
 
@@ -234,6 +252,9 @@ instance Substitutable Name Type Kind where
   
   apply subst (T'Tuple types)
     = T'Tuple $ map (apply subst) types
+
+  apply subst (T'Forall tvs qual't)
+    = T'Forall (apply subst tvs) (apply subst qual't)
 
 
 instance Substitutable Name Predicate Kind where

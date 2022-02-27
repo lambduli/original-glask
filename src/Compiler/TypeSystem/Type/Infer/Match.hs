@@ -1,17 +1,17 @@
 module Compiler.TypeSystem.Type.Infer.Match where
 
 
-import Compiler.Syntax
+import Compiler.Syntax.Kind ( Kind )
+import Compiler.Syntax.Match ( Match(..) )
+import Compiler.Syntax.Predicate ( Predicate )
+import Compiler.Syntax.Type ( Type )
 
-import Compiler.TypeSystem.Infer
-import Compiler.TypeSystem.Constraint
-
-import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Expression
-import Compiler.TypeSystem.Type.Infer.Pattern
-
-import Compiler.TypeSystem.Utils.Infer
-
-import Compiler.TypeSystem.Type.Constants
+import Compiler.TypeSystem.Infer ( Infer )
+import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
+import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Expression ( infer'expr )
+import Compiler.TypeSystem.Type.Infer.Pattern ( infer'pats )
+import Compiler.TypeSystem.Utils.Infer ( merge'into't'env )
+import Compiler.TypeSystem.Type.Constants ( type'fn )
 
 
 infer'match :: Match -> Infer ([Type], Type, [Predicate], [Predicate], [Constraint Type], [Constraint Kind])

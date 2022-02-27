@@ -3,7 +3,7 @@ module Compiler.Syntax.Declaration where
 import Data.List ( intercalate )
 
 
-import Compiler.Syntax.Type ( T'C(..), T'V(..), Type )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(..), T'V(..), Type )
 import Compiler.Syntax.Predicate ( Predicate )
 import Compiler.Syntax.Instance ( Instance )
 import Compiler.Syntax.Signature ( Signature(..) )

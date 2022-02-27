@@ -1,23 +1,21 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 module Compiler.TypeSystem.Solver.Bind where
 
 
 import qualified Data.Map.Strict as Map
-import Control.Monad.Except
+import Control.Monad.Except ( MonadError(throwError) )
 
 
-import Compiler.Syntax
-import Compiler.Syntax.Type
+import Compiler.Syntax.Kind ( Kind(..) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'V(..), Type(..) )
 
-import Compiler.TypeSystem.Error
+import Compiler.TypeSystem.Error ( Error(..) )
 
-import Compiler.TypeSystem.Solver.Solve
-import Compiler.TypeSystem.Solver.Substitution
-import Compiler.TypeSystem.Solver.Substitutable
-import Compiler.TypeSystem.Solver.Occurs
+import Compiler.TypeSystem.Solver.Solve ( Solve )
+import Compiler.TypeSystem.Solver.Substitution ( empty'subst, Subst(..) )
+import Compiler.TypeSystem.Solver.Occurs ( Occurs(occurs'in) )
 
 
 class Bind k a where

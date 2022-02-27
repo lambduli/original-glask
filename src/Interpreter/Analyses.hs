@@ -1,15 +1,11 @@
 module Interpreter.Analyses where
 
 
-import System.IO
-import Data.List
 import qualified Data.Map.Strict as Map
-import Data.Tuple.Extra
 
 
-import Compiler.Syntax.ToAST.Translate
 import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
-import Compiler.Syntax.ToAST.TranslateState
+import Compiler.Syntax.ToAST.TranslateState ( Translate'State )
 
 
 import qualified Compiler.Analysis.Semantic.Synonym.Cycles as Cycles
@@ -28,29 +24,13 @@ import qualified Compiler.Analysis.Syntactic.Bindings as Bindings
 import qualified Compiler.Analysis.Semantic.DependencyAnalysis as Dependencies
 import qualified Compiler.Analysis.Semantic.Class as Classes
 
-import Compiler.Syntax.ToAST
+import Compiler.Analysis.Syntactic.FixityEnv ( Fixity'Env )
+import Compiler.Analysis.Syntactic.SynonymEnv ( Synonym'Env )
+import Compiler.TypeSystem.InferenceEnv ( init'k'env, Kind'Env )
 
-import Compiler.Analysis.Syntactic.FixityEnv
-import Compiler.Analysis.Syntactic.FieldEnv
-import Compiler.Analysis.Syntactic.SynonymEnv
-import Compiler.TypeSystem.InferenceEnv
+import Compiler.Syntax.Term.Declaration ( Term'Decl )
 
-import Compiler.Syntax.Term
-import Compiler.Syntax
-import Compiler.Syntax.HasKind
-
-import Compiler.Analysis.Semantic.SemanticError
-
-import Compiler.TypeSystem.Program
-import Compiler.TypeSystem.Type.Infer.Program
-import Compiler.TypeSystem.Binding
-import Compiler.TypeSystem.Utils.Infer
-import Compiler.TypeSystem.Infer
-
-import Compiler.TypeSystem.Solver.Substitution
-import Compiler.TypeSystem.Solver.Substitutable
-
-
+import Compiler.Analysis.Semantic.SemanticError ( Semantic'Error(Many'Errors) )
 
 
 -- NOTE: ragarding the Int part of the result -- follow the trail of it (out of this function) and read the comments if you don't know why it's there
