@@ -20,9 +20,11 @@ import Compiler.TypeSystem.Utils.Infer ( merge'into'k'env, merge'into'constr'env
 import Compiler.TypeSystem.Solver.Substitution ( Subst(Sub) )
 import Compiler.TypeSystem.Solver.Substitutable ( Term(free'vars), Substitutable (apply) )
 import Compiler.TypeSystem.Solver ( run'solve )
+import Compiler.TypeSystem.Binding ( Explicit(..), Method(..) )
 
 import Compiler.TypeSystem.Kind.Infer.Data ( infer'data )
 import Compiler.TypeSystem.Kind.Infer.Class ( infer'class )
+import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'infer'sigma )
 
 import Compiler.TypeSystem.Error ( Error )
 
@@ -91,3 +93,22 @@ infer'seq ti (bs : bss) = do
   (k'assumps, cl'assumps, k'cs) <- ti bs
   (k'assumps', cl'assumps', k'cs') <- merge'into'k'env k'assumps (merge'into'constr'env cl'assumps ( infer'seq ti bss ))
   return (k'assumps ++ k'assumps', cl'assumps ++ cl'assumps', k'cs ++ k'cs')
+
+
+
+infer'annotated :: [Explicit] -> Infer [Explicit]
+infer'annotated explicits = mapM do'kind'explicit explicits
+  where
+    do'kind'explicit :: Explicit -> Infer Explicit
+    do'kind'explicit (Explicit sigma b'g) = do
+      sigma' <- kind'infer'sigma sigma
+      return $ Explicit sigma' b'g
+
+
+infer'methods :: [Method] -> Infer [Method]
+infer'methods methods = mapM do'kind'method methods
+  where
+    do'kind'method :: Method -> Infer Method
+    do'kind'method (Method sigma b'g) = do
+      sigma' <- kind'infer'sigma sigma
+      return $ Method sigma' b'g

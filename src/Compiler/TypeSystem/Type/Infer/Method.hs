@@ -42,9 +42,9 @@ import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'infer'sigma )
 {- Returning a [Constraint Type] might not be strictly necessary -}
 infer'method :: Method -> Infer ([Predicate], [Constraint Type])
 infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }) = do
-  scheme' <- kind'infer'sigma scheme
+  -- scheme' <- kind'infer'sigma scheme -- this is no longer necessary - it's been done before-hand
   
-  (qs :=> t) <- instantiate scheme'
+  (qs :=> t) <- instantiate scheme
   (preds, cs't) <- infer'matches matches t
   -- now solve it
   case run'solve cs't :: Either Error (Subst T'V Type) of
@@ -69,11 +69,11 @@ infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }
           case runIdentity $ runExceptT $ split c'env fs gs preds' of
             Left err -> throwError err
             Right (deferred'preds, retained'preds) -> do
-              b <- scheme' `sh` sc'
+              b <- scheme `sh` sc'
 
               if not b
               {- TODO:  If I want to know exactly what user-denoted type variable in the `scheme'` does correspond to some non-variable type, I can use `match` to create a one-way substitution. -}
-              then throwError $ Signature'Too'General scheme' sc'
+              then throwError $ Signature'Too'General scheme sc'
               else  if not (null retained'preds)
                     then throwError Context'Too'Weak
                     else return (deferred'preds, cs't)

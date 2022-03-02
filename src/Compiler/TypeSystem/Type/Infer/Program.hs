@@ -19,6 +19,7 @@ import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'C(T'C), T'V, Type(..)
 
 import Compiler.TypeSystem.Error ( Error )
 import Compiler.TypeSystem.Program ( Program(..) )
+import Compiler.TypeSystem.Binding ( Explicit(Explicit) )
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env(..), Kind'Env, Type'Env, Constraint'Env )
 import Compiler.TypeSystem.InferenceState ( Infer'State )
 import Compiler.TypeSystem.Infer ( run'infer, Infer )
@@ -34,6 +35,8 @@ import Compiler.TypeSystem.Utils.Infer ( default'subst )
 import Compiler.TypeSystem.Utils.Class ( reduce )
 
 import Compiler.TypeSystem.Kind.Infer.Program ( infer'kinds )
+import Compiler.TypeSystem.Kind.Infer.TypeSection ( infer'annotated, infer'methods )
+
 
 
 infer'whole'program :: Program -> Infer'Env -> Infer'State -> Either Error (Type'Env, Kind'Env, Constraint'Env, Infer'State)
@@ -48,11 +51,22 @@ infer'whole'program program infer'env infer'state = do
       new'class'env     = class'env `Map.union` base'cl'env
       substituted't'env = apply kind'subst (type'env infer'env)
 
-  let program'    = program
-      infer'env'  = infer'env{ kind'env = new'k'env, type'env = substituted't'env, constraint'env = new'class'env }
+  let Program{ bind'section = (explicits, implicits'list), methods = methods } = program
+      infer'env' = infer'env{ kind'env = new'k'env, type'env = substituted't'env, constraint'env = new'class'env }
+
+  {-  NOTES:  It's OK for me to use the same `infer'env'` - the idea is - the isolated kind inference and substitution
+              on Explicits and Methods should never influence/change anything in the inference environment.
+              Specificaly - it must not change kind'context nor class'context - there's no way
+              some lone type signature to some function or method would be able to do that.
+  -}
+  (new'expls, infer'state'') <- run'infer infer'env' (infer'annotated explicits) infer'state'
+
+  (new'methods, infer'state''') <- run'infer infer'env' (infer'methods methods) infer'state''
+      
+  let program' = program{ bind'section = (new'expls, implicits'list), methods = new'methods }
 
 
-  (t'env, inf'state) <- run'infer infer'env' (infer'types program') infer'state'
+  (t'env, inf'state) <- run'infer infer'env' (infer'types program') infer'state'''
 
   let new't'env = t'env `Map.union` substituted't'env -- it shouldn't matter which direction this is
 
@@ -68,9 +82,9 @@ infer'whole'program program infer'env infer'state = do
 
 
 infer'types :: Program -> Infer Type'Env
-infer'types Program{ bind'sections = bgs, methods = methods } = do
+infer'types Program{ bind'section = bg, methods = methods } = do
   -- ([Predicate], [(Name, Scheme)], [Constraint Type], [Constraint Kind])
-  (preds, assumptions, cs't) <- infer'seq infer'bind'section bgs
+  (preds, assumptions, cs't) <- infer'bind'section bg
 
   {-  TODO: Maybe it's not a best idea to put the `infer'method` itself right here.
             Maybe it's mixing the abstractions.

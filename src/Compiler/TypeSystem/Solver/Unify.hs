@@ -18,6 +18,7 @@ import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply) )
 import Compiler.TypeSystem.Solver.Solve ( Solve )
 import Compiler.TypeSystem.Solver.Bind ( Bind(bind) )
 import Compiler.TypeSystem.Solver.Composable ( Composable(merge, compose) )
+import Compiler.Syntax.HasKind ( HasKind(kind) )
 
 
 {-  Typing Haskell in Haskell commentary:
@@ -48,10 +49,10 @@ instance Unify Type T'V Type where
   unify t1 t2 | t1 == t2
     = return empty'subst
 
-  unify (T'Var var) t
+  unify (T'Var var) t | kind var == kind t
     = var `bind` t
 
-  unify t (T'Var var)
+  unify t (T'Var var) | kind var == kind t
     = var `bind` t
   -- TODO: use the k's to make sure we are unifying only Type Variable of specific Kind with the Type of the same Kind
 
@@ -82,9 +83,9 @@ instance Unify Type T'V Type where
 
             I am not really sure why I chose to make just this one explode and not others. But that is what I think I had in mind.
    -}
-  match (T'Var var) t -- | kind var == kind t -- I don't think I can actually do that
+  match (T'Var var) t | kind var == kind t
     = var `bind` t
-    -- I think, they sometimes might not be the same Kind Variable
+
 
   match (T'App l r) (T'App l' r') = do
     sub'l <- l `match` l'

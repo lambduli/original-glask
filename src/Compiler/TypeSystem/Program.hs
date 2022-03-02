@@ -23,7 +23,7 @@ import Compiler.TypeSystem.Binding ( Method )
 
 data Program
   = Program
-    { bind'sections :: [Bind'Section]
+    { bind'section :: Bind'Section
     , methods :: [Method]
     , method'annotations :: [(Name, Sigma'Type)]
     -- , data'declarations :: [Data] 

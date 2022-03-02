@@ -86,6 +86,7 @@ module Main where
 ; fn = \ a b c -> c
 
 
+; undefined = undefined
 
 ; oog :: m a -> (a -> b) -> m b
 ; oog = undefined
@@ -98,7 +99,6 @@ module Main where
 
 -- ; not'ok = require 'a'
 
-; undefined = undefined
 
 
 ; expl'forall :: forall m a b . (a -> m b) -> a -> m b

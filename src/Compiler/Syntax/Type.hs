@@ -32,7 +32,7 @@ type Tau'Type = Type
 
 
 data T'V = T'V Name Kind
-  -- deriving (Eq)
+  deriving (Eq)
 
 
 instance Show T'V where
@@ -44,17 +44,6 @@ instance Show T'V where
     when looking up the variables in the process of substitution.
     Otherwise it would be thrown off by different Kind Variables representing the same thing.
     Maybe I will figure out a way, how to get rid of this problem and then I should be able to refactor this back to deriving. -}
-
-{-  TODO: This is just a temporary "fix".
-          It is needed because I need to use (==) to compare mono types within shallow subsumption.
-          Currently I am not doing the Kind inference BEFORE the type inference so my type variables and constants
-          will mostly have Kind variables as their Kinds. That would make them not equal with other instance of the same type.
-          Therefore - this version of Eq instance ignores the Kinds.
--}
-instance Eq T'V where
-  T'V v'l _ == T'V v'r _ = v'l == v'r
-
-
 {- NOTE: this is SOLELY because Map T'V _ and it's `Map.union` operation -}
 -- Maybe this isn't really necessary, deriving (Ord) may also work
 instance Ord T'V where
@@ -63,6 +52,7 @@ instance Ord T'V where
 
 data T'C = T'C Name Kind
   deriving (Eq)
+
 
 instance Show T'C where
   show (T'C name kind) = "(" ++ name ++ " :: " ++ show kind ++ ")"
