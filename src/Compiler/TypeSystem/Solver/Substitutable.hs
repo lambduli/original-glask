@@ -151,6 +151,17 @@ instance Term k a => Term k [a] where
     = foldr (Set.union . free'vars) Set.empty
 
 
+-- | Useful when doing kind inference
+instance Substitutable k a b => Substitutable k (Name, a) b where
+  apply subst (name, a)
+    = (name, apply subst a)
+
+
+instance Term k a => Term k (Name, a) where
+  free'vars (_, a)
+    = free'vars a
+
+
 -- | Substitution on Type Context
 
 instance Substitutable T'V Type'Env Type where

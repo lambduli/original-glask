@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bd419d1c343f1993c17a0a9d089b5149e6872da86de9131d354367d07e0d2497
+-- hash: 4e1a2b12712b30456bdac4177912326a8e9bb5d51f8e4eb9f315f7e6823ef1f9
 
 name:           glask
 version:        0.1.0.0
@@ -28,14 +28,18 @@ source-repository head
 library
   exposed-modules:
       Compiler.Analysis.Extract
-      Compiler.Analysis.Semantic.Class
+      Compiler.Analysis.Semantic.ClassEnv
       Compiler.Analysis.Semantic.Data
-      Compiler.Analysis.Semantic.DependencyAnalysis
+      Compiler.Analysis.Semantic.Dependency.Binding
+      Compiler.Analysis.Semantic.Dependency.Depends
+      Compiler.Analysis.Semantic.Dependency.Types
       Compiler.Analysis.Semantic.SemanticError
       Compiler.Analysis.Semantic.Synonym.Cycles
       Compiler.Analysis.Semantic.Synonym.FullyApplied
       Compiler.Analysis.Syntactic.Annotations
       Compiler.Analysis.Syntactic.Bindings
+      Compiler.Analysis.Syntactic.Class
+      Compiler.Analysis.Syntactic.ConstraintEnv
       Compiler.Analysis.Syntactic.ConstrEnv
       Compiler.Analysis.Syntactic.Constructors
       Compiler.Analysis.Syntactic.Data
@@ -97,7 +101,12 @@ library
       Compiler.TypeSystem.Infer
       Compiler.TypeSystem.InferenceEnv
       Compiler.TypeSystem.InferenceState
+      Compiler.TypeSystem.Kind.Infer.Annotation
+      Compiler.TypeSystem.Kind.Infer.Class
+      Compiler.TypeSystem.Kind.Infer.Data
+      Compiler.TypeSystem.Kind.Infer.Program
       Compiler.TypeSystem.Kind.Infer.Type
+      Compiler.TypeSystem.Kind.Infer.TypeSection
       Compiler.TypeSystem.Program
       Compiler.TypeSystem.Solver
       Compiler.TypeSystem.Solver.Bind
@@ -119,6 +128,7 @@ library
       Compiler.TypeSystem.Type.Infer.Method
       Compiler.TypeSystem.Type.Infer.Pattern
       Compiler.TypeSystem.Type.Infer.Program
+      Compiler.TypeSystem.TypeSection
       Compiler.TypeSystem.Utils.Class
       Compiler.TypeSystem.Utils.Infer
       Interpreter.Analyses

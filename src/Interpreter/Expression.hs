@@ -32,8 +32,8 @@ import qualified Compiler.Analysis.Syntactic.Annotations as Annotations
 import qualified Compiler.Analysis.Syntactic.Bindings as Bindings
 import qualified Compiler.Analysis.Syntactic.Data as Data
 
-import qualified Compiler.Analysis.Semantic.DependencyAnalysis as Dependencies
-import qualified Compiler.Analysis.Semantic.Class as Classes
+-- import qualified Compiler.Analysis.Semantic.Dependency.BindingAnalysis as Dependencies
+import qualified Compiler.Analysis.Semantic.ClassEnv as Classes'Env
 
 import Compiler.Analysis.Syntactic.FixityEnv
 import Compiler.Analysis.Syntactic.FieldEnv
@@ -78,7 +78,7 @@ read'expr input trans'env trans'state = do
   -- translating to the AST form
   translate term'expr trans'state trans'env
 
-  -- let class'env = Classes.extract declarations
+  -- let class'env = Classes.extract declarations'Env
 
   -- let program :: Program
   --     program = to'program declarations

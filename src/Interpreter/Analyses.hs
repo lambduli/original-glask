@@ -4,8 +4,9 @@ module Interpreter.Analyses where
 import qualified Data.Map.Strict as Map
 
 
-import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
+import Compiler.Syntax.Term.Declaration ( Term'Decl )
 import Compiler.Syntax.ToAST.TranslateState ( Translate'State )
+import qualified Compiler.Syntax.ToAST.TranslateEnv as TE
 
 
 import qualified Compiler.Analysis.Semantic.Synonym.Cycles as Cycles
@@ -21,16 +22,12 @@ import qualified Compiler.Analysis.Syntactic.MethodBindings as Method'Bindings
 import qualified Compiler.Analysis.Syntactic.Annotations as Annotations
 import qualified Compiler.Analysis.Syntactic.Bindings as Bindings
 
-import qualified Compiler.Analysis.Semantic.DependencyAnalysis as Dependencies
-import qualified Compiler.Analysis.Semantic.Class as Classes
-
 import Compiler.Analysis.Syntactic.FixityEnv ( Fixity'Env )
 import Compiler.Analysis.Syntactic.SynonymEnv ( Synonym'Env )
-import Compiler.TypeSystem.InferenceEnv ( init'k'env, Kind'Env )
-
-import Compiler.Syntax.Term.Declaration ( Term'Decl )
 
 import Compiler.Analysis.Semantic.SemanticError ( Semantic'Error(Many'Errors) )
+
+import Compiler.TypeSystem.InferenceEnv ( init'k'env, Kind'Env )
 
 
 -- NOTE: ragarding the Int part of the result -- follow the trail of it (out of this function) and read the comments if you don't know why it's there
@@ -48,7 +45,7 @@ build'trans'env declarations tr'state = do
 
 
   let user'kind'context :: Kind'Env
-      (user'kind'context, tr'state') = Types.extract declarations tr'state
+      ((user'kind'context, user'class'context), tr'state') = Types.extract declarations tr'state
 
   let kind'context :: Kind'Env
       kind'context = init'k'env `Map.union` user'kind'context
@@ -68,7 +65,14 @@ build'trans'env declarations tr'state = do
   let synonyms :: Synonym'Env
       synonyms = Synonyms.extract declarations
 
-  (TE.Trans'Env{ TE.fixities = fixities, TE.constructors = constructors, TE.fields = fields, TE.kind'context = kind'context, TE.synonyms = synonyms }, tr'state')
+      tr'env = TE.Trans'Env { TE.fixities = fixities
+                            , TE.constructors = constructors
+                            , TE.fields = fields
+                            , TE.kind'context = kind'context
+                            , TE.synonyms = synonyms
+                            , TE.classes = user'class'context }
+
+  (tr'env, tr'state')
 
 
 -- TODO: implement checking that every declaration which needs to be unique is in fact unique

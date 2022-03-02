@@ -13,7 +13,11 @@ import Compiler.TypeSystem.Type.Constants ( t'Bool, t'Char, t'Double, t'Int, typ
 import Compiler.TypeSystem.Class ( Class )
 
 
-data Infer'Env = Infer'Env { kind'env :: Kind'Env, type'env :: Type'Env, class'env :: Class'Env }
+data Infer'Env = Infer'Env { kind'env :: Kind'Env, type'env :: Type'Env, class'env :: Class'Env, constraint'env :: Constraint'Env }
+  deriving (Show)
+
+
+type Constraint'Env = Map.Map Name Kind -- This environment assigns each type class-name a Kind for its single type parameter
 
 
 type Kind'Env = Map.Map Name Kind

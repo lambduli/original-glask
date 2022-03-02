@@ -1,11 +1,12 @@
 module Compiler.TypeSystem.Program where
 
 
-import Compiler.Syntax.Declaration ( Data )
+import Compiler.Syntax.Declaration ( Data, Class )
 import Compiler.Syntax.Name ( Name )
 import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type )
 
 import Compiler.TypeSystem.BindSection ( Bind'Section )
+import Compiler.TypeSystem.TypeSection ( Type'Section )
 import Compiler.TypeSystem.Binding ( Method )
 
 
@@ -25,5 +26,7 @@ data Program
     { bind'sections :: [Bind'Section]
     , methods :: [Method]
     , method'annotations :: [(Name, Sigma'Type)]
-    , data'declarations :: [Data] }
+    -- , data'declarations :: [Data] 
+    , data'n'class'sections :: [Type'Section]
+    }
   deriving (Show)

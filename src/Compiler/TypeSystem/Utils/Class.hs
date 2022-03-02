@@ -5,7 +5,7 @@ import qualified Data.Map.Strict as Map
 import Data.Maybe ( isJust, isNothing )
 import Control.Monad.Except ( liftM, ExceptT, MonadError(throwError) )
 import Control.Monad.Extra ( liftM, anyM, ifM )
-import Control.Monad.Trans.Except (catchE)
+import Control.Monad.Trans.Except ( catchE )
 
 
 import Compiler.Syntax.Instance ( Instance )

@@ -23,7 +23,7 @@ data Declaration
   | Data'Decl Data
   | Type'Alias Name [Name] Type               -- type String = List Char
   | Fixity Fixity Int Name                    -- infix 5 +
-  | Class Name T'V [Predicate] [Declaration] -- class (Super1 a, ... , SuperN a) ==> Name a where { list of Signatures }
+  | Class'Decl Class -- Name T'V [Predicate] [Declaration] -- class (Super1 a, ... , SuperN a) ==> Name a where { list of Signatures }
   --    cname parname supers     signatures
   | Instance Instance [Declaration]           -- instance ... where { list of Bindings }
   -- NOTE: I think it's possible that I will need to move the [Declaration] inside the Instance
@@ -46,8 +46,8 @@ instance Show Declaration where
     = "type " ++ name ++ " = " ++ show type'
   show (Fixity fix prec name)
     = show fix ++ " " ++ show prec ++ " " ++ name
-  show (Class name (T'V param kind) supers type'decls)
-    = "class " ++ show supers ++ " => " ++ name ++ " " ++ param ++ " where " ++ show type'decls
+  show (Class'Decl class')
+    = show class'
   show (Instance qual'pred decls)
     = "instance " ++ show qual'pred ++ " where " ++ show decls
 
@@ -72,3 +72,12 @@ instance Show Constr'Decl where
     = name ++ " " ++ unwords (map show types)
   show (Con'Record'Decl name pairs)
     = name ++ " { " ++ intercalate ", " (map (\ (name, type') -> name ++ " :: " ++ show type') pairs) ++ " }"
+
+
+data Class = Class { class'name :: Name, class'param :: T'V, class'supers :: [Predicate], class'declarations :: [Declaration] }
+  deriving (Eq)
+
+
+instance Show Class where
+  show (Class name (T'V param kind) supers type'decls)
+    = "class " ++ show supers ++ " => " ++ name ++ " " ++ param ++ " where " ++ show type'decls

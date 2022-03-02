@@ -1,27 +1,41 @@
 module Compiler.TypeSystem.Kind.Infer.Type where
 
-
-import Compiler.Counter
-
+import qualified Data.Map.Strict as Map
 import Control.Monad.State ( foldM )
+import Control.Monad.Extra ( concatMapM )
+import Control.Monad.Except ( MonadError(throwError) )
+import Control.Monad.Trans.Reader ( asks )
 
+
+import Compiler.Counter ( fresh )
 
 import Compiler.Syntax.Kind ( Kind(..) )
-import Compiler.Syntax.Predicate ( Predicate )
+import Compiler.Syntax.Predicate ( Predicate (Is'In) )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
 import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(T'C), T'V(T'V), Type(..) )
 
 import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
 import Compiler.TypeSystem.Infer ( Infer )
 import Compiler.TypeSystem.Utils.Infer ( merge'into'k'env )
+import Compiler.TypeSystem.InferenceEnv ( Infer'Env(constraint'env, kind'env) )
+import Compiler.TypeSystem.Error ( Error(Unexpected) )
 
 
 infer'type :: Type -> Infer (Kind, [Constraint Kind])
-infer'type (T'Var (T'V name kind))
-  = return (kind, [])
+infer'type (T'Var (T'V name _)) = do
+  k'env <- asks kind'env
+  
+  case k'env Map.!? name of
+    Nothing -> throwError $ Unexpected $ "Internal Error: While doing Kind Inference I have found a type variable '" ++ name ++ "' which is not registered in the Kind Context."
+    Just kind -> return (kind, [])
 
-infer'type (T'Con (T'C name kind))
-  = return (kind, [])
+infer'type (T'Con (T'C name _)) = do
+  k'env <- asks kind'env
+  
+  case k'env Map.!? name of
+    Nothing -> throwError $ Unexpected $ "Internal Error: While doing Kind Inference I have found a type constant '" ++ name ++ "' which is not registered in the Kind Context."
+    Just kind -> return (kind, [])
+  
 
 infer'type (T'Tuple types) = do
   (kinds, cs'k) <- infer'types types
@@ -39,8 +53,14 @@ infer'type (T'App left't right't) = do
 infer'type (T'Forall tvs (preds :=> type')) = do
   let assumptions = map (\ (T'V n k) -> (n, k)) tvs
 
-  cs'k'ps <- merge'into'k'env assumptions (infer'preds preds)
+  cs'k'ps <- merge'into'k'env assumptions (infer'context preds)
   (k't, cs'k't) <- merge'into'k'env assumptions (infer'type type')
+
+  -- TODO:  I am not sure but I think there are two changes to be done:
+  --        the inferred `k't` must be unified with `K'Star`
+  --        the resulting kind returned from this function should be `K'Star`
+  --  because what if someone writes a type like: forall . Maybe
+  --  I am sure the system will catch it, but maybe somewhere else and not related to this specific mistake
 
   return (k't, cs'k'ps ++ cs'k't)
 
@@ -54,9 +74,28 @@ infer'types types = do
         return (k : ks, cs' ++ cs)
 
 
-infer'preds :: [Predicate] -> Infer [Constraint Kind]
-infer'preds = undefined
+-- infer'preds :: [Predicate] -> Infer [Constraint Kind]
+-- infer'preds = undefined
 -- TODO:  v environmentu musim mit vytvoreny Kind Env pro Type Classy
 --        kazda type class ma prirazeny jediny Kind - Kind jejiho parametru
 --        ten vytahnu a vytvorim binding na Kind Typu (typove promenne) uvnitr toho predikatu
 --
+
+
+{- THIS IS NEW -}
+infer'context :: [Predicate] -> Infer [Constraint Kind ]
+infer'context context = do concatMapM infer'predicate context
+
+
+infer'predicate :: Predicate -> Infer [Constraint Kind]
+infer'predicate (Is'In cl'name type') = do
+  (k, k'cs) <- infer'type type'
+
+  constraint'env <- asks constraint'env
+
+  param'kind <- case constraint'env Map.!? cl'name of
+    Nothing -> throwError $ Unexpected $ "Unexpected: While doing a kind inference I have found a Predicate '" ++ cl'name ++ "' which is not registered in the Constraint Environment."
+    Just kind -> return kind
+
+  return (k `Unify` param'kind : k'cs)
+{- END OF NEW -}

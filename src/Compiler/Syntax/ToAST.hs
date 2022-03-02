@@ -711,7 +711,7 @@ instance To'AST Term'Decl Declaration where
   to'ast (Term.Fixity fixity level name) = do
     return $ AST.Fixity fixity level name
 
-  to'ast (Term.Class cl'name var'name t'preds t'decls) = do
+  to'ast (Term.Class'Decl cl'name var'name t'preds t'decls) = do
     {-  NOTE: My current implementation doesn't allow nested/scoped classes
               That means, that I don't need to worry about scoped type variables.
               Simply - the class' type variable is not going to be scoped.
@@ -723,9 +723,18 @@ instance To'AST Term'Decl Declaration where
     --        each time computing set of free variables only within that type annotation + the type class parameter - that is shared amongst all of them
 
     -- let's start with the trivial substitution  var'name -> <fresh kind>
-    fr'name <- fresh
-    let param'kind = K'Var fr'name
-        triv'assmpt :: (Name, Kind)
+
+    -- I actually already have the Kind of the class' parameter in the kind'context
+    cl'env <- asks Trans'Env.classes
+    
+    param'kind <- case cl'env Map.!? cl'name of
+      Nothing -> throwError $ Internal "Unexpected: I have come across a type class which is not registered in the kind context."
+      Just kind -> return kind
+
+
+    -- fr'name <- fresh
+    -- let param'kind = K'Var fr'name
+    let triv'assmpt :: (Name, Kind)
         triv'assmpt = (var'name, param'kind)
 
     -- now I need to one-by-one map the Signatures in the Class - each time registering all free type variables within it
@@ -749,7 +758,7 @@ instance To'AST Term'Decl Declaration where
     -- predicates/super classes of the current class must only refer to the `type parameter` (var'name) - so this is enough
     preds <- put'in'k'env triv'assmpt (to'ast t'preds)
 
-    return $ AST.Class cl'name (T'V var'name param'kind) preds decls
+    return $ AST.Class'Decl (AST.Class cl'name (T'V var'name param'kind) preds decls)
 
   to'ast (Term.Instance t'qual'pred t'decls) = do
     {-  NOTE: My current implementation doesn't allow nested/scoped instances

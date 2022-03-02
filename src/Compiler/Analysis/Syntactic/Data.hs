@@ -1,7 +1,7 @@
 module Compiler.Analysis.Syntactic.Data where
 
 
-import Data.Maybe (mapMaybe)
+import Data.Maybe ( mapMaybe )
 
 
 import Compiler.Syntax.Declaration ( Data, Declaration(Data'Decl) )

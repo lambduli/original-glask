@@ -11,20 +11,44 @@ module Main where
 ; instance Fractional Double
 
 
+-- ; data Malformed = One a -- this is incorrect
+
+; data Phantom a = Ph
+
 ; data Maybe a = Nothing | Just a
+
+; data Test m a = Constr (m a)
 
 -- ; data Record m a = Rec { a :: Int, b :: Maybe a } -- tohle z nejakyho duvodu priradi `m`ku kind (? -> ?)
 -- ; data Record m a = Rec { a :: Int, b :: Maybe a, c :: m a } -- tady je v poradky ze `m` :: (* -> *)
 ; data Record m a = Rec { a :: Int, b :: Maybe a, c :: m a } -- tady je v poradky ze `m` :: (* -> *)
 
 
+-- Now I want to try to create a malformed class section
+-- ; class A m where
+--   { x :: m a } -- this should assert that A's type parameter must be * -> *
+-- ; class B a where
+--   { y :: A a => a } -- this should break it -- A was used with `b` which obviously has kind *
 
+
+-- Now I want to try to create a method which abstracts over some type variables involved in Class Constraints and Type constructors
+; class Z a where
+  { zzz :: Higher a => b -> b -- this should make the (a :: * -> *)
+  ; xxx :: b -> Test a b } -- this should make the (a :: * -> *, b :: *)
+-- THIS WORKS NOW
+
+
+-- TESTING KIND INFERENCE WITHIN EXPLICIT ANNOTATIONS
 ; class Higher m where
   { pure :: a -> m a }
+-- ; data AlsoHigher m = Also (m Int)
+-- ; illegal :: Higher m => m -> a -> a -- this is rejected - because `m` can't be both * and * -> *
+-- ; illegal = illegal
 
-; illegal :: Higher m => m -> a -> a -- this should be illegal, because `m` is supposed to be of kind * -> * and that means it can't stand as an argument to the function
-; illegal = illegal
--- TODO: I need to fix this.
+-- ; also'illegal :: AlsoHigher x -> x -> Int -- this is rejected - because `x` can't be both * and * -> *
+-- ; also'illegal = also'illegal
+
+
 
 ; class () => Foo a where
   {

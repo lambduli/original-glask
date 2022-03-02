@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module Compiler.Analysis.Semantic.DependencyAnalysis where
+module Compiler.Analysis.Semantic.Dependency.Binding where
 
 
 import qualified Data.Map.Strict as Map
@@ -10,8 +10,12 @@ import qualified Data.Set as Set
 import Data.Graph (SCC(..), stronglyConnComp)
 
 
-import Compiler.Syntax
-import Compiler.Syntax.Expression
+import Compiler.Syntax.Declaration ( Declaration(Binding) )
+import Compiler.Syntax.BindGroup ( Bind'Group(..) )
+import Compiler.Syntax.Expression ( Expression(..) )
+import Compiler.Syntax.Match ( Match(Match, rhs) )
+
+import Compiler.Analysis.Semantic.Dependency.Depends ( Depends(..) )
 
 
 {-  MOTE: This function takes a list of Declarations and sorts them in the Topological Order using Data.Graph module. -}
@@ -113,7 +117,7 @@ sort bind'groups = sorted
 -- jenom to zpusobi escape logiky `Depends on` do vyssi urovne
 -- resp leakne impl. detail o tom, ze je potreba zindexovat lokalni bindingy a sestavit z nich Map
 
-
+{- QUESTION:  Why is this function never used anywhere? -}
 group'declarations :: [Declaration] -> [SCC Bind'Group]
 group'declarations decls = sccs
   where
@@ -186,13 +190,6 @@ group'declarations decls = sccs
     binding'to'bind'group _ = error "Internal Error - Impossible case happened. Check a class method `depends'on`."
     -- If that error ever occurs - it means that the filtering wasn't correct or was skipped.
     -- only'binds is supposed to always only contain list of Bindings
-
-
--- Depends type class represents a relation between two types
--- `a` is a type of the value which depends on something (like Expression or Declaration and so on)
--- `b` is a type of the result by which the dependencies are going to be represented (like Set Int, or [Set Int], ...)
-class Depends a b where
-  depends'on :: a -> Map.Map String Int -> b
 
 
 instance {-# OVERLAPPING #-} Depends [Bind'Group] [(Bind'Group, Int, Set.Set Int)] where

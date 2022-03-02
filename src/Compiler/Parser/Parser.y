@@ -212,7 +212,7 @@ TypeSigns       ::  { [Term'Decl] }
 
 {- Class Declaration -}
 ClassDecl       ::  { Term'Decl }
-                :   class ClassDecl2 ClassSigns                     { let { (ctx, name, var'name) = $2 } in Class name var'name ctx $3 }
+                :   class ClassDecl2 ClassSigns                     { let { (ctx, name, var'name) = $2 } in Class'Decl name var'name ctx $3 }
 
 
 ClassDecl2      ::  { ([Term'Pred], Name, Name) }

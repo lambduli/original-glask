@@ -3,24 +3,27 @@
 module Compiler.TypeSystem.Type.Infer.Expression where
 
 
-import Control.Monad
+import Control.Monad ( foldM )
 
 
-import Compiler.Counter
+import Compiler.Counter ( fresh )
 
-import Compiler.Syntax
-import Compiler.Syntax.Expression
-import Compiler.Syntax.Type
+import Compiler.Syntax.Kind ( Kind(K'Star) )
+import Compiler.Syntax.Predicate ( Predicate )
+import Compiler.Syntax.Qualified ( Qualified((:=>)) )
+import Compiler.Syntax.Expression ( Expression(..) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'V(T'V), Type(T'Var, T'Tuple) )
 
-import Compiler.TypeSystem.Infer
-import Compiler.TypeSystem.Constraint
-import Compiler.TypeSystem.Type.Constants
+import Compiler.TypeSystem.Infer ( Infer )
+import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
+import Compiler.TypeSystem.Type.Constants ( t'Bool, type'fn )
 
-import Compiler.TypeSystem.Type.Infer.Literal
-import Compiler.TypeSystem.Type.Infer.Pattern
-import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Match
-import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Declaration
-import Compiler.TypeSystem.Utils.Infer
+import Compiler.TypeSystem.Type.Infer.Literal ( infer'lit )
+import Compiler.TypeSystem.Type.Infer.Pattern ( infer'pat )
+import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Match ( infer'match )
+import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Declaration ( infer'decls )
+
+import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env )
 
 
 infer'expr :: Expression -> Infer ([Predicate], Type, [Constraint Type], [Constraint Kind])
@@ -52,8 +55,9 @@ infer'expr (App left right) = do
   (preds'r, t'r, t'cs'r, k'cs'r) <- infer'expr right
   fresh'name <- fresh
   let t'var = T'Var (T'V fresh'name K'Star)
-  let (t'c, k'c) = t'l `unify'types` (t'r `type'fn` t'var)
-  return (preds'l ++ preds'r, t'var, t'c : t'cs'l ++ t'cs'r, k'c : k'cs'l ++ k'cs'r)
+  let t'c = t'l `Unify` (t'r `type'fn` t'var)
+
+  return (preds'l ++ preds'r, t'var, t'c : t'cs'l ++ t'cs'r, k'cs'l ++ k'cs'r)
 
 -- TODO: check if it's really valid
 infer'expr (Infix'App left op right) = do
@@ -73,12 +77,12 @@ infer'expr (Infix'App left op right) = do
 
   let t'whole = t'l `type'fn` (t'r `type'fn` t'res)
 
-  let (t'c, k'c) = t'whole `unify'types` t'op
+  let t'c = t'whole `Unify` t'op
 
   return  (preds'l ++ preds'op ++ preds'r
           , t'res
           , t'c : t'cs'l ++ t'cs'op ++ t'cs'r
-          , k'c : k'cs'l ++ k'cs'op ++ k'cs'r)
+          , k'cs'l ++ k'cs'op ++ k'cs'r)
 
 -- TODO: check if it's really valid
 infer'expr (Tuple exprs) = do
@@ -94,12 +98,12 @@ infer'expr (If condition then' else') = do
   (preds'cond, t1, t'c1, k'c1) <- infer'expr condition
   (preds'tr, t2, t'c2, k'c2) <- infer'expr then'
   (preds'fl, t3, t'c3, k'c3) <- infer'expr else'
-  let (t'c, k'c) = t1 `unify'types` t'Bool
-  let (t'b, k'b) = t2 `unify'types` t3
+  let t'c = t1 `Unify` t'Bool
+  let t'b = t2 `Unify` t3
   return  (preds'cond ++ preds'tr ++ preds'fl
           , t2
           , t'c : t'b : t'c1 ++ t'c2 ++ t'c3
-          , k'c : k'b : k'c1 ++ k'c2 ++ k'c3)
+          , k'c1 ++ k'c2 ++ k'c3)
 
 infer'expr (Let decls body) = do
   -- I will need to do some dependency analysis to split the declarations into groups
@@ -249,7 +253,7 @@ infer'expr (Case expr matches) = do
   -- That same thing must be a type of the expr.
   -- So instead - I must take the list of list of types (but in this case it's a list of singletons)
   -- and map that to [Constraint Type] by - for each singleton - unifying that singleton element with a type'expr.
-  let (t'cs'patterns, k'cs'patterns) = unzip [ type'expr `unify'types` type'patt | ([type'patt], _, _, _, _, _) <- results ]
+  let t'cs'patterns = [ type'expr `Unify` type'patt | ([type'patt], _, _, _, _, _) <- results ]
 
 
   -- Then I need to take a list of types (types of the right hand sides) and map that to the list of
@@ -259,7 +263,7 @@ infer'expr (Case expr matches) = do
   fresh'name <- fresh
   let t'var = T'Var (T'V fresh'name K'Star)
   {- Now assert that Types of all Right Hand Sides are the same thing. -}
-  let (t'cs'rhs's, k'cs'rhs's) = unzip [ t'var `unify'types` type'rhs | (_, type'rhs, _, _, _, _) <- results ]
+  let t'cs'rhs's = [ t'var `Unify` type'rhs | (_, type'rhs, _, _, _, _) <- results ]
 
   -- Now I need to concatenate all the Predicates coming both from Pattern and Right Hand Side.
   {- I think I can mix them together, because from the standpoint of the whole expression - it doesn't
@@ -275,8 +279,6 @@ infer'expr (Case expr matches) = do
                     : t'cs'expr
                     : [ t'cs'patts | (_, _, _, _, t'cs'patts, _) <- results ]
   let k'cs = concat $ k'cs'expr
-                    : k'cs'patterns
-                    : k'cs'rhs's
                     : [ k'cs'patts | (_, _, _, _, _, k'cs'patts) <- results ]
   
   -- Now I have taken care of all the memebers of each tuple.

@@ -1,8 +1,8 @@
 module Compiler.Analysis.Semantic.Data where
 
 
-import Data.Bifunctor (Bifunctor(second))
-import Data.Maybe (mapMaybe)
+import Data.Bifunctor ( Bifunctor(second) )
+import Data.Maybe ( mapMaybe )
 
 
 import Compiler.Syntax.Declaration ( Constr'Decl(..), Declaration (Data'Decl), Data(..) )

@@ -6,13 +6,14 @@ import Data.Foldable ( find )
 
 
 import Compiler.Syntax.BindGroup ( Bind'Group )
-import Compiler.Syntax.Declaration ( Declaration )
+import Compiler.Syntax.Declaration ( Declaration, Data, Class )
 import Compiler.Syntax.HasKind ( HasKind(kind) )
 import Compiler.Syntax.Name ( Name )
 import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'V(..), Type(..) )
 
 import Compiler.TypeSystem.Program ( Program(..) )
 import Compiler.TypeSystem.Binding ( Explicit(Explicit), Implicit(Implicit), Method(..) )
+import Compiler.TypeSystem.TypeSection ( Type'Section )
 
 import Compiler.TypeSystem.Solver.Substitution ( Subst(..) )
 import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply) )
@@ -23,14 +24,15 @@ import qualified Compiler.Analysis.Syntactic.MethodBindings as Method'Bindings
 import qualified Compiler.Analysis.Syntactic.Annotations as Annotations
 import qualified Compiler.Analysis.Syntactic.Bindings as Bindings
 import qualified Compiler.Analysis.Syntactic.Data as Data
+import qualified Compiler.Analysis.Syntactic.Class as Classes
 
-import qualified Compiler.Analysis.Semantic.DependencyAnalysis as Dependencies
-import qualified Compiler.Analysis.Semantic.Class as Classes
+import qualified Compiler.Analysis.Semantic.Dependency.Binding as Bindings
+import qualified Compiler.Analysis.Semantic.Dependency.Types as Types
 
 
 
 to'program :: [Declaration] -> Program
-to'program decls = Program{ bind'sections = [(explicits, implicits)], methods = methods, method'annotations = m'anns, data'declarations = data'decls }
+to'program decls = Program{ bind'sections = [(explicits, implicits)], methods = methods, method'annotations = m'anns, data'n'class'sections = type'sections {- data'declarations = data'decls -} }
   where
     method'annotations :: [(Name, Sigma'Type, Name)]
     method'annotations = Method'Annotations.extract decls
@@ -54,20 +56,36 @@ to'program decls = Program{ bind'sections = [(explicits, implicits)], methods = 
 
  
 
-    annotations :: Map.Map Name Sigma'Type
-    annotations = Annotations.extract decls
+    annotations   :: Map.Map Name Sigma'Type
+    annotations   = Annotations.extract decls
 
-    bindings :: Map.Map Name Bind'Group
-    bindings = Bindings.extract decls -- NOTE: Myslim, ze tohle jde volat jenom tehdy, kdyz uz jsou vsechny Bind Groups mergnuty do jedne - pokud maji stejne jmeno.
+    bindings      :: Map.Map Name Bind'Group
+    bindings      = Bindings.extract decls -- NOTE: Myslim, ze tohle jde volat jenom tehdy, kdyz uz jsou vsechny Bind Groups mergnuty do jedne - pokud maji stejne jmeno.
 
-    explicit'map :: Map.Map Name (Sigma'Type, Bind'Group)
-    explicit'map = Map.intersectionWith (,) annotations bindings
+    explicit'map  :: Map.Map Name (Sigma'Type, Bind'Group)
+    explicit'map  = Map.intersectionWith (,) annotations bindings
 
-    implicit'map :: Map.Map Name Bind'Group
-    implicit'map = Map.difference bindings explicit'map
+    implicit'map  :: Map.Map Name Bind'Group
+    implicit'map  = Map.difference bindings explicit'map
 
-    explicits = map (uncurry Explicit) $ Map.elems explicit'map
+    explicits     = map (uncurry Explicit) $ Map.elems explicit'map
 
-    implicits = map (map Implicit) $ Dependencies.sort $ Map.elems implicit'map
+    implicits     = map (map Implicit) $ Bindings.sort $ Map.elems implicit'map
 
-    data'decls = Data.extract decls
+
+    data'decls    :: [Data]
+    data'decls    = Data.extract decls
+
+    class'decls   :: [Class]
+    class'decls   = Classes.extract decls
+
+    d'n'c'secs   :: [[Either Data Class]]
+    d'n'c'secs   = Types.sort (map Left data'decls ++ map Right class'decls)
+
+    type'sections = map to'type'section d'n'c'secs
+
+    to'type'section :: [Either Data Class] -> Type'Section
+    to'type'section eithers =
+      let ds = [ d | Left d <- eithers ]
+          cs = [ c | Right c <- eithers ]
+      in  (ds, cs)

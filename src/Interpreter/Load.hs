@@ -32,8 +32,7 @@ import qualified Compiler.Analysis.Syntactic.MethodBindings as Method'Bindings
 import qualified Compiler.Analysis.Syntactic.Annotations as Annotations
 import qualified Compiler.Analysis.Syntactic.Bindings as Bindings
 
-import qualified Compiler.Analysis.Semantic.DependencyAnalysis as Dependencies
-import qualified Compiler.Analysis.Semantic.Class as Classes
+import qualified Compiler.Analysis.Semantic.ClassEnv as Class'Env
 import qualified Compiler.Analysis.Semantic.Data as Data
 
 import Compiler.Analysis.Syntactic.FixityEnv
@@ -50,7 +49,7 @@ import Compiler.TypeSystem.Type.Infer.Program
 import Compiler.TypeSystem.Binding
 import Compiler.TypeSystem.Utils.Infer
 import Compiler.TypeSystem.Infer
-import Compiler.TypeSystem.InferenceEnv
+import Compiler.TypeSystem.InferenceEnv ( Infer'Env(..), Class'Env, init't'env )
 
 import Compiler.TypeSystem.Solver.Substitution
 import Compiler.TypeSystem.Solver.Substitutable
@@ -130,7 +129,7 @@ make'program declarations trans'env counter =
   -- TODO: now when I have the list of Declarations in AST form
   -- I need to call inference
   -- for the inference I am going to need to build things like class environment and instance environment
-  let class'env = Classes.extract declarations
+  let class'env = Class'Env.extract declarations
 
 
   -- TODO: I need to extract `Type Assumptions` about all data constructors in the list of Declarations
@@ -154,7 +153,7 @@ process'declarations declarations trans'env counter = do
   -- TODO: now when I have the list of Declarations in AST form
   -- I need to call inference
   -- for the inference I am going to need to build things like class environment and instance environment
-  let class'env = Classes.extract declarations
+  let class'env = Class'Env.extract declarations
 
 
   -- TODO: I need to extract `Type Assumptions` about all data constructors in the list of Declarations
@@ -170,15 +169,15 @@ process'declarations declarations trans'env counter = do
       m'anns = method'annotations program
       type'env = init't'env `Map.union` (Map.fromList constr'assumptions) `Map.union` (Map.fromList m'anns)
 
-  let TE.Trans'Env{ TE.kind'context = k'env } = trans'env
+  let TE.Trans'Env{ TE.kind'context = k'env, TE.classes = class'ctxt } = trans'env
 
   let infer'env :: Infer'Env
-      infer'env = Infer'Env{ kind'env = k'env, type'env = type'env, class'env =  class'env }
+      infer'env = Infer'Env{ kind'env = k'env, type'env = type'env, class'env =  class'env, constraint'env = class'ctxt }
 
   -- (Type'Env, [Constraint Kind])
   -- (t'env, k'constr) <- run'infer infer'env (infer'program program)
 
-  (t'env, k'env', cnt) <- infer'whole'program program infer'env counter
+  (t'env, k'env', c'env, cnt) <- infer'whole'program program infer'env counter
 
 
   -- TODO: I also need to do the Kind inference, probably even before type inference
@@ -192,4 +191,4 @@ process'declarations declarations trans'env counter = do
   --        I no longer need to do this. I made the `infer'whole'program` apply the kind substitution to the both "base type environment" and the "inferred env from the assumptions"
   --        and union them and return it
 
-  return (program, infer'env{ type'env = t'env, kind'env = k'env' }, class'env, trans'env, counter)
+  return (program, infer'env{ type'env = t'env, kind'env = k'env', constraint'env = c'env }, class'env, trans'env, counter)

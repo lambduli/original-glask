@@ -3,28 +3,26 @@ module Interpreter.Type where
 
 import Compiler.Parser (parse'type)
 
-import Compiler.Syntax (Type, Kind)
 import Compiler.Syntax.Name
-import Compiler.Syntax.ToAST.TranslateState (Translate'State)
-import Compiler.Syntax.ToAST.TranslateEnv (Translate'Env(Trans'Env))
-import Compiler.Syntax.ToAST (translate)
+import Compiler.Syntax ( Type, Kind )
+import Compiler.Syntax.ToAST.TranslateState ( Translate'State )
+import Compiler.Syntax.ToAST.TranslateEnv ( Translate'Env(Trans'Env) )
+import Compiler.Syntax.ToAST ( translate )
 
 import Compiler.Analysis.Syntactic.Types
 
-import Compiler.Analysis.Semantic.SemanticError (Semantic'Error)
+import Compiler.Analysis.Semantic.SemanticError ( Semantic'Error )
 
-import Compiler.TypeSystem.Error (Error)
-import Compiler.TypeSystem.InferenceEnv (Infer'Env(Infer'Env))
-import Compiler.TypeSystem.Infer (run'infer)
-import Compiler.TypeSystem.Solver (run'solve)
-import Compiler.TypeSystem.Kind.Infer.Type (infer'type)
-import Compiler.TypeSystem.InferenceState (Infer'State)
+import Compiler.TypeSystem.InferenceEnv ( Infer'Env(Infer'Env) )
+import Compiler.TypeSystem.Infer ( run'infer )
+import Compiler.TypeSystem.Solver ( run'solve )
+import Compiler.TypeSystem.Kind.Infer.Type ( infer'type )
+import Compiler.TypeSystem.InferenceState ( Infer'State )
 
-import Compiler.TypeSystem.Solver.Substitution (Subst(..))
-import Compiler.TypeSystem.Solver.Substitutable (Substitutable(apply))
+import Compiler.TypeSystem.Solver.Substitution ( Subst(..) )
+import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply) )
 
-
-import Debug.Trace
+import Compiler.TypeSystem.Error ( Error )
 
 
 read'type :: String -> Translate'Env -> Translate'State -> Either Semantic'Error (Type, Translate'State)

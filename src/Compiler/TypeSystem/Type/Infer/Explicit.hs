@@ -26,6 +26,7 @@ import Compiler.TypeSystem.Solver.Substitution ( Subst )
 import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term(free'vars) )
 import Compiler.TypeSystem.Type.Infer.Match ( infer'matches )
 import Compiler.TypeSystem.Kind.Infer.Type ( infer'type )
+import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'infer'sigma )
 
 
 {-  Description:
@@ -41,7 +42,9 @@ import Compiler.TypeSystem.Kind.Infer.Type ( infer'type )
 {- Returning a [Constraint Type] might not be strictly necessary -}
 infer'expl :: Explicit -> Infer ([Predicate], [Constraint Type], [Constraint Kind])
 infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }) = do
-  (qs :=> t) <- instantiate scheme
+  scheme' <- kind'infer'sigma scheme
+  
+  (qs :=> t) <- instantiate scheme'
   (preds, cs't, cs'k) <- infer'matches matches t
   -- now solve it
   case run'solve cs't :: Either Error (Subst T'V Type) of
@@ -66,14 +69,15 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
           case runIdentity $ runExceptT $ split c'env fs gs preds' of
             Left err -> throwError err
             Right (deferred'preds, retained'preds) -> do
-              (k, cs'k') <- infer'type t
-              b <- scheme `sh` sc'
+              -- NOTE: I need to comment this out - this can not happen right here *1
+              -- (k, cs'k') <- infer'type t
+              b <- scheme' `sh` sc'
               if not b
               {- TODO:  If I want to know exactly what user-denoted type variable in the `scheme` does correspond to some non-variable type, I can use `match` to create a one-way substitution. -}
-              then throwError $ Signature'Too'General scheme sc'
+              then throwError $ Signature'Too'General scheme' sc'
               else  if not (null retained'preds)
                     then throwError Context'Too'Weak
-                    else return (deferred'preds, cs't, (k `Unify` K'Star) : cs'k ++ cs'k')
+                    else return (deferred'preds, cs't, {- (k `Unify` K'Star) : -} cs'k {- ++ cs'k' -}) -- NOTE *1
               -- TODO:  FIX - here the `kind` function is not used safely
               --        the problem is that kind function expects for Type Applications - that the Kind of the Left part will be Kind Arrow
               --        but that's never going the happen for types given from the user (annotations)

@@ -14,6 +14,7 @@ import Control.Monad.Except ( MonadError(throwError) )
 
 import Compiler.Counter ( Counter(Counter, counter), fresh, real'fresh, letters )
 
+import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.HasKind ( HasKind(kind) )
 import Compiler.Syntax.Kind ( Kind )
 import Compiler.Syntax.Predicate ( Predicate )
@@ -22,7 +23,7 @@ import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'V(..), Type(T'Forall,
 
 import Compiler.TypeSystem.Error ( Error(Unexpected, Unbound'Var, Unbound'Type'Var) )
 import Compiler.TypeSystem.Infer ( Infer )
-import Compiler.TypeSystem.InferenceEnv ( Class'Env, Infer'Env(Infer'Env, type'env, kind'env), Type'Env )
+import Compiler.TypeSystem.InferenceEnv ( Class'Env, Infer'Env(Infer'Env, type'env, kind'env, constraint'env), Type'Env )
 import Compiler.TypeSystem.Ambiguity ( ambiguities, candidates, Ambiguity )
 import Compiler.TypeSystem.Solver.Solve ( Solve )
 import Compiler.TypeSystem.Solver.Substitution ( Subst(..) )
@@ -84,6 +85,12 @@ lookup't'env var = do
 merge'into'k'env :: [(String, Kind)] -> Infer a -> Infer a
 merge'into'k'env bindings m = do
   let scope e@Infer'Env{ kind'env = k'env } = e{ kind'env = Map.fromList bindings `Map.union` k'env }
+  local scope m
+
+
+merge'into'constr'env :: [(Name, Kind)] -> Infer a -> Infer a
+merge'into'constr'env bindings m = do
+  let scope e@Infer'Env{ constraint'env = constr'env } = e{ constraint'env = Map.fromList bindings `Map.union` constr'env }
   local scope m
 
 
@@ -257,8 +264,8 @@ default'subst cl'env vars preds = do
 
 
 
-{-  Utilities for generating Unification Constraints  -}
+-- {-  Utilities for generating Unification Constraints  -}
 
-infix 4 `unify'types`
-unify'types :: Type -> Type -> (Constraint Type, Constraint Kind)
-a `unify'types` b = (a `Unify` b, kind a `Unify` kind b)
+-- infix 4 `unify'types`
+-- unify'types :: Type -> Type -> (Constraint Type, Constraint Kind)
+-- a `unify'types` b = (a `Unify` b, kind a `Unify` kind b)

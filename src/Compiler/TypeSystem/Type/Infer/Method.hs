@@ -26,6 +26,7 @@ import Compiler.TypeSystem.Solver ( run'solve )
 import Compiler.TypeSystem.Solver.Substitution ( Subst )
 import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term(free'vars) )
 import Compiler.TypeSystem.Type.Infer.Match ( infer'matches )
+import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'infer'sigma )
 
 
 {-  Description:
@@ -41,7 +42,9 @@ import Compiler.TypeSystem.Type.Infer.Match ( infer'matches )
 {- Returning a [Constraint Type] might not be strictly necessary -}
 infer'method :: Method -> Infer ([Predicate], [Constraint Type], [Constraint Kind])
 infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }) = do
-  (qs :=> t) <- instantiate scheme
+  scheme' <- kind'infer'sigma scheme
+  
+  (qs :=> t) <- instantiate scheme'
   (preds, cs't, cs'k) <- infer'matches matches t
   -- now solve it
   case run'solve cs't :: Either Error (Subst T'V Type) of
@@ -66,11 +69,11 @@ infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }
           case runIdentity $ runExceptT $ split c'env fs gs preds' of
             Left err -> throwError err
             Right (deferred'preds, retained'preds) -> do
-              b <- scheme `sh` sc'
+              b <- scheme' `sh` sc'
 
               if not b
-              {- TODO:  If I want to know exactly what user-denoted type variable in the `scheme` does correspond to some non-variable type, I can use `match` to create a one-way substitution. -}
-              then throwError $ Signature'Too'General scheme sc'
+              {- TODO:  If I want to know exactly what user-denoted type variable in the `scheme'` does correspond to some non-variable type, I can use `match` to create a one-way substitution. -}
+              then throwError $ Signature'Too'General scheme' sc'
               else  if not (null retained'preds)
                     then throwError Context'Too'Weak
                     else return (deferred'preds, cs't, cs'k)

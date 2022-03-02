@@ -13,6 +13,7 @@ import Compiler.Syntax.Qualified ( Qualified((:=>)) )
 data Semantic'Error
   = Unbound'T'Var Type
   | Not'In'Scope'Data Name
+  | Not'In'Scope'Class Name
   | Wrong'Fields Name [Name]
   | Uninitialized'Fields Name [Name]
   | Empty'Record'Update Term'Expr
@@ -33,6 +34,7 @@ data Semantic'Error
 instance Show Semantic'Error where
   show (Unbound'T'Var ty) = "Semantic Error: Unbound Type Variable " ++ show ty
   show (Not'In'Scope'Data s) = "Semantic Error: Data Not In Scope " ++ s
+  show (Not'In'Scope'Class c) = "Semantic Error: Type Class Not In Scope " ++ c
   show (Wrong'Fields s ss) = "Semantic Error: Wrong Fields On " ++ s ++ " " ++ show ss
   show (Uninitialized'Fields s ss) = "Semantic Error: Unitialized Fields In " ++ s ++ " " ++ show ss
   show (Empty'Record'Update te) = "Semenatic Error: Empty Record Update (TODO: print the problematic expression)"
