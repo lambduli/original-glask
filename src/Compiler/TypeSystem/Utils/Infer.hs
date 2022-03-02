@@ -260,12 +260,3 @@ default'subst :: Class'Env -> [T'V] -> [Predicate] -> Solve (Subst T'V Type)
 default'subst cl'env vars preds = do
   pairs <- with'defaults (zip . map fst) cl'env vars preds
   return $ Sub $ Map.fromList pairs
-
-
-
-
--- {-  Utilities for generating Unification Constraints  -}
-
--- infix 4 `unify'types`
--- unify'types :: Type -> Type -> (Constraint Type, Constraint Kind)
--- a `unify'types` b = (a `Unify` b, kind a `Unify` kind b)

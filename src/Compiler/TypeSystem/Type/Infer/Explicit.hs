@@ -40,12 +40,12 @@ import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'infer'sigma )
 
 -}
 {- Returning a [Constraint Type] might not be strictly necessary -}
-infer'expl :: Explicit -> Infer ([Predicate], [Constraint Type], [Constraint Kind])
+infer'expl :: Explicit -> Infer ([Predicate], [Constraint Type])
 infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }) = do
   scheme' <- kind'infer'sigma scheme
   
   (qs :=> t) <- instantiate scheme'
-  (preds, cs't, cs'k) <- infer'matches matches t
+  (preds, cs't) <- infer'matches matches t
   -- now solve it
   case run'solve cs't :: Either Error (Subst T'V Type) of
     Left err -> throwError err
@@ -77,7 +77,7 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
               then throwError $ Signature'Too'General scheme' sc'
               else  if not (null retained'preds)
                     then throwError Context'Too'Weak
-                    else return (deferred'preds, cs't, {- (k `Unify` K'Star) : -} cs'k {- ++ cs'k' -}) -- NOTE *1
+                    else return (deferred'preds, cs't {- , (k `Unify` K'Star) : cs'k ++ cs'k' -}) -- NOTE *1
               -- TODO:  FIX - here the `kind` function is not used safely
               --        the problem is that kind function expects for Type Applications - that the Kind of the Left part will be Kind Arrow
               --        but that's never going the happen for types given from the user (annotations)

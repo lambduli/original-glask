@@ -491,7 +491,7 @@ AType             ::  { Term'Type }
                   |   '(' Type ',' OneOrManySeparated(Type) ')'     { Term'T'Tuple ($2 : $4) }
                   |   '[' Type ']'                                  { Term'T'List $2 }
                   |   '(' Type ')'                                  { $2 }
-                  |   forall OneOrMany(varid) dot QualType          { Term'T'Forall (map Term'Id'Var $2) $4 }
+                  |   forall NoneOrMany(varid) dot QualType         { Term'T'Forall (map Term'Id'Var $2) $4 }
                   --  ^ this line introduces about 12 new shift/reduce conflicts - if I forced the forall type to be wrapped in the parens it would not
 
 

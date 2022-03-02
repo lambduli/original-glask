@@ -40,12 +40,12 @@ import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'infer'sigma )
 
 -}
 {- Returning a [Constraint Type] might not be strictly necessary -}
-infer'method :: Method -> Infer ([Predicate], [Constraint Type], [Constraint Kind])
+infer'method :: Method -> Infer ([Predicate], [Constraint Type])
 infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }) = do
   scheme' <- kind'infer'sigma scheme
   
   (qs :=> t) <- instantiate scheme'
-  (preds, cs't, cs'k) <- infer'matches matches t
+  (preds, cs't) <- infer'matches matches t
   -- now solve it
   case run'solve cs't :: Either Error (Subst T'V Type) of
     Left err -> throwError err
@@ -76,4 +76,4 @@ infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }
               then throwError $ Signature'Too'General scheme' sc'
               else  if not (null retained'preds)
                     then throwError Context'Too'Weak
-                    else return (deferred'preds, cs't, cs'k)
+                    else return (deferred'preds, cs't)

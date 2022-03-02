@@ -95,7 +95,7 @@ read'expr input trans'env trans'state = do
 infer'type :: Expression -> Infer'Env -> Infer'State -> Either Error (Sigma'Type, Infer'State)
 infer'type expr i'env i'state = do
   -- ([Predicate], Type, [Constraint Type], [Constraint Kind])
-  ((preds, type', cs't, cs'k), i'state') <- run'infer i'env (infer'expr expr) i'state
+  ((preds, type', cs't), i'state') <- run'infer i'env (infer'expr expr) i'state
 
   subst <- run'solve cs't  :: Either Error (Subst T'V Type)
 

@@ -52,7 +52,7 @@ infer'whole'program program infer'env infer'state = do
       infer'env'  = infer'env{ kind'env = new'k'env, type'env = substituted't'env, constraint'env = new'class'env }
 
 
-  ((t'env, k'cs), inf'state) <- run'infer infer'env' (infer'types program') infer'state'
+  (t'env, inf'state) <- run'infer infer'env' (infer'types program') infer'state'
 
   let new't'env = t'env `Map.union` substituted't'env -- it shouldn't matter which direction this is
 
@@ -67,17 +67,17 @@ infer'whole'program program infer'env infer'state = do
   return (new't'env, new'k'env, new'class'env, inf'state)
 
 
-infer'types :: Program -> Infer (Type'Env, [Constraint Kind])
+infer'types :: Program -> Infer Type'Env
 infer'types Program{ bind'sections = bgs, methods = methods } = do
   -- ([Predicate], [(Name, Scheme)], [Constraint Type], [Constraint Kind])
-  (preds, assumptions, cs't, cs'k) <- infer'seq infer'bind'section bgs
+  (preds, assumptions, cs't) <- infer'seq infer'bind'section bgs
 
   {-  TODO: Maybe it's not a best idea to put the `infer'method` itself right here.
             Maybe it's mixing the abstractions.
             I could write a helper functions for both lines - two functions which would just take `bgs` and `methods`
             and would produce a tuples. Maybe I shoudl do that. So that functions like `infer'program` read more like a description and contain less implementation details.
   -}
-  (preds', cs't', cs'k') <- check'seq infer'method methods
+  (preds', cs't') <- check'seq infer'method methods
 
   -- Question:  So all of the constraints were already solved in smaller groups of them.
   --            Do I expect some different result from solving them all?
@@ -116,4 +116,4 @@ infer'types Program{ bind'sections = bgs, methods = methods } = do
                   -- let ms = map (\ (n, q't) -> (n, close'over q't)) m'anns
                   -- return (apply subst' $ Map.fromList $ assumptions ++ ms, cs'k ++ cs'k')
 
-                  return (apply subst' $ Map.fromList assumptions, cs'k ++ cs'k')
+                  return (apply subst' $ Map.fromList assumptions)

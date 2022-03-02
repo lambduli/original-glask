@@ -26,44 +26,44 @@ import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Declaration ( infer'decls )
 import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env )
 
 
-infer'expr :: Expression -> Infer ([Predicate], Type, [Constraint Type], [Constraint Kind])
+infer'expr :: Expression -> Infer ([Predicate], Type, [Constraint Type])
 infer'expr (Var var'name) = do
   preds :=> type' <- lookup't'env var'name
-  return (preds, type', [], [])
+  return (preds, type', [])
 
 infer'expr (Const const'name) = do
   preds :=> type' <- lookup't'env const'name
-  return (preds, type', [], [])
+  return (preds, type', [])
 
 infer'expr (Op op'name) = do
   preds :=> type' <- lookup't'env op'name
-  return (preds, type', [], [])
+  return (preds, type', [])
 
 infer'expr (Lit lit) = do
   (preds, type') <- infer'lit lit
-  return (preds, type', [], [])
+  return (preds, type', [])
 
 -- TODO: check if it's really valid
 infer'expr (Abs pattern'param body) = do
   (preds'param, type'param, assumptions'param) <- infer'pat pattern'param
-  (preds'body, type'body, t'constrs, k'constrs) <- merge'into't'env assumptions'param (infer'expr body)
-  return (preds'param ++ preds'body, type'param `type'fn` type'body, t'constrs, k'constrs)
+  (preds'body, type'body, t'constrs) <- merge'into't'env assumptions'param (infer'expr body)
+  return (preds'param ++ preds'body, type'param `type'fn` type'body, t'constrs)
 
 -- TODO: check if it's really valid
 infer'expr (App left right) = do
-  (preds'l, t'l, t'cs'l, k'cs'l) <- infer'expr left
-  (preds'r, t'r, t'cs'r, k'cs'r) <- infer'expr right
+  (preds'l, t'l, t'cs'l) <- infer'expr left
+  (preds'r, t'r, t'cs'r) <- infer'expr right
   fresh'name <- fresh
   let t'var = T'Var (T'V fresh'name K'Star)
   let t'c = t'l `Unify` (t'r `type'fn` t'var)
 
-  return (preds'l ++ preds'r, t'var, t'c : t'cs'l ++ t'cs'r, k'cs'l ++ k'cs'r)
+  return (preds'l ++ preds'r, t'var, t'c : t'cs'l ++ t'cs'r)
 
 -- TODO: check if it's really valid
 infer'expr (Infix'App left op right) = do
-  (preds'l, t'l, t'cs'l, k'cs'l) <- infer'expr left
-  (preds'op, t'op, t'cs'op, k'cs'op) <- infer'expr op
-  (preds'r, t'r, t'cs'r, k'cs'r) <- infer'expr right
+  (preds'l, t'l, t'cs'l) <- infer'expr left
+  (preds'op, t'op, t'cs'op) <- infer'expr op
+  (preds'r, t'r, t'cs'r) <- infer'expr right
 
   {-
     The type of the operator should be (at least) a binary function.
@@ -81,29 +81,27 @@ infer'expr (Infix'App left op right) = do
 
   return  (preds'l ++ preds'op ++ preds'r
           , t'res
-          , t'c : t'cs'l ++ t'cs'op ++ t'cs'r
-          , k'cs'l ++ k'cs'op ++ k'cs'r)
+          , t'c : t'cs'l ++ t'cs'op ++ t'cs'r)
 
 -- TODO: check if it's really valid
 infer'expr (Tuple exprs) = do
-  (preds, types, cs, k'cs) <- foldM infer' ([], [], [], []) exprs
-  return (preds, T'Tuple $ reverse types, cs, k'cs)
+  (preds, types, cs) <- foldM infer' ([], [], []) exprs
+  return (preds, T'Tuple $ reverse types, cs)
     where
-      infer' (preds, types, constrs, k'constrs) expr = do
-        (preds, t, cs, k'cs) <- infer'expr expr
-        return (preds, t : types, cs ++ constrs, k'cs ++ k'constrs)
+      infer' (preds, types, constrs) expr = do
+        (preds, t, cs) <- infer'expr expr
+        return (preds, t : types, cs ++ constrs)
 
 -- TODO: check if it's really valid
 infer'expr (If condition then' else') = do
-  (preds'cond, t1, t'c1, k'c1) <- infer'expr condition
-  (preds'tr, t2, t'c2, k'c2) <- infer'expr then'
-  (preds'fl, t3, t'c3, k'c3) <- infer'expr else'
+  (preds'cond, t1, t'c1) <- infer'expr condition
+  (preds'tr, t2, t'c2) <- infer'expr then'
+  (preds'fl, t3, t'c3) <- infer'expr else'
   let t'c = t1 `Unify` t'Bool
   let t'b = t2 `Unify` t3
   return  (preds'cond ++ preds'tr ++ preds'fl
           , t2
-          , t'c : t'b : t'c1 ++ t'c2 ++ t'c3
-          , k'c1 ++ k'c2 ++ k'c3)
+          , t'c : t'b : t'c1 ++ t'c2 ++ t'c3)
 
 infer'expr (Let decls body) = do
   -- I will need to do some dependency analysis to split the declarations into groups
@@ -115,9 +113,9 @@ infer'expr (Let decls body) = do
   -- also will there happen the generalization for the declaration?
   -- I think so - each group should generalize the declarations at most at the end of the work for that group
   -- so the next group have the correct generalized types
-  (preds'decls, assumptions'decls, t'cs'decls, k'cs'decls) <- infer'decls decls
-  (preds'body, t'body, t'cs'body, k'cs'body) <- merge'into't'env assumptions'decls (infer'expr body)
-  return (preds'decls ++ preds'body, t'body, t'cs'decls ++ t'cs'body, k'cs'decls ++ k'cs'body)
+  (preds'decls, assumptions'decls, t'cs'decls) <- infer'decls decls
+  (preds'body, t'body, t'cs'body) <- merge'into't'env assumptions'decls (infer'expr body)
+  return (preds'decls ++ preds'body, t'body, t'cs'decls ++ t'cs'body)
 
 -- | TODO: I need to read a section about type checking explicitly annotated bindings
 -- |        from that I think I should be able to derive the plan for this specific case.
@@ -227,7 +225,7 @@ infer'expr (Ann expr qual'type) = do
 
 infer'expr (Case expr matches) = do
   {- Infer the type of the expr. -}
-  (preds'expr, type'expr, t'cs'expr, k'cs'expr) <- infer'expr expr
+  (preds'expr, type'expr, t'cs'expr) <- infer'expr expr
   
   {- Infer the types of the list of matches. -}
   -- results :: [([Type], Type, [Predicate], [Predicate], [Constraint Type], [Constraint Kind])]
@@ -253,7 +251,7 @@ infer'expr (Case expr matches) = do
   -- That same thing must be a type of the expr.
   -- So instead - I must take the list of list of types (but in this case it's a list of singletons)
   -- and map that to [Constraint Type] by - for each singleton - unifying that singleton element with a type'expr.
-  let t'cs'patterns = [ type'expr `Unify` type'patt | ([type'patt], _, _, _, _, _) <- results ]
+  let t'cs'patterns = [ type'expr `Unify` type'patt | ([type'patt], _, _, _, _) <- results ]
 
 
   -- Then I need to take a list of types (types of the right hand sides) and map that to the list of
@@ -263,26 +261,24 @@ infer'expr (Case expr matches) = do
   fresh'name <- fresh
   let t'var = T'Var (T'V fresh'name K'Star)
   {- Now assert that Types of all Right Hand Sides are the same thing. -}
-  let t'cs'rhs's = [ t'var `Unify` type'rhs | (_, type'rhs, _, _, _, _) <- results ]
+  let t'cs'rhs's = [ t'var `Unify` type'rhs | (_, type'rhs, _, _, _) <- results ]
 
   -- Now I need to concatenate all the Predicates coming both from Pattern and Right Hand Side.
   {- I think I can mix them together, because from the standpoint of the whole expression - it doesn't
       matter, what part of the expression requires that constraints / produces that Predicate
       it just means, it is needed.
       That also means, that the function infer'match could maybe produce a single [Predicate]. -}
-  let preds = preds'expr ++ concat [ preds'patts ++ preds'rhs | (_, _, preds'patts, preds'rhs, _, _) <- results ]
+  let preds = preds'expr ++ concat [ preds'patts ++ preds'rhs | (_, _, preds'patts, preds'rhs, _) <- results ]
 
   {-  I also need to concatenate all type constraints and kind constraints from list of matches together
       to those I also need to add constraints from the expr at the top of this branch. -}
   let t'cs = concat $ t'cs'patterns
                     : t'cs'rhs's
                     : t'cs'expr
-                    : [ t'cs'patts | (_, _, _, _, t'cs'patts, _) <- results ]
-  let k'cs = concat $ k'cs'expr
-                    : [ k'cs'patts | (_, _, _, _, _, k'cs'patts) <- results ]
+                    : [ t'cs'patts | (_, _, _, _, t'cs'patts) <- results ]
   
   -- Now I have taken care of all the memebers of each tuple.
-  return (preds, t'var, t'cs, k'cs)
+  return (preds, t'var, t'cs)
 
 -- | TODO: Introductors (how I call them) already have the type annotation in the typing context/
 --          So all I need is to retrieve it from there.

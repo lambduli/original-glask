@@ -22,6 +22,7 @@ import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term (fr
 
 
 import Compiler.TypeSystem.Error ( Error )
+import Compiler.TypeSystem.Constraint (Constraint(Unify))
 
 
 {-  This module is supposed to be used from `infer'expl` and `check'method.
@@ -36,7 +37,7 @@ kind'infer'sigma :: Sigma'Type -> Infer Sigma'Type
 kind'infer'sigma sigma = do
   (kind, k'cs) <- infer'type sigma
 
-  case run'solve k'cs :: Either Error (Subst Name Kind) of
+  case run'solve ((kind `Unify` K'Star): k'cs) :: Either Error (Subst Name Kind) of
     Left error -> throwError error
     Right subst -> do
       let sigma'@(T'Forall tvs _) = apply subst sigma

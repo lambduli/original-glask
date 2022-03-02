@@ -19,7 +19,7 @@ import Compiler.Syntax.Type ( Sigma'Type )
           This function might be used just to utilize it.
  -}
 
-infer'decls :: [Declaration] -> Infer ([Predicate], [Assumption Sigma'Type], [Constraint Type], [Constraint Kind])
+infer'decls :: [Declaration] -> Infer ([Predicate], [Assumption Sigma'Type], [Constraint Type])
 infer'decls = undefined
 
 {- TODO:

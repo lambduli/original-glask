@@ -56,12 +56,6 @@ infer'type (T'Forall tvs (preds :=> type')) = do
   cs'k'ps <- merge'into'k'env assumptions (infer'context preds)
   (k't, cs'k't) <- merge'into'k'env assumptions (infer'type type')
 
-  -- TODO:  I am not sure but I think there are two changes to be done:
-  --        the inferred `k't` must be unified with `K'Star`
-  --        the resulting kind returned from this function should be `K'Star`
-  --  because what if someone writes a type like: forall . Maybe
-  --  I am sure the system will catch it, but maybe somewhere else and not related to this specific mistake
-
   return (k't, cs'k'ps ++ cs'k't)
 
 

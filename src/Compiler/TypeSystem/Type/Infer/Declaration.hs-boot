@@ -12,4 +12,4 @@ import Compiler.TypeSystem.Assumption ( Assumption )
 import Compiler.Syntax.Type ( Sigma'Type )
 
 
-infer'decls :: [Declaration] -> Infer ([Predicate], [Assumption Sigma'Type], [Constraint Type], [Constraint Kind])
+infer'decls :: [Declaration] -> Infer ([Predicate], [Assumption Sigma'Type], [Constraint Type])

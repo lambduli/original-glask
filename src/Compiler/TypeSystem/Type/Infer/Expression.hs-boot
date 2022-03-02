@@ -7,4 +7,4 @@ import Compiler.TypeSystem.Constraint
 import Compiler.TypeSystem.Infer
 
 
-infer'expr :: Expression -> Infer ([Predicate], Type, [Constraint Type], [Constraint Kind])
+infer'expr :: Expression -> Infer ([Predicate], Type, [Constraint Type])

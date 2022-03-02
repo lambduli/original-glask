@@ -34,7 +34,7 @@ import Compiler.TypeSystem.Type.Infer.Match ( infer'matches )
 
 
 {- Returning a [Constraint Type] might not be strictly necessary -}
-infer'impls :: [Implicit] -> Infer ([Predicate], [(Name, Sigma'Type)], [Constraint Type], [Constraint Kind])
+infer'impls :: [Implicit] -> Infer ([Predicate], [(Name, Sigma'Type)], [Constraint Type])
 infer'impls implicits = do
   let is = map (\ (Implicit b'g) -> name b'g) implicits
   {-  get only the names of the implicit bindings in the same order -}
@@ -58,9 +58,9 @@ infer'impls implicits = do
   {-  infering each [Match] inside the typing context containing all the assumptions about the types of the implicits
       zipWith is needed because infer'matches expects to be given a type which it unifies with the infered type of all the RHSs
   -}
-  let preds = concat [ preds  | (preds, _, _) <- results ]
-      cs't  = concat [ cs't   | (_, cs't, _) <- results ]
-      cs'k  = concat [ cs'k   | (_, _, cs'k) <- results ]
+  let preds = concat [ preds  | (preds, _) <- results ]
+      cs't  = concat [ cs't   | (_, cs't) <- results ]
+      cs'k  = concat [ cs'k   | (_, _) <- results ]
   
   -- now I can solve the type constraints
   case run'solve cs't :: Either Error (Subst T'V Type) of
@@ -81,10 +81,10 @@ infer'impls implicits = do
                 -- all the free variables in the type, but because of the monomorphism restriction
                 -- we must quantify over only some of them -- QUESTION: Which ones can we quantify over and which ones we can't?
                 -- TODO: inspect more later!
-            in return (deferred'preds ++ retained'preds, zip is scs', cs't, cs'k)
+            in return (deferred'preds ++ retained'preds, zip is scs', cs't)
           else
             let scs'  = map (quantify gs . (retained'preds :=> )) ts' -- qualify each substituted type with retained predicates
-            in return (deferred'preds, zip is scs', cs't, cs'k)
+            in return (deferred'preds, zip is scs', cs't)
             -- Question:  Why do I return the `cs't` even thought I already solved them?
             --            Callers of this function will solve them again and again, does it make sense?
 

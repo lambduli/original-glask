@@ -38,6 +38,17 @@ module Main where
 -- THIS WORKS NOW
 
 
+--  NOW I WANT TO TRY SOME MALFORMED TYPE ANNOTATIONS
+-- ; malformed :: forall . Maybe -- this indeed fails to type check - the right side of the `.` has not a kind *
+-- ; malformed = malformed
+-- THIS FAILS BECAUSE (forall . Maybe) IS NOT UNIFIABLE WITH Maybe
+-- ; fails :: (forall . Maybe) Int
+-- ; fails = Just 23
+-- THIS SHOULD ALSO FAIL
+-- ; data Ex = Ex (forall . Maybe)
+
+
+
 -- TESTING KIND INFERENCE WITHIN EXPLICIT ANNOTATIONS
 ; class Higher m where
   { pure :: a -> m a }
