@@ -5,6 +5,7 @@ module Compiler.Syntax.ToAST where
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
+import qualified Data.List as List
 
 import Data.Sequence ( unzipWith )
 import Data.List (intersperse, replicate, find)
@@ -49,7 +50,6 @@ import Compiler.Analysis.Syntactic.ConstrEnv ( Constr'Info(Record, Constr, field
 import qualified Compiler.Analysis.Syntactic.ConstrEnv as CE
 
 import Compiler.Analysis.Semantic.SemanticError ( Semantic'Error(..) )
-
 
 
 -- NOTE and TODO:
@@ -546,6 +546,14 @@ instance To'AST Term'Type Type where
     types <- mapM to'ast t'types
     return $ foldl1 T'App types
 
+  {-  DESCRIPTION:  Explicit foralls with no quantified variables are implicitly unwrapped. -}
+  --                so types like `forall . Maybe Int` and `Maybe Int` are the same thing
+  --                The unwrapping is OK, because
+  --                    - if this type is inside a bigger type - it's no harm to strip the redundant forall
+  --                    - if this type is THE type in the type annotation - it's OK - to'ast for Signatures closes over all the types
+  to'ast (Term'T'Forall [] ([], t'type)) = do
+    to'ast t'type
+
   to'ast (Term'T'Forall vars t'qual'type) = do
     fresh'names <- mapM (const fresh) vars
     
@@ -621,26 +629,50 @@ instance To'AST Term'Decl Declaration where
   --            and then manually transforming it into a [Match] and Binding'Group eventually.
   --            Skipping the step where I translate it using a to'ast directly (calling it at the top level or something like that).
 
-  to'ast (Term.Signature name (context, Term'T'Forall t'ids t'qual'type)) = do
-    {-  TODO: check that `context` is empty. It must be, because if the type itself is EXPLICIT forall,
-              then there must not be any context.
+  -- to'ast (Term.Signature name (context, Term'T'Forall t'ids t'qual'type)) = do
+  --   {-  TODO: check that `context` is empty. It must be, because if the type itself is EXPLICIT forall,
+  --             then there must not be any context.
 
-        TODO: It must also be checked that the `tvs` contains all free type variables in the t'qual'type.
-              Either there's going to be forall quantifying over all free type variables - or there must not be the explicit forall.
-    -}
-    -- now I need to assign each variable in the `tvs` fresh kind variable
-    fresh'names <- mapM (const fresh) t'ids
+  --       TODO: It must also be checked that the `tvs` contains all free type variables in the t'qual'type.
+  --             Either there's going to be forall quantifying over all free type variables - or there must not be the explicit forall.
+  --   -}
+  --   -- now I need to assign each variable in the `tvs` fresh kind variable
+  --   fresh'names <- mapM (const fresh) t'ids
     
-    let kinds       = map K'Var fresh'names
-        names :: [Name]
-        names       = map (\ (Term'Id'Var n) -> n) t'ids
-        assignments = zip names kinds
-        tvs :: [T'V]
-        tvs         = map (uncurry T'V) assignments
+  --   let kinds       = map K'Var fresh'names
+  --       names :: [Name]
+  --       names       = map (\ (Term'Id'Var n) -> n) t'ids
+  --       assignments = zip names kinds
+  --       tvs :: [T'V]
+  --       tvs         = map (uncurry T'V) assignments
 
-    qual'type <- merge'into'k'env assignments (to'ast t'qual'type)
-    return $ AST.Signature $ AST.T'Signature name $ T'Forall tvs qual'type
+  --   qual'type <- merge'into'k'env assignments (to'ast t'qual'type)
+  --   return $ AST.Signature $ AST.T'Signature name $ T'Forall tvs qual'type
 
+  {-  DESCRIPTION:  This case handles signatures with types like:
+                    foo :: forall a . a -> Maybe a
+                    baz :: forall a b . a -> b -> a
+                    bar :: forall . Maybe Int
+  -}
+  to'ast (Term.Signature name ([], fr@(Term'T'Forall _ _))) = do
+    {-  TODO: check that `context` is empty. It must be, because if the type itself is EXPLICIT forall,
+              then there must not be any context. -}
+    
+    type' <- to'ast fr
+
+    {-  DESCRIPTION:  Because to'ast can strip the fr from the outermost forall - I need to check what shape is the resulting type' in. -}
+    {-  If it's T'Forall --> all free variables in both context and type must be quantified.  -}
+    {-  If it's just any other Type constructor --> I can assume that the outermost forall was redundant (no context and no free variables) and convert it to Sigma.  -}
+    let sigma = case type' of
+                  T'Forall _ _ -> type'
+                  ty -> close'over $ [] :=> ty
+
+    return $ AST.Signature $ AST.T'Signature name sigma
+
+  {-  DESCRIPTION:  This case handles signatures like:
+                    foo :: Show a => forall b . a -> b -> String
+                    bar :: Show a => a -> String
+      and so on.                                                   -}
   to'ast (Term.Signature name t'qual'type) = do
     -- TODO: here is the place where I need to find all the free type variables
     --        keep only those, which are not "scoped" (already in the kind context)
@@ -670,10 +702,23 @@ instance To'AST Term'Decl Declaration where
     let kinds = map K'Var fresh'names -- fresh kind variable for every fresh name
     let assignments = zip only'actually'free kinds -- put them together to create a list of kind assignments
 
-    -- now, thos new kind assigmemnts needs to be merged into a current invironment and
+    -- now, those new kind assigmemnts needs to be merged into a current invironment and
 
-    qual'type <- merge'into'k'env assignments (to'ast t'qual'type)
-    return $ AST.Signature $ AST.T'Signature name $ close'over qual'type
+    context <- merge'into'k'env assignments (to'ast t'preds)
+    type'   <- merge'into'k'env assignments (to'ast t'type)
+
+    let sigma = case type' of
+                      (T'Forall tvs (ctxt :=> ty)) ->
+                        -- the forall type must be collapsed - context must get merged
+                        close'over $ (context `List.union` ctxt) :=> ty
+                      ty ->
+                        -- just qualify it with the context and close over it
+                        close'over $ context :=> ty
+
+
+
+    -- qual'type@(context :=> type') <- merge'into'k'env assignments (to'ast t'qual'type) -- Show a => forall b . a -> b -> a
+    return $ AST.Signature $ AST.T'Signature name sigma -- $ close'over qual'type
 
   to'ast (Term.Data'Decl name params t'constr'decls) = do
     -- NOTE: Start by getting the Kind of this Type Constructor

@@ -4,6 +4,7 @@ module Compiler.TypeSystem.Error where
 import Compiler.Syntax.Kind ( Kind )
 import Compiler.Syntax.Name ( Name )
 import {-# SOURCE #-} Compiler.Syntax.Type ( T'V, Type )
+import Compiler.Syntax.HasKind (HasKind(kind))
 
 
 data Error
@@ -47,7 +48,7 @@ instance Show Error where
     = "Unknown type variable " ++ name
   
   show (Type'Shape'Mismatch type'l type'r)
-    = "[Shape] Couldn't match type `" ++ show type'l ++ "` with `" ++ show type'r ++ "`"
+    = "[Shape] Couldn't match type `" ++ show type'l ++ "` :: " ++ show (kind type'l) ++ " with `" ++ show type'r ++ "` :: " ++ show (kind type'r)
   
   show (Kind'Shape'Mismatch kind'l kind'r)
     = "[Shape] Couldn't match kind `" ++ show kind'l ++ "` with `" ++ show kind'r ++ "`"

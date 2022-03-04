@@ -10,6 +10,12 @@ module Main where
 
 ; instance Fractional Double
 
+; data String = String [Char]
+
+; class Show a where
+  { show :: a -> String }
+
+ 
 
 -- ; data Malformed = One a -- this is incorrect
 
@@ -103,6 +109,55 @@ module Main where
 
 ; expl'forall :: forall m a b . (a -> m b) -> a -> m b
 ; expl'forall = \ fn a -> fn a
+
+
+-- FOR SOME REASON THIS DOESN'T WORK
+-- IT WORKS NOW
+; broken :: Maybe Int
+; broken = Just 23
+
+
+-- TRYING EXPLICIT UNWRAPPING OF EMPTY FORALLS
+-- types like `forall . Int` should be equal to `Int`
+; unwrapped :: (forall . Maybe) Int
+; unwrapped = Just 23
+
+; a :: forall a . a -> Maybe a
+; a = \ a -> Just a
+
+; b :: Show a => a -> String
+; b = \ a -> show a
+
+; c :: Show a => forall b . a -> b -> String
+; c = c
+
+
+--  TESTING CLASS CONSTRAINT INFERENCE
+--  this doesn't work
+--  maybe because the serialize is a restricted binding
+--  the same example also doesn't work in the ghc
+--  it works in ghc with {-# LANGUAGE NoMonomorphismRestriction #-}
+-- ; serialize = \ a'thing -> show a'thing
+-- this should work just fine (in the future when I have implemented the parsing completely)
+-- serialize' a'thing = show a'thing
+
+
+
+-- NOW I WANT TO TEST VARIOUS TYPES
+; a1 :: Show a => forall b . a -> b -> String
+; a1 = a1
+
+; a2 :: Show a => a -> String
+; a2 = a2
+
+; a3 :: forall a . a -> Maybe a
+; a3 = \ a -> Just a
+
+; a4 :: forall a b . a -> b -> a
+; a4 = \ a b -> a
+
+; a5 :: forall . Maybe Int
+; a5 = Just 23
 
 
 }

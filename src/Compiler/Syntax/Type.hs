@@ -82,9 +82,11 @@ from type safety standpoint. And how far we can get to the cliff before falling.
 
 instance Show Type where
   show (T'Var (T'V name kind'))
-    = name -- ignoring the kind of the type variable
+    = name  -- ignoring the kind of the type variable
+    -- = "(" ++ name ++ " :: " ++ show kind' ++ ")"
   show (T'Con (T'C name kind'))
-    = name -- ignoring the kind of the type constant
+    = name  -- ignoring the kind of the type constant
+    -- = "(" ++ name ++ " :: " ++ show kind' ++ ")"
   show (T'Tuple types)
     = "(" ++ intercalate ", " (map show types) ++ ")"
 
@@ -100,6 +102,8 @@ instance Show Type where
   show (T'App t'left t'right)
     = show t'left ++ " " ++ show t'right
 
+  show (T'Forall [] qual'type)
+    = show qual'type
   show (T'Forall tvs qual'type)
     = "(forall " ++ unwords (map show tvs) ++ " . " ++ show qual'type ++ ")"
 
