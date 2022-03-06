@@ -104,15 +104,6 @@ infer'expr (If condition then' else') = do
           , t'c : t'b : t'c1 ++ t'c2 ++ t'c3)
 
 infer'expr (Let decls body) = do
-  -- I will need to do some dependency analysis to split the declarations into groups
-  -- and infer the types in the scope of the each group
-  -- there's just a small problem
-  -- the future implementation of `infer'decls` will probably need to import the infer'expr function
-  -- so there's a cycle
-  -- I will need to break it somehow or use .hs-boot file
-  -- also will there happen the generalization for the declaration?
-  -- I think so - each group should generalize the declarations at most at the end of the work for that group
-  -- so the next group have the correct generalized types
   (preds'decls, assumptions'decls, t'cs'decls) <- infer'decls decls
   (preds'body, t'body, t'cs'body) <- merge'into't'env assumptions'decls (infer'expr body)
   return (preds'decls ++ preds'body, t'body, t'cs'decls ++ t'cs'body)

@@ -3,7 +3,7 @@
 module Compiler.Syntax.Type where
 
 
-import Data.List ( intercalate )
+import Data.List ( intercalate, nub )
 import qualified Data.Map.Strict as Map
 import Control.Monad.State ( MonadState )
 
@@ -169,8 +169,37 @@ s@(T'Forall tvs'l q't'l@(ctxt'l :=> t'l)) `sh` (T'Forall tvs'r q't'r) = do   -- 
   case run'solve constraints :: Either Error (Subst T'V Type) of
     Left err -> return False
     Right subst -> do
-      let t'l'sub = apply subst t'l
-      t'l'sub `sh` rho
+      if hot'fix'invalid subst
+        then return False
+        else do
+          let t'l'sub = apply subst t'l
+          t'l'sub `sh` rho
+  where
+    hot'fix'invalid :: Subst T'V Type -> Bool
+    hot'fix'invalid (Sub mapping) =
+      let pairs = Map.toList mapping
+          only'var'to'var = [ (n, m) | p@(T'V n _ , T'Var (T'V m _)) <- pairs]
+          -- if it's valid mapping
+          -- then if I convert it to a Map
+          -- its size has to be the same as the length of the only'var'to'var list
+          -- otherwise there are at least two mapping from the same source to two different images
+          -- this assumes that the substitution never contains duplicates
+          -- if it did, I would first need to filter duplicate assignments
+          -- except I need to flip the direction
+          -- example
+          -- a -> b -> Bool
+          -- and
+          -- m -> m -> Bool
+          -- matching from left to right: (a -> m), (b -> m)
+          -- but that's the source of the error
+          -- so flipping the direction and then counting will showcase that `m` is a target for more than one distinct variable
+          -- on the left side --> that means we are effectively widening the type
+          uniq'only'v't'v = nub only'var'to'var
+          flipped = map (\ (x, y) -> (y, x)) uniq'only'v't'v
+          map' = Map.fromList flipped
+
+      in  Map.size map' /= length uniq'only'v't'v
+
       
 tau'l `sh` tau'r                                          --  MONO
   = return (tau'l == tau'r)

@@ -4,16 +4,21 @@ module Compiler.TypeSystem.InferenceEnv where
 import qualified Data.Map.Strict as Map
 
 
-import Compiler.Syntax.Name
+import Compiler.Syntax.Name ( Name )
 import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'C(T'C), T'V(T'V), Type(..) )
 import Compiler.Syntax.Kind ( Kind(K'Star, K'Arr) )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
 
 import Compiler.TypeSystem.Type.Constants ( t'Bool, t'Char, t'Double, t'Int, type'fn )
 import Compiler.TypeSystem.Class ( Class )
+import Compiler.TypeSystem.Solver.Substitution ( Subst )
 
 
-data Infer'Env = Infer'Env { kind'env :: Kind'Env, type'env :: Type'Env, class'env :: Class'Env, constraint'env :: Constraint'Env }
+data Infer'Env = Infer'Env  { kind'env :: Kind'Env
+                            , type'env :: Type'Env
+                            , class'env :: Class'Env
+                            , constraint'env :: Constraint'Env
+                            , kind'substitution :: Subst Name Kind }
   deriving (Show)
 
 

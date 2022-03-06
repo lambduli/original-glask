@@ -51,7 +51,13 @@ infer'whole'program program infer'env infer'state = do
       substituted't'env = apply kind'subst (type'env infer'env)
 
   let Program{ bind'section = (explicits, implicits'list), methods = methods } = program
-      infer'env' = infer'env{ kind'env = new'k'env, type'env = substituted't'env, constraint'env = new'class'env }
+      infer'env' = infer'env{ kind'env = new'k'env
+                            , type'env = substituted't'env
+                            , constraint'env = new'class'env
+                            , kind'substitution = kind'subst }
+                            -- NOTE: I need to put the kind substitution into the typing environment
+                            --        when I later encounter any typing annotation (in the declaration or inline)
+                            --        I first need to apply this substitution to it to fully specify the Kinds in it.
 
       substituted'explicits = map (\ (Explicit sigma b'g) -> Explicit (apply kind'subst sigma) b'g) explicits
       substituted'methods   = map (\ (Method sigma b'g) -> Method (apply kind'subst sigma) b'g) methods

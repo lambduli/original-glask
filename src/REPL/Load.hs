@@ -51,7 +51,7 @@ import Compiler.TypeSystem.Utils.Infer
 import Compiler.TypeSystem.Infer
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env(..), Class'Env, init't'env )
 
-import Compiler.TypeSystem.Solver.Substitution
+import Compiler.TypeSystem.Solver.Substitution ( Subst(Sub) )
 import Compiler.TypeSystem.Solver.Substitutable
 
 import REPL.Repl
@@ -172,12 +172,16 @@ process'declarations declarations trans'env counter = do
   let TE.Trans'Env{ TE.kind'context = k'env, TE.classes = class'ctxt } = trans'env
 
   let infer'env :: Infer'Env
-      infer'env = Infer'Env{ kind'env = k'env, type'env = type'env, class'env =  class'env, constraint'env = class'ctxt }
+      infer'env = Infer'Env { kind'env = k'env
+                            , type'env = type'env
+                            , class'env =  class'env
+                            , constraint'env = class'ctxt
+                            , kind'substitution = Sub Map.empty }
 
   -- (Type'Env, [Constraint Kind])
   -- (t'env, k'constr) <- run'infer infer'env (infer'program program)
 
-  (t'env, k'env', c'env, cnt) <- infer'whole'program program infer'env counter
+  (t'env', k'env', c'env, cnt) <- infer'whole'program program infer'env counter
 
 
   -- TODO: I also need to do the Kind inference, probably even before type inference
@@ -191,4 +195,4 @@ process'declarations declarations trans'env counter = do
   --        I no longer need to do this. I made the `infer'whole'program` apply the kind substitution to the both "base type environment" and the "inferred env from the assumptions"
   --        and union them and return it
 
-  return (program, infer'env{ type'env = t'env, kind'env = k'env', constraint'env = c'env }, class'env, trans'env, counter)
+  return (program, infer'env{ type'env = t'env', kind'env = k'env', constraint'env = c'env }, class'env, trans'env, cnt)

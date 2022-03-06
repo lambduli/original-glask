@@ -15,6 +15,8 @@ module Main where
 ; class Show a where
   { show :: a -> String }
 
+
+; data Bool = True | False
  
 
 -- ; data Malformed = One a -- this is incorrect
@@ -163,6 +165,44 @@ module Main where
 -- I should be able to write a function binding with multiple equations just fine.
 ; many'eqs = \ a b -> a
 ; many'eqs = \ a b -> b
+
+; testing :: Int
+; testing = 23
+
+-- ; test' :: Maybe a -> Maybe Int
+; test' = let { loc :: Int -> Maybe a -> Maybe Int
+              ; loc = \ i ma -> Just i }
+          in loc 23
+
+; test'' = test' Nothing
+
+-- I NEED TO TEST WHAT HAPPENS IF I DONT REDUCE THE CONTEXTS OF LOCAL BINDING'S ANNOTATIONS
+-- ; local = let { fa :: }
+
+-- THIS BEHAVES THE WAY I EXPECTED
+-- try - 1) removing Show a from foo'local
+--     - 2) removing the annotation altogether
+--     - 3) removing the Show m from fa
+--     - 4) removing the inner annotation altogether
+-- compare with GHC
+; foo'local :: Show a => a -> b -> String
+; foo'local = let { fa :: Show m => m -> m -> String
+                  ; fa = \ m n -> show m }
+              in  fa
+
+
+-- THIS MUST FAIL - BECAUSE WE ARE WIDENING THE POLY TYPE
+-- ; more'general :: a -> b -> Bool
+-- ; more'general = less'general
+-- 
+-- ; less'general :: a -> a -> Bool
+-- ; less'general = undefined
+-- AS MUST THIS
+-- ; foo'broken :: a -> b -> Bool
+-- ; foo'broken = let  { fa :: m -> m -> Bool
+--                     ; fa = \ m n -> True }
+--                 in  fa
+--
 
 
 }
