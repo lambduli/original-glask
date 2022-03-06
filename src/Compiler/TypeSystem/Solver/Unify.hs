@@ -230,7 +230,8 @@ instance Unify Predicate T'V Type where
         | otherwise         = throwError $ Unexpected $ "Unification Error: Type Classes `" ++ name'l ++ "` and `" ++ name'r ++ "` differ and can not be unified."
 
 
-instance Unify t T'V Type => Unify (Qualified t) T'V Type where
-  unify = undefined
+-- NOTE: I am not sure why I have made this instance but aparently it's not used anywhere - so commenting it out.
+-- instance Unify t T'V Type => Unify (Qualified t) T'V Type where
+--   unify = undefined
 
-  match = undefined
+--   match = undefined

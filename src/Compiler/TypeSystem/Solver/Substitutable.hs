@@ -48,17 +48,17 @@ class Ord k => Term k t where
 instance Substitutable T'V Type Type where
   apply (Sub s) var@(T'Var t'var)
     = Map.findWithDefault var t'var s
-  
+
   apply _ (T'Con ty'con)
     = T'Con ty'con
-  
+
   apply s (T'App t'left t'right)
     = T'App (apply s t'left) (apply s t'right)
-  
+
   apply s (T'Tuple types)
     = T'Tuple $ map (apply s) types
 
-  apply s (T'Forall tvs q't@(preds :=> type')) =
+  apply s (T'Forall tvs q't) =
     -- remove all quantified variables from the substitution and apply it to the qualified type    
     let s' = s `remove'list` tvs
         q't' = apply s' q't

@@ -44,8 +44,8 @@ infer'pat P'Wild = do
 
 infer'pats :: [Pattern] -> Infer ([Predicate], [Type], [Assumption Sigma'Type])
 infer'pats pats = do
-  psasts <- mapM infer'pat pats
-  let preds       = concat  [preds'       | (preds' , _     , _           ) <- psasts]
-      types       =         [type'        | (_      , type' , _           ) <- psasts]
-      assumptions = concat  [assumptions' | (_      , _     , assumptions') <- psasts]
+  ps'ty'as's <- mapM infer'pat pats
+  let preds       = concat  [preds'       | (preds' , _     , _           ) <- ps'ty'as's]
+      types       =         [type'        | (_      , type' , _           ) <- ps'ty'as's]
+      assumptions = concat  [assumptions' | (_      , _     , assumptions') <- ps'ty'as's]
   return (preds, types, assumptions)
