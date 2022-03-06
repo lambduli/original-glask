@@ -41,12 +41,10 @@
   - implement show (for debugging) for Match'Group and Match
 
 - ## Kind Analysis
-  - Inference itself is implemented [+]
-  - Implement the wiring parts
   - Write tests
 
 - ## Type Analysis
-  - Most of the inference / type analysis is implemented
+  - Arbitrary-rank Polimorphism
   - Write tests
 
 - # Notes on the implementation
@@ -84,6 +82,5 @@
 
 - ## Analyses:
   - Dependency Analysis will need to be perfored for every `let ... = ... in ...` expression --> I will isolate it into the function and return the result in some reasonable shape to be used for the specific thing
-  - Dependency Analysis for Types
   - Dependency Analysis
   - Dependency Analysis for Type Class declarations (no cyclic dependencies)

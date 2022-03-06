@@ -15,7 +15,7 @@
 
 // const input_str = "|> |] a ! + b * c"
 
-const input_str = "|] a ! ? b ! c" // "a |> b |> c !" // "|> a ! b ! c"  // "z + x * |> a ! |> b |> c" // "x + |> (> a b ! ? - c" // "x + |> a b ! ? - |> c ! + z" // "|> a b + c" // "|> a b ! ?" // "x + |> a b ! ? + c"
+const input_str = "a ! ! |> b ! c ! + x y" // "a b c" // "|] a ! ? b ! c" // "a |> b |> c !" // "|> a ! b ! c"  // "z + x * |> a ! |> b |> c" // "x + |> (> a b ! ? - c" // "x + |> a b ! ? - |> c ! + z" // "|> a b + c" // "|> a b ! ?" // "x + |> a b ! ? + c"
 // x + (|> (((a b !) ?) + c)) // x (((a b ! ?) c +) |>) +
 
 console.log(input_str)
@@ -23,15 +23,19 @@ console.log(input_str)
 // define fixities
 // for each infix operator define associativity and precedence
 const fixities = {
+  '@'  :   { assoc : 'left'  , precedence : 100 , fixity : 'infix'    },
+
+
+
   '+^'  :   { assoc : 'left'  , precedence : 10 , fixity : 'infix'    },
   // '+'   :   { assoc : 'left'  , precedence : 6  , fixity : 'infix'    },
-  '*'   :   { assoc : 'left'  , precedence : 9  , fixity : 'infix'    },
+  '*'   :   { assoc : 'left'  , precedence : 6  , fixity : 'infix'    },
   // '|>'  :   { assoc : 'right' , precedence : 9  , fixity : 'prefix'   },
 
-  '+'  :   { assoc : 'left'  , precedence : 8 , fixity : 'infix'    },
-  '-'  :   { assoc : 'left'  , precedence : 8 , fixity : 'infix'    },
-  '|>'  :   { assoc : 'right'  , precedence : 5  , fixity : 'prefix'   },
-  '!'   :   { assoc : 'right' , precedence : 5  , fixity : 'postfix'  },
+  '+'  :   { assoc : 'left'  , precedence : 5 , fixity : 'infix'    },
+  '-'  :   { assoc : 'left'  , precedence : 5 , fixity : 'infix'    },
+  '|>'  :   { assoc : 'right'  , precedence : 8  , fixity : 'prefix'   },
+  '!'   :   { assoc : 'right' , precedence : 7  , fixity : 'postfix'  },
   // '?'   :   { assoc : 'right' , precedence : 5  , fixity : 'postfix'  },
   '(>'  :   { assoc : 'none' , precedence : 6  , fixity : 'postfix'  },
   '|]'  :   { assoc : 'right' , precedence : 1  , fixity : 'prefix'   },
@@ -64,10 +68,47 @@ function token_type (tok) {
   }
 }
 
+// this function inserts the explicit-function-application binary infix operator @
+// it follows these rules in doing so:
+// insert the @ operator:
+//                        after every "non-operator" - when it is NOT followed by an infix or postfix operator
+//                        after every postfix operator - when it is NOT followed by an infix or postfix operator
+// alternatively:
+// insert @ before all tokens except infix and postfix operator - when the last token was "non-operator" or postfix operator
+function make_application_explicit(input) {
+  const output = []
+
+  output.push(input.shift())
+
+  for (const tok of input) {
+    if (token_type(tok) === "operator" && (fixities[tok].fixity === "infix" || fixities[tok].fixity === "postfix")) {
+      // do nothing
+    }
+    else {
+      // if the top of the output is currently "non-operator" or postfix operator
+      // put the explicit @ before the tok
+      const top = output[output.length - 1]
+      if ((token_type(top) === "operator" && fixities[top].fixity !== "postfix")) {
+        // do nothing
+      }
+      else {
+        output.push("@")
+      }
+
+    }
+    output.push(tok)
+  }
+
+  return output
+}
+
 // now the algorithm
 function fix_shunting_yard() {
   // prepare the input
   const input = input_str.split(' ')
+
+  const pre_processed = make_application_explicit(input)
+  console.log("with explicit @:  " + pre_processed.join(' '))
 
     // operator stack
     const op_stack = []
@@ -78,7 +119,7 @@ function fix_shunting_yard() {
     // application queue
     let app_qu = []
 
-  for (const tok of input) {
+  for (const tok of pre_processed) {
 
     if (token_type(tok) == "value") {
       // put it into the application queue
