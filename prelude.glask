@@ -159,5 +159,10 @@ module Main where
 ; a5 :: forall . Maybe Int
 ; a5 = Just 23
 
+-- I WANT TO TEST THE BIND GROUP MERGING
+-- I should be able to write a function binding with multiple equations just fine.
+; many'eqs = \ a b -> a
+; many'eqs = \ a b -> b
+
 
 }

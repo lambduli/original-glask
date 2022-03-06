@@ -26,8 +26,8 @@ import Compiler.Syntax.Term.Expression ( Term'Expr(..) )
 import Compiler.Syntax.Term.Type ( Term'Type(..) )
 
 import qualified Compiler.Syntax as AST
-import Compiler.Syntax.BindGroup ( Bind'Group(Bind'Group, alternatives) )
-import Compiler.Syntax.Declaration ( Constr'Decl, Data(Data), Declaration )
+import Compiler.Syntax.BindGroup ( Bind'Group(..) )
+import Compiler.Syntax.Declaration ( Constr'Decl, Data(Data), Declaration(..) )
 import Compiler.Syntax.Kind ( Kind(K'Var) )
 import Compiler.Syntax.Match ( Match(..) )
 import Compiler.Syntax.Name ( Name )
@@ -459,11 +459,50 @@ instance To'AST Term'Pat Pattern where
     return P'Wild
 
 
-{-  TODO: I will need to implement instance To'AST [Term'Decl] [Declaration] which is going to be overlapping with the definition below.
-          But I seem to need it to properly implement the merging of binding groups of the same name into a single binding group.
-          It also feels like THIS IS the place where something like that should be implemented. -}
+{-  NOTE: This instance implements the merging of the Bind'Groups together.
+          When there are two or more Bindings with the same name - they should get merged into a single Binding.
+          This instance does exactly that.
+          It expects these invariants:
+            - The declarations are written in such a way so that all Bindings from the same group are always together.
+            - It doesn't matter that it changes the order of Declarations in limited way. Specifically - it should be OK
+              to put all the Bindings at the end (preserving their order) behind all the other Declarations (preserving their order too).
+-}
+instance {-# OVERLAPPING #-} To'AST [Term'Decl] [Declaration] where
+  to'ast as = to'ast'
+    where
+      declarations :: Translate [Declaration]
+      declarations = mapM to'ast as
 
-instance To'AST a b => To'AST [a] [b] where
+      to'ast' :: Translate [Declaration]
+      to'ast' = do
+        decls <- declarations
+        let (b'g'decls, other'decls)  = List.partition is'b'group decls
+            b'groups                  = map to'b'g b'g'decls
+            grouped                   = List.groupBy same'group b'groups
+            merged                    = map merge'b'group grouped
+
+        return $ other'decls ++ merged
+
+      is'b'group :: Declaration -> Bool
+      is'b'group (Binding _)  = True
+      is'b'group _            = False
+
+      to'b'g :: Declaration -> Bind'Group
+      to'b'g (Binding bind'group) = bind'group -- NOTE: Although partial - it should never fail
+
+      same'group :: Bind'Group -> Bind'Group -> Bool
+      same'group Bind'Group{ name = name'a } Bind'Group{ name = name'b }
+        = name'a == name'b
+
+      merge'b'group :: [Bind'Group] -> Declaration
+      merge'b'group b'groups =
+        {-  NOTE: There should always be just one match per Bind'Group, but just to be sure, I am going to handle it so that it doesn't metter. -}
+        let all'matches = concatMap (\ Bind'Group{ alternatives = matches } -> matches) b'groups
+            the'name    = name . head $ b'groups -- NOTE: Although it is partial it should never fail - nor the `head` nor the names should differ
+        in  Binding $ Bind'Group{ name = the'name, alternatives = all'matches }
+
+
+instance {-# OVERLAPPABLE #-} To'AST a b => To'AST [a] [b] where
   to'ast as = mapM to'ast as
 
 
