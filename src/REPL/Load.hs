@@ -1,4 +1,4 @@
-module Interpreter.Load where
+module REPL.Load where
 
 
 import System.IO
@@ -54,10 +54,10 @@ import Compiler.TypeSystem.InferenceEnv ( Infer'Env(..), Class'Env, init't'env )
 import Compiler.TypeSystem.Solver.Substitution
 import Compiler.TypeSystem.Solver.Substitutable
 
-import Interpreter.Repl
-import Interpreter.Analyses
-import Interpreter.Expression
-import Interpreter.Program
+import REPL.Repl
+import REPL.Analyses
+import REPL.Expression
+import REPL.Program
 
 
 load :: String -> Counter -> IO ()

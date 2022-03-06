@@ -1,4 +1,4 @@
-module Interpreter.Type where
+module REPL.Type where
 
 
 import Compiler.Parser (parse'type)

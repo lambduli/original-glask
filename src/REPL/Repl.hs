@@ -1,4 +1,4 @@
-module Interpreter.Repl where
+module REPL.Repl where
 
 
 import System.IO
@@ -11,8 +11,8 @@ import Control.Monad.Except
 import Compiler.Counter (Counter)
 
 
-import Interpreter.Expression (read'expr, infer'type)
-import Interpreter.Type
+import REPL.Expression (read'expr, infer'type)
+import REPL.Type
 
 import Compiler.Syntax.ToAST.TranslateEnv
 import Compiler.Analysis.Syntactic.Types

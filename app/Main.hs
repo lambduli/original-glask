@@ -4,7 +4,7 @@ module Main (main) where
 import Prelude (String, IO, putStrLn)
 
 
-import Interpreter.Load ( load )
+import REPL.Load ( load )
 import Compiler.Counter ( Counter(Counter, counter) )
 import System.Environment ( getArgs )
 

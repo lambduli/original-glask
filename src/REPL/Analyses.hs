@@ -1,4 +1,4 @@
-module Interpreter.Analyses where
+module REPL.Analyses where
 
 
 import qualified Data.Map.Strict as Map

@@ -1,4 +1,4 @@
-module Interpreter.Program where
+module REPL.Program where
 
 
 import qualified Data.Map.Strict as Map

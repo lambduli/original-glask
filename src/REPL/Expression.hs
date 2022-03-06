@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses  #-}
 
-module Interpreter.Expression where
+module REPL.Expression where
 
 
 import System.IO
