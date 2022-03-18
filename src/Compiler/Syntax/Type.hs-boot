@@ -8,7 +8,7 @@ import qualified Data.Map.Strict as Map
 import {-# SOURCE #-} Compiler.Syntax.Qualified ( Qualified )
 import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.Kind ( Kind )
-import Compiler.Counter (Counter)
+import Compiler.Counter ( Counter )
 
 
 type Sigma'Type = Type
@@ -20,10 +20,10 @@ type Rho'Type = Type
 type Tau'Type = Type
 
 
-data T'V = T'V Name Kind
+data T'V'  = T'V' Name Kind
 
 
-instance Show T'V
+instance Show T'V'
 
 
 {- NOTE: this is SOLELY because Map T'V _ and it's `Map.findWithDefault` operation -}
@@ -31,12 +31,25 @@ instance Show T'V
     when looking up the variables in the process of substitution.
     Otherwise it would be thrown off by different Kind Variables representing the same thing.
     Maybe I will figure out a way, how to get rid of this problem and then I should be able to refactor this back to deriving. -}
-instance Eq T'V 
+instance Eq T'V'
 
 
 {- NOTE: this is SOLELY because Map T'V _ and it's `Map.union` operation -}
 -- Maybe this isn't really necessary, deriving (Ord) may also work
-instance Ord T'V
+instance Ord T'V'
+
+
+data M'V  = Sigma Name Kind
+          | Tau Name Kind
+
+
+instance Eq M'V
+
+
+instance Ord M'V
+
+
+instance Show M'V
 
 
 data T'C = T'C Name Kind
@@ -49,11 +62,12 @@ instance Show T'C
 
 
 data Type
-  = T'Var T'V
+  = T'Var' T'V'
+  | T'Meta M'V
   | T'Con T'C
   | T'Tuple [Type]
   | T'App Type Type
-  | T'Forall [T'V] (Qualified Type)
+  | T'Forall [T'V'] (Qualified Type)
 
 
 instance Eq Type
@@ -73,6 +87,3 @@ from type safety standpoint. And how far we can get to the cliff before falling.
 
 
 instance Show Type
-
-
-sh :: MonadState Counter m => Type -> Type -> m Bool

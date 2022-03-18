@@ -3,7 +3,7 @@ module Compiler.TypeSystem.Solver.Occurs where
 
 import Compiler.Syntax.Kind ( Kind(..) )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
-import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(T'C), T'V(T'V), Type(..) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(T'C), T'V'(T'V'), Type(..), M'V(..) )
 
 
 class Occurs a where
@@ -22,11 +22,17 @@ class Occurs a where
           I as we know, this has a potential to break decidability. So I will get rid of it and proceed same as GHC.
 -}
 instance Occurs Type where
-  name `occurs'in` (T'Var (T'V varname k'))
+  name `occurs'in` (T'Var' _)
+    = False
+  
+  name `occurs'in` (T'Meta (Tau varname k'))
     = name == varname
 
-  name `occurs'in` (T'Con (T'C conname k'))
-    = name == conname -- TODO: So I think I can do that safely. Consider if TyCon didn't exist and everything would just be a TyVar. You would do this check and by the fact that constructors start with upper case letter it wouldn't break anything. 
+  name `occurs'in` (T'Meta (Sigma varname k'))
+    = name == varname
+
+  name `occurs'in` (T'Con _)
+    = False
 
   name `occurs'in` (T'Tuple ts)
     = any (name `occurs'in`) ts
@@ -35,10 +41,9 @@ instance Occurs Type where
     = name `occurs'in` left || name `occurs'in` right
 
   -- TODO: / NOTE:  Can this actually ever happen? If the invariant holds, this shouldn't need to be implemented right?
-  name `occurs'in` (T'Forall tvs (preds :=> type'))
-    = if all (\ (T'V n _) -> name /= n) tvs -- no shadowing
-      then name `occurs'in` type' -- NOTE:  This assumes that the type is not ambiguous. Ambiguities must be checked beforehand.
-      else False  -- shadowing - so can't occur
+  name `occurs'in` (T'Forall _ (preds :=> type'))
+  -- INVARIANT: If the type is well formed, any variable within the context must also be in the type' too and also quantified by the forall
+    = name `occurs'in` type'
 
 
 instance Occurs Kind where

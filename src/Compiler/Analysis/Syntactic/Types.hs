@@ -5,7 +5,9 @@ import Control.Monad.State ( runState, State )
 import Control.Monad.Extra ( mapMaybeM )
 
 
-import Compiler.Counter ( Counter(Counter, counter), fresh, real'fresh )
+import Compiler.Counter ( Counter(Counter, counter), fresh )
+import qualified Compiler.Counter as Cntr
+
 
 import Compiler.Syntax.Kind ( Kind(K'Arr, K'Var) )
 import Compiler.Syntax.Name ( Name )
@@ -20,6 +22,10 @@ import Compiler.Syntax.Term.Declaration ( Term'Decl(Type'Alias, Data'Decl, Class
 
 
 type Fresh a = State Counter a
+
+instance Cntr.State Cntr.Counter where
+  get'counter = id
+  update'counter counter _ = counter
 
 
 {-  TODO: Implement the Extract type class for [a], Term'Decl and for Term'Expr.

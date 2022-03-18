@@ -1,5 +1,4 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 
@@ -11,7 +10,7 @@ import qualified Data.Set as Set
 
 
 import Compiler.Syntax.Name ( Name )
-import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(..), T'V(..), Type(..) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(..), T'V'(..), Type(..), M'V(..) )
 import Compiler.Syntax.Kind ( Kind(..) )
 import Compiler.Syntax.Qualified ( Qualified(..) )
 import Compiler.Syntax.Predicate ( Predicate(..) )
@@ -45,9 +44,13 @@ class Ord k => Term k t where
 
 -- | Substitution on Types
 
-instance Substitutable T'V Type Type where
-  apply (Sub s) var@(T'Var t'var)
+-- for skolemisation for example
+instance Substitutable T'V' Type Type where
+  apply (Sub s) var@(T'Var' t'var)
     = Map.findWithDefault var t'var s
+
+  apply (Sub s) var@(T'Meta _)
+    = var
 
   apply _ (T'Con ty'con)
     = T'Con ty'con
@@ -58,21 +61,39 @@ instance Substitutable T'V Type Type where
   apply s (T'Tuple types)
     = T'Tuple $ map (apply s) types
 
-  apply s (T'Forall tvs q't) =
-    -- remove all quantified variables from the substitution and apply it to the qualified type    
-    let s' = s `remove'list` tvs
-        q't' = apply s' q't
-    in  T'Forall tvs q't
-      where
-        remove'list :: Subst T'V Type -> [T'V] -> Subst T'V Type
-        subst `remove'list` [] = subst
-        (Sub s'map) `remove'list` (t'v : t'vs) = Sub (Map.delete t'v s'map) `remove'list` t'vs
+  apply s f1@(T'Forall tvs q't)
+  -- I can safely ifnore quantified variables, I am only going to be replacing M'V and those can't be closed under the forall
+    = T'Forall tvs $ apply s q't
 
 
-instance Term T'V Type where
+instance Substitutable M'V Type Type where
+  apply (Sub s) var@(T'Var' _)
+    = var
+
+  apply (Sub s) meta'var@(T'Meta t'var)
+    = Map.findWithDefault meta'var t'var s
+
+  apply _ (T'Con ty'con)
+    = T'Con ty'con
+
+  apply s (T'App t'left t'right)
+    = T'App (apply s t'left) (apply s t'right)
+
+  apply s (T'Tuple types)
+    = T'Tuple $ map (apply s) types
+
+  apply s f1@(T'Forall tvs q't)
+  -- I can safely ignore quantified variables, I am only going to be replacing M'V and those can't be closed under the forall
+    = T'Forall tvs $ apply s q't
+
+
+{-  This instance is for finding skolem variables within a Type (and also bound variables)  -}
+instance Term T'V' Type where
   free'vars type' = case type' of
-    T'Var t'var ->
+    T'Var' t'var ->
       Set.singleton t'var
+    T'Meta t'var ->
+      Set.empty
     T'Con (T'C name kind') ->
       Set.empty
     T'App left right ->
@@ -83,6 +104,26 @@ instance Term T'V Type where
       let free'in'preds = free'vars preds
           free'in'type  = free'vars type'
       in  Set.difference (free'in'preds `Set.union` free'in'type) (Set.fromList tvs)
+
+
+{-  This instance is for finding "flexible" meta variables within a Type  -}
+instance Term M'V Type where
+  free'vars type' = case type' of
+    T'Var' t'var ->
+      Set.empty
+    T'Meta t'var ->
+      Set.singleton t'var
+    T'Con (T'C name kind') ->
+      Set.empty
+    T'App left right ->
+      free'vars left `Set.union` free'vars right
+    T'Tuple ts ->
+      foldl (\ set' t' -> Set.union set' (free'vars t')) Set.empty ts
+    T'Forall tvs (preds :=> type') ->
+    -- NOTE: meta variables can't be in the `tvs` list
+      let free'in'preds = free'vars preds
+          free'in'type  = free'vars type'
+      in  free'in'preds `Set.union` free'in'type
 
 
 -- | Substitution on Kinds
@@ -107,19 +148,6 @@ instance Term String Kind where
   
   free'vars (K'Var name)
     = Set.singleton name
-
-
--- | Substitution on Type Schemes
-
--- instance Substitutable T'V Scheme Type where
---   apply (Sub s) (For'All varnames type')
---     = For'All varnames $ apply s' type'
---       where s' = Sub $ foldr Map.delete s varnames
-
-
--- instance Term T'V Scheme where
---   free'vars (For'All vars type')
---     = free'vars type' `Set.difference` Set.fromList vars
 
 
 -- | Substitution on Constraints
@@ -164,14 +192,32 @@ instance Term k a => Term k (Name, a) where
 
 -- | Substitution on Type Context
 
-instance Substitutable T'V Type'Env Type where
+instance Substitutable M'V Type'Env Type where
   apply subst type'env
     = Map.map
         (apply subst)
         type'env
 
 
-instance Term T'V Type'Env where
+{-  This might be useful for finding skolems within the type environment  -}
+-- instance Term T'V' Type'Env where
+--   free'vars type'env
+--     = Map.foldr
+--         (\ scheme free'set -> free'set `Set.union` free'vars scheme)
+--         Set.empty
+--         type'env
+
+
+{-  This is used for finding "flexible" meta variables within the type environment  -}
+-- instance Term M'V Type'Env where
+--   free'vars type'env
+--     = Map.foldr
+--         (\ scheme free'set -> free'set `Set.union` free'vars scheme)
+--         Set.empty
+--         type'env
+
+-- universal
+instance Term k Type => Term k Type'Env where
   free'vars type'env
     = Map.foldr
         (\ scheme free'set -> free'set `Set.union` free'vars scheme)
@@ -198,12 +244,13 @@ instance Term String Kind'Env where
 
 -- | Substitution on Qualified Types
 
-instance (Substitutable T'V Predicate v, Substitutable T'V t v) => Substitutable T'V (Qualified t) v where
+-- This should be universaly useful for skolemisation and for applying meta-var substitution
+instance (Substitutable k Predicate v, Substitutable k t v) => Substitutable k (Qualified t) v where
   apply subst (preds :=> t)
     = apply subst preds :=> apply subst t
 
 
-instance (Term T'V t) => Term T'V (Qualified t) where
+instance Term T'V' t => Term T'V' (Qualified t) where
   free'vars (preds :=> t)
     = free'vars preds `Set.union` free'vars t
   -- TODO: check the paper, is it really an union?
@@ -211,14 +258,37 @@ instance (Term T'V t) => Term T'V (Qualified t) where
   -- which are not present in the the type itself?
 
 
+instance (Term M'V t) => Term M'V (Qualified t) where
+  free'vars (preds :=> t)
+    = free'vars preds `Set.union` free'vars t
+  -- TODO: check the paper, is it really an union?
+  -- aka - can there be a sensible qualified type, where the predicates contain type variables
+  -- which are not present in the the type itself?
+
+
+
 -- | Substitution on Predicates
 
-instance Substitutable T'V Predicate Type where
+-- for skolems and bounds
+instance Substitutable T'V' Predicate Type where
   apply subst (Is'In name t)
     = Is'In name (apply subst t)
 
 
-instance Term T'V Predicate where
+-- for meta variables
+instance Substitutable M'V Predicate Type where
+  apply subst (Is'In name t)
+    = Is'In name (apply subst t)
+
+
+-- for skolems and bounds
+instance Term T'V' Predicate where
+  free'vars (Is'In name t)
+    = free'vars t
+
+
+-- for meta variables
+instance Term M'V Predicate where
   free'vars (Is'In name t)
     = free'vars t
 
@@ -236,9 +306,21 @@ instance Substitutable Name Type'Env Kind where
   {-  NOTE: Unlike the case of Type Substitution on Scheme, Kind Substitution does not need to be stripped of the substitutions of close-over variables.  -}
 
 
-instance Substitutable Name T'V Kind where
-  apply subst (T'V name kind)
-    = T'V name $ apply subst kind
+instance Substitutable Name T'V' Kind where
+  apply subst (T'V' name kind)
+    = T'V' name $ apply subst kind
+
+
+{-  NOTE: I am not really sure this needs to be implemented. All meta variables should always be created only in either of two ways.
+          It will either be introduced by the inference - then the kind is simply *.
+          Or it may be created by instantiation - all sigma types, which are allowed to be instantiated should already have been
+          fully kind specified before. So the T'Var which will produce a new meta variable should already have fully known kind.  -}
+instance Substitutable Name M'V Kind where
+  apply subst (Tau name kind)
+    = Tau name $ apply subst kind
+
+  apply subst (Sigma name kind)
+    = Sigma name $ apply subst kind
 
 
 instance Substitutable Name T'C Kind where
@@ -246,14 +328,21 @@ instance Substitutable Name T'C Kind where
     = T'C name $ apply subst kind
 
 
-instance Substitutable Name t Kind => Substitutable Name (Qualified t) Kind where
-  apply subst (preds :=> t)
-    = apply subst preds :=> apply subst t
+-- BIG TODO: I am not sure whether it's safe to comment it out, it says it is overlapping with the one on the 270 something
+-- it seems liek it is - we will have to see
+-- instance Substitutable Name t Kind => Substitutable Name (Qualified t) Kind where
+--   apply subst (preds :=> t)
+--     = apply subst preds :=> apply subst t
 
 
 instance Substitutable Name Type Kind where
-  apply subst (T'Var t'var)
-    = T'Var $ apply subst t'var
+  apply subst (T'Var' t'var)
+    = T'Var' $ apply subst t'var
+
+  -- NOTE: As mentioned above - I am not sure this can ever happen.
+  -- Maybe there's a relation to the scoped type variables, idk
+  apply subst (T'Meta m'var)
+    = T'Meta $ apply subst m'var
   
   apply subst (T'Con ty'con)
     = T'Con $ apply subst ty'con

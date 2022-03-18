@@ -11,7 +11,7 @@ import Data.Graph ( SCC(..), stronglyConnComp )
 
 
 import Compiler.Syntax.Declaration ( Data(..), Constr'Decl(..), Class(..), Declaration(..) )
-import Compiler.Syntax.Type ( T'C(..), T'V(..), Type(..) )
+import Compiler.Syntax.Type ( T'C(..), T'V'(..), Type(..) )
 import Compiler.Syntax.Qualified ( Qualified(..) )
 import Compiler.Syntax.Predicate ( Predicate(..) )
 
@@ -88,7 +88,10 @@ instance Depends Constr'Decl (Set.Set Int) where
 
 
 instance Depends Type (Set.Set Int) where
-  depends'on (T'Var _) indexer
+  depends'on (T'Var' _) _
+    = Set.empty
+
+  depends'on (T'Meta _) _
     = Set.empty
   
   depends'on (T'Con (T'C con'name _)) indexer

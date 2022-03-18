@@ -1,9 +1,11 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE PatternSynonyms #-}
 
 module Compiler.TypeSystem.Type.Infer.Expression where
 
 
 import Control.Monad ( foldM )
+import Control.Monad.Except ( MonadError(throwError) )
 
 
 import Compiler.Counter ( fresh )
@@ -12,58 +14,85 @@ import Compiler.Syntax.Kind ( Kind(K'Star) )
 import Compiler.Syntax.Predicate ( Predicate )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
 import Compiler.Syntax.Expression ( Expression(..) )
-import {-# SOURCE #-} Compiler.Syntax.Type ( T'V(T'V), Type(T'Var, T'Tuple) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Type(T'Tuple, T'Forall), Rho'Type, Sigma'Type )
 
-import Compiler.TypeSystem.Infer ( Infer )
+import Compiler.TypeSystem.Infer ( Infer, Type'Check )
 import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
 import Compiler.TypeSystem.Type.Constants ( t'Bool, type'fn )
 
 import Compiler.TypeSystem.Type.Infer.Literal ( infer'lit )
-import Compiler.TypeSystem.Type.Infer.Pattern ( infer'pat )
+import Compiler.TypeSystem.Type.Infer.Pattern ( infer'pat, infer'pattern, check'pattern )
 import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Match ( infer'match )
 import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Declaration ( infer'decls )
 
-import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env )
+import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env, inst'sigma, unify'fun, check'sigma, infer'rho, check'rho, subs'check, skolemise, generalize, quantify, qualify, instantiate )
+import Compiler.TypeSystem.Expected ( Expected (Infer, Check) )
+import Compiler.TypeSystem.Actual ( Actual (Checked, Inferred) )
+import Compiler.TypeSystem.Error ( Error(Unexpected) )
+import Compiler.Syntax.TFun ( pattern T'Fun )
 
 
-infer'expr :: Expression -> Infer ([Predicate], Type, [Constraint Type])
-infer'expr (Var var'name) = do
-  preds :=> type' <- lookup't'env var'name
-  return (preds, type', [])
+-- infer'expr :: Expression -> Infer ([Predicate], Type, [Constraint Type])
+infer'expr :: Expression -> Expected Rho'Type -> Type'Check ([Predicate], Actual Rho'Type)
+-- PTIART
+infer'expr (Var var'name) expected = do
+  sigma <- lookup't'env var'name
+  inst'sigma sigma expected
+  -- preds :=> type' <- lookup't'env var'name
+  -- return (preds, type', [])
 
-infer'expr (Const const'name) = do
-  preds :=> type' <- lookup't'env const'name
-  return (preds, type', [])
+-- PTIART
+infer'expr (Const const'name) expected = do
+  sigma <- lookup't'env const'name
+  inst'sigma sigma expected
+  -- preds :=> type' <- lookup't'env const'name
+  -- return (preds, type', [])
 
-infer'expr (Op op'name) = do
-  preds :=> type' <- lookup't'env op'name
-  return (preds, type', [])
+-- PTIART
+infer'expr (Op op'name) expected = do
+  sigma <- lookup't'env op'name
+  inst'sigma sigma expected
+  -- preds :=> type' <- lookup't'env op'name
+  -- return (preds, type', [])
 
-infer'expr (Lit lit) = do
-  (preds, type') <- infer'lit lit
-  return (preds, type', [])
+-- PTIART
+infer'expr (Lit lit) expected = do
+  infer'lit lit expected
+  -- (preds, type') <- infer'lit lit
+  -- return (preds, type', [])
+
+-- PTIART
+infer'expr (Abs pattern' body) Infer = do
+  (preds, arg'type, assumptions) <- infer'pattern pattern'
+  (preds', rho) <- merge'into't'env assumptions (infer'rho body)
+
+  return (preds ++ preds', Inferred (arg'type `T'Fun` rho))
+
+-- PTIART
+infer'expr (Abs pattern' body) (Check rho) = do
+  (arg'type, res'type) <- unify'fun rho
+  (preds, assumptions) <- check'pattern pattern' arg'type
+  preds' <- merge'into't'env assumptions (check'rho body res'type)
+  return (preds ++ preds', Checked)
+  -- (preds'param, type'param, assumptions'param) <- infer'pat pattern'param
+  -- (preds'body, type'body, t'constrs) <- merge'into't'env assumptions'param (infer'expr body)
+  -- return (preds'param ++ preds'body, type'param `type'fn` type'body, t'constrs)
 
 -- TODO: check if it's really valid
-infer'expr (Abs pattern'param body) = do
-  (preds'param, type'param, assumptions'param) <- infer'pat pattern'param
-  (preds'body, type'body, t'constrs) <- merge'into't'env assumptions'param (infer'expr body)
-  return (preds'param ++ preds'body, type'param `type'fn` type'body, t'constrs)
+-- PTIART
+infer'expr (App fun arg) expected = do
+  (preds, fun'type) <- infer'rho fun
+  (arg'type, res'type) <- unify'fun fun'type
+  preds' <- check'sigma arg arg'type
+  (preds'', actual'') <- inst'sigma res'type expected
+  return (preds ++ preds' ++ preds'', actual'')
 
 -- TODO: check if it's really valid
-infer'expr (App left right) = do
-  (preds'l, t'l, t'cs'l) <- infer'expr left
-  (preds'r, t'r, t'cs'r) <- infer'expr right
-  fresh'name <- fresh
-  let t'var = T'Var (T'V fresh'name K'Star)
-  let t'c = t'l `Unify` (t'r `type'fn` t'var)
-
-  return (preds'l ++ preds'r, t'var, t'c : t'cs'l ++ t'cs'r)
-
--- TODO: check if it's really valid
-infer'expr (Infix'App left op right) = do
-  (preds'l, t'l, t'cs'l) <- infer'expr left
-  (preds'op, t'op, t'cs'op) <- infer'expr op
-  (preds'r, t'r, t'cs'r) <- infer'expr right
+infer'expr (Infix'App left op right) expected = do
+  undefined
+  -- (preds'l, t'l, t'cs'l) <- infer'expr left
+  -- (preds'op, t'op, t'cs'op) <- infer'expr op
+  -- (preds'r, t'r, t'cs'r) <- infer'expr right
 
   {-
     The type of the operator should be (at least) a binary function.
@@ -72,46 +101,84 @@ infer'expr (Infix'App left op right) = do
     The type of the result will then be a type of the whole expression.
   -}
 
-  fresh'name <- fresh
-  let t'res = T'Var (T'V fresh'name K'Star)
+  -- fresh'name <- fresh
+  -- let t'res = T'Var (T'V fresh'name K'Star)
 
-  let t'whole = t'l `type'fn` (t'r `type'fn` t'res)
+  -- let t'whole = t'l `type'fn` (t'r `type'fn` t'res)
 
-  let t'c = t'whole `Unify` t'op
+  -- let t'c = t'whole `Unify` t'op
 
-  return  (preds'l ++ preds'op ++ preds'r
-          , t'res
-          , t'c : t'cs'l ++ t'cs'op ++ t'cs'r)
-
--- TODO: check if it's really valid
-infer'expr (Tuple exprs) = do
-  (preds, types, cs) <- foldM infer' ([], [], []) exprs
-  return (preds, T'Tuple $ reverse types, cs)
-    where
-      infer' (preds, types, constrs) expr = do
-        (preds, t, cs) <- infer'expr expr
-        return (preds, t : types, cs ++ constrs)
+  -- return  (preds'l ++ preds'op ++ preds'r
+  --         , t'res
+  --         , t'c : t'cs'l ++ t'cs'op ++ t'cs'r)
 
 -- TODO: check if it's really valid
-infer'expr (If condition then' else') = do
-  (preds'cond, t1, t'c1) <- infer'expr condition
-  (preds'tr, t2, t'c2) <- infer'expr then'
-  (preds'fl, t3, t'c3) <- infer'expr else'
-  let t'c = t1 `Unify` t'Bool
-  let t'b = t2 `Unify` t3
-  return  (preds'cond ++ preds'tr ++ preds'fl
-          , t2
-          , t'c : t'b : t'c1 ++ t'c2 ++ t'c3)
+infer'expr (Tuple [expr'a, expr'b]) expected = do
+  (preds'a, actual'a) <- infer'expr expr'a expected
 
-infer'expr (Let decls body) = do
-  (preds'decls, assumptions'decls, t'cs'decls) <- infer'decls decls
-  (preds'body, t'body, t'cs'body) <- merge'into't'env assumptions'decls (infer'expr body)
-  return (preds'decls ++ preds'body, t'body, t'cs'decls ++ t'cs'body)
+  undefined
+
+infer'expr (Tuple exprs) expected = do
+  undefined
+  -- (preds, types, cs) <- foldM infer' ([], [], []) exprs
+  -- return (preds, T'Tuple $ reverse types, cs)
+  --   where
+  --     infer' (preds, types, constrs) expr = do
+  --       (preds, t, cs) <- infer'expr expr
+  --       return (preds, t : types, cs ++ constrs)
+
+-- TODO: check if it's really valid
+-- PTIART
+infer'expr (If condition then' else') Infer = do
+  preds <- check'rho condition t'Bool
+
+  (preds'then, rho'then) <- infer'rho then'
+  (preds'else, rho'else) <- infer'rho else'
+
+  preds' <- subs'check rho'then rho'else
+  preds'' <- subs'check rho'else rho'then
+  
+  (skolems, context, rho) <- skolemise rho'then
+  
+  -- ctxt :=> rho' <- instantiate $ T'Forall skolems $ context :=> rho
+
+  -- let result = Inferred $ T'Forall skolems $ context :=> rho
+
+  -- let oo = trace ("{{ tracing IF infer }}   rho': " ++ show rho') rho'
+
+  return (preds ++ preds'then ++ preds'else ++ preds' ++ preds'' {- ++ ctxt -} ++ context, Inferred rho {- Inferred oo -})
+
+  -- (preds'cond, t1, t'c1) <- infer'expr condition
+  -- (preds'tr, t2, t'c2) <- infer'expr then'
+  -- (preds'fl, t3, t'c3) <- infer'expr else'
+  -- let t'c = t1 `Unify` t'Bool
+  -- let t'b = t2 `Unify` t3
+  -- return  (preds'cond ++ preds'tr ++ preds'fl
+  --         , t2
+  --         , t'c : t'b : t'c1 ++ t'c2 ++ t'c3)
+
+-- PTIART
+infer'expr (If condition then' else') (Check rho) = do
+  preds'cond <- check'rho condition t'Bool
+  preds'then <- check'rho then' rho
+  preds'else <- check'rho else' rho
+
+  let preds = concat [preds'cond, preds'then, preds'else]
+
+  return (preds, Checked)
+
+infer'expr (Let decls body) expected = do
+  (preds'decls, assumptions'decls) <- infer'decls decls
+  (preds'body, t'body) <- merge'into't'env assumptions'decls (infer'expr body expected)
+  return (preds'decls ++ preds'body, t'body)
 
 -- | TODO: I need to read a section about type checking explicitly annotated bindings
 -- |        from that I think I should be able to derive the plan for this specific case.
-infer'expr (Ann expr qual'type) = do
-  undefined
+-- PTIART
+infer'expr (Ann expr sigma) expected = do
+  preds <- check'sigma expr sigma
+  (preds', actual') <- inst'sigma sigma expected
+  return (preds ++ preds', actual')
   -- so according the paper this is what should happen:
   {-  Freshly instantiate the implicit type scheme given by the user.
       That most likely means I will need to quantify the qualified type first.
@@ -214,62 +281,63 @@ infer'expr (Ann expr qual'type) = do
 
   -}
 
-infer'expr (Case expr matches) = do
-  {- Infer the type of the expr. -}
-  (preds'expr, type'expr, t'cs'expr) <- infer'expr expr
+infer'expr (Case expr matches) expected = do
+  undefined
+  -- {- Infer the type of the expr. -}
+  -- (preds'expr, type'expr, t'cs'expr) <- infer'expr expr
   
-  {- Infer the types of the list of matches. -}
-  -- results :: [([Type], Type, [Predicate], [Predicate], [Constraint Type], [Constraint Kind])]
-  results <- mapM infer'match matches
+  -- {- Infer the types of the list of matches. -}
+  -- -- results :: [([Type], Type, [Predicate], [Predicate], [Constraint Type], [Constraint Kind])]
+  -- results <- mapM infer'match matches
 
-  -- each match should produce:
-    -- Types
-      -- a type - for the expression (RHS)
-      -- and a list of types - for the list of patterns
-      --      in this case the list of types (for patterns) is going to contain only a single type
-    -- Predicates
-      -- list of predicates from a list of patterns
-      -- list of predicates from an expression
-      --  I should be able to just append them together without any problem
-    -- Constraints
-      -- type constraints from the expression (patterns do not produce type constraints, only assumptions)
-      -- kind constraints from the expression
-      --    Even though patterns produce assumptions - but the local bindings are used only in the RHSs
-      --    and that means, that these assumptions do not escape the context of the Match
+  -- -- each match should produce:
+  --   -- Types
+  --     -- a type - for the expression (RHS)
+  --     -- and a list of types - for the list of patterns
+  --     --      in this case the list of types (for patterns) is going to contain only a single type
+  --   -- Predicates
+  --     -- list of predicates from a list of patterns
+  --     -- list of predicates from an expression
+  --     --  I should be able to just append them together without any problem
+  --   -- Constraints
+  --     -- type constraints from the expression (patterns do not produce type constraints, only assumptions)
+  --     -- kind constraints from the expression
+  --     --    Even though patterns produce assumptions - but the local bindings are used only in the RHSs
+  --     --    and that means, that these assumptions do not escape the context of the Match
   
-  -- I then need to unify all the types in the list of types (in this case a singleton) together
-  -- that ensures that all patterns are going to match the same thing.
-  -- That same thing must be a type of the expr.
-  -- So instead - I must take the list of list of types (but in this case it's a list of singletons)
-  -- and map that to [Constraint Type] by - for each singleton - unifying that singleton element with a type'expr.
-  let t'cs'patterns = [ type'expr `Unify` type'patt | ([type'patt], _, _, _, _) <- results ]
+  -- -- I then need to unify all the types in the list of types (in this case a singleton) together
+  -- -- that ensures that all patterns are going to match the same thing.
+  -- -- That same thing must be a type of the expr.
+  -- -- So instead - I must take the list of list of types (but in this case it's a list of singletons)
+  -- -- and map that to [Constraint Type] by - for each singleton - unifying that singleton element with a type'expr.
+  -- let t'cs'patterns = [ type'expr `Unify` type'patt | ([type'patt], _, _, _, _) <- results ]
 
 
-  -- Then I need to take a list of types (types of the right hand sides) and map that to the list of
-  -- (Constraint Type) by unifying them all with a new fresh variable.
-  -- Asserting, that all the right sides are of the same type.
-  -- That type is also the result of this whole case expression.
-  fresh'name <- fresh
-  let t'var = T'Var (T'V fresh'name K'Star)
-  {- Now assert that Types of all Right Hand Sides are the same thing. -}
-  let t'cs'rhs's = [ t'var `Unify` type'rhs | (_, type'rhs, _, _, _) <- results ]
+  -- -- Then I need to take a list of types (types of the right hand sides) and map that to the list of
+  -- -- (Constraint Type) by unifying them all with a new fresh variable.
+  -- -- Asserting, that all the right sides are of the same type.
+  -- -- That type is also the result of this whole case expression.
+  -- fresh'name <- fresh
+  -- let t'var = T'Var (T'V fresh'name K'Star)
+  -- {- Now assert that Types of all Right Hand Sides are the same thing. -}
+  -- let t'cs'rhs's = [ t'var `Unify` type'rhs | (_, type'rhs, _, _, _) <- results ]
 
-  -- Now I need to concatenate all the Predicates coming both from Pattern and Right Hand Side.
-  {- I think I can mix them together, because from the standpoint of the whole expression - it doesn't
-      matter, what part of the expression requires that constraints / produces that Predicate
-      it just means, it is needed.
-      That also means, that the function infer'match could maybe produce a single [Predicate]. -}
-  let preds = preds'expr ++ concat [ preds'patts ++ preds'rhs | (_, _, preds'patts, preds'rhs, _) <- results ]
+  -- -- Now I need to concatenate all the Predicates coming both from Pattern and Right Hand Side.
+  -- {- I think I can mix them together, because from the standpoint of the whole expression - it doesn't
+  --     matter, what part of the expression requires that constraints / produces that Predicate
+  --     it just means, it is needed.
+  --     That also means, that the function infer'match could maybe produce a single [Predicate]. -}
+  -- let preds = preds'expr ++ concat [ preds'patts ++ preds'rhs | (_, _, preds'patts, preds'rhs, _) <- results ]
 
-  {-  I also need to concatenate all type constraints and kind constraints from list of matches together
-      to those I also need to add constraints from the expr at the top of this branch. -}
-  let t'cs = concat $ t'cs'patterns
-                    : t'cs'rhs's
-                    : t'cs'expr
-                    : [ t'cs'patts | (_, _, _, _, t'cs'patts) <- results ]
+  -- {-  I also need to concatenate all type constraints and kind constraints from list of matches together
+  --     to those I also need to add constraints from the expr at the top of this branch. -}
+  -- let t'cs = concat $ t'cs'patterns
+  --                   : t'cs'rhs's
+  --                   : t'cs'expr
+  --                   : [ t'cs'patts | (_, _, _, _, t'cs'patts) <- results ]
   
-  -- Now I have taken care of all the memebers of each tuple.
-  return (preds, t'var, t'cs)
+  -- -- Now I have taken care of all the memebers of each tuple.
+  -- return (preds, t'var, t'cs)
 
 -- | TODO: Introductors (how I call them) already have the type annotation in the typing context/
 --          So all I need is to retrieve it from there.

@@ -12,13 +12,13 @@ import Compiler.Syntax.BindGroup ( Bind'Group(Bind'Group, name, alternatives) )
 import Compiler.Syntax.Kind ( Kind(K'Star) )
 import Compiler.Syntax.Predicate ( Predicate )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
-import {-# SOURCE #-} Compiler.Syntax.Type ( sh, T'V, Type )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'V', Type, M'V )
 
 import Compiler.TypeSystem.Error ( Error(..) )
-import Compiler.TypeSystem.Infer ( Infer )
+import Compiler.TypeSystem.Infer ( Infer, Type'Check, get'constraints )
 import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
 import Compiler.TypeSystem.Binding ( Explicit(..) )
-import Compiler.TypeSystem.Utils.Infer ( close'over, instantiate, split )
+import Compiler.TypeSystem.Utils.Infer ( close'over, instantiate, split, skolemise )
 import Compiler.TypeSystem.Utils.Class ( entail )
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env(Infer'Env, type'env, class'env) )
 import Compiler.TypeSystem.Solver ( run'solve )
@@ -26,8 +26,11 @@ import Compiler.TypeSystem.Solver.Substitution ( Subst )
 import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term(free'vars) )
 import Compiler.TypeSystem.Type.Infer.Match ( infer'matches )
 import Compiler.TypeSystem.Kind.Infer.Type ( infer'type )
-import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'infer'sigma )
+import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'infer'sigma, kind'specify )
+import Compiler.TypeSystem.Expected ( Expected(Check) )
 
+
+import Debug.Trace
 
 {-  Description:
 
@@ -40,14 +43,25 @@ import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'infer'sigma )
 
 -}
 {- Returning a [Constraint Type] might not be strictly necessary -}
-infer'expl :: Explicit -> Infer ([Predicate], [Constraint Type])
+infer'expl :: Explicit -> Type'Check ([Predicate], [Constraint Type])
 infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }) = do
-  scheme' <- kind'infer'sigma scheme -- this is only needed when infer'expl is invoked on local declarations
+  scheme' <- kind'specify scheme -- this is only needed when infer'expl is invoked on local declarations
   
-  (qs :=> t) <- instantiate scheme'
-  (preds, cs't) <- infer'matches matches t
+  (skolems, qs, t) <- skolemise scheme'
+
+  -- let message = "{{ tracing infer'expl }}"
+  --             ++ "\n| scheme: " ++ show scheme
+  --             ++ "\n| scheme': " ++ show scheme'
+  --             ++ "\n| skolemised: " ++ show (qs :=> t)
+  --     oo = trace message t
+  {-  Duvod proc pouzivam skolemise misto instantiate je jednoduchy. Jelikoz jde o typovou anotaci, musim skolemizovat.
+      Otazka ale zustava - je skolemizace to jediny, co je treba udelat v tomhle miste jinak? Nebo bych mel zkontrolovat
+      vic veci? Najdi si implementaci `infer'expr` pro Ann a porovnej s tim co se deje tam, neco podobnyho by se asi melo dit i tady si myslim.
+  -}
+  (preds, _) <- infer'matches matches $ Check t
   -- now solve it
-  case run'solve cs't :: Either Error (Subst T'V Type) of
+  cs't <- get'constraints
+  case run'solve cs't :: Either Error (Subst M'V Type) of
     Left err -> throwError err
     Right subst -> do
       let qs' = apply subst qs
@@ -71,8 +85,8 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
             Right (deferred'preds, retained'preds) -> do
               -- NOTE: I need to comment this out - this can not happen right here *1
               -- (k, cs'k') <- infer'type t
-              b <- scheme' `sh` sc'
-              if not b
+              -- b <- scheme' `sh` sc'
+              if False -- not b
               {- TODO:  If I want to know exactly what user-denoted type variable in the `scheme` does correspond to some non-variable type, I can use `match` to create a one-way substitution. -}
               then throwError $ Signature'Too'General scheme' sc'
               else  if not (null retained'preds)

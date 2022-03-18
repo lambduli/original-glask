@@ -7,7 +7,7 @@ import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.Predicate ( Predicate )
 import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, Type )
 
-import Compiler.TypeSystem.Infer ( Infer )
+import Compiler.TypeSystem.Infer ( Infer, Type'Check )
 import Compiler.TypeSystem.Constraint ( Constraint )
 import Compiler.TypeSystem.Binding ( Explicit(Explicit) )
 import Compiler.TypeSystem.BindSection ( Bind'Section )
@@ -20,7 +20,7 @@ import Compiler.TypeSystem.Utils.Infer ( merge'into't'env )
     this function is going to solve all the constraints it finds anyway,
     so what is the point in returning them and letting them be solved again (possibly many times) as part of a bigger solution?
 -}
-infer'bind'section :: Bind'Section -> Infer ([Predicate], [(Name, Sigma'Type)], [Constraint Type])
+infer'bind'section :: Bind'Section -> Type'Check ([Predicate], [(Name, Sigma'Type)], [Constraint Type])
 infer'bind'section (es, iss) = do
   let as' = [ (v, sc) | Explicit sc Bind'Group{ name = v } <- es ]
   (ps, as'', cs't) <- merge'into't'env as' (infer'seq infer'impls iss)
@@ -30,7 +30,7 @@ infer'bind'section (es, iss) = do
   return (ps ++ preds', as' ++ as'', cs't ++ cs't')
 
 
-infer'seq :: (a -> Infer ([Predicate], [(Name, Sigma'Type)], [Constraint Type])) -> [a] -> Infer ([Predicate], [(Name, Sigma'Type)], [Constraint Type])
+infer'seq :: (a -> Type'Check ([Predicate], [(Name, Sigma'Type)], [Constraint Type])) -> [a] -> Type'Check ([Predicate], [(Name, Sigma'Type)], [Constraint Type])
 infer'seq _ [] = return ([], [], [])
 infer'seq ti (bs : bss) = do
   (ps, as', cs't) <- ti bs
@@ -40,7 +40,7 @@ infer'seq ti (bs : bss) = do
 
 {-  TODO: Probably change the name and put the function some better place? -}
 -- Its purpose is for method type elaboration
-check'seq :: (a -> Infer ([Predicate], [Constraint Type])) -> [a] -> Infer ([Predicate], [Constraint Type])
+check'seq :: (a -> Type'Check ([Predicate], [Constraint Type])) -> [a] -> Type'Check ([Predicate], [Constraint Type])
 check'seq _ [] = return ([], [])
 check'seq ti (bs : bss) = do
   (ps, cs't) <- ti bs

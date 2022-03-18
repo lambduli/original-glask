@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fd569d48181d1016a66953857bb6a2767df532ed363eb4f06c72cc964d143805
+-- hash: 23244bc3cd0522529a744b00c7eb85f3fe963cb6b526747d2dd5dbe8b3a9dcc9
 
 name:           glask
 version:        0.1.0.0
@@ -76,7 +76,6 @@ library
       Compiler.Syntax.Pattern
       Compiler.Syntax.Predicate
       Compiler.Syntax.Qualified
-      Compiler.Syntax.Scheme
       Compiler.Syntax.Signature
       Compiler.Syntax.Term
       Compiler.Syntax.Term.Declaration
@@ -85,12 +84,14 @@ library
       Compiler.Syntax.Term.Pattern
       Compiler.Syntax.Term.Predicate
       Compiler.Syntax.Term.Type
+      Compiler.Syntax.TFun
       Compiler.Syntax.ToAST
       Compiler.Syntax.ToAST.ESYA
       Compiler.Syntax.ToAST.Translate
       Compiler.Syntax.ToAST.TranslateEnv
       Compiler.Syntax.ToAST.TranslateState
       Compiler.Syntax.Type
+      Compiler.TypeSystem.Actual
       Compiler.TypeSystem.Ambiguity
       Compiler.TypeSystem.Assumption
       Compiler.TypeSystem.Binding
@@ -98,6 +99,7 @@ library
       Compiler.TypeSystem.Class
       Compiler.TypeSystem.Constraint
       Compiler.TypeSystem.Error
+      Compiler.TypeSystem.Expected
       Compiler.TypeSystem.Infer
       Compiler.TypeSystem.InferenceEnv
       Compiler.TypeSystem.InferenceState
@@ -111,7 +113,8 @@ library
       Compiler.TypeSystem.Solver
       Compiler.TypeSystem.Solver.Bind
       Compiler.TypeSystem.Solver.Composable
-      Compiler.TypeSystem.Solver.Inject
+      Compiler.TypeSystem.Solver.InvolvesPoly
+      Compiler.TypeSystem.Solver.Lift
       Compiler.TypeSystem.Solver.Occurs
       Compiler.TypeSystem.Solver.Solve
       Compiler.TypeSystem.Solver.Substitutable

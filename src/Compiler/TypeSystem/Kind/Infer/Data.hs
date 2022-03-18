@@ -1,14 +1,12 @@
 module Compiler.TypeSystem.Kind.Infer.Data where
 
 
-
-
 import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.Declaration ( Constr'Decl(..), Data(..) )
 import Compiler.Syntax.Kind ( Kind(..) )
-import Compiler.Syntax.Type ( T'C(T'C), Type(..), T'V (T'V) )
+import Compiler.Syntax.Type ( T'C(T'C), Type(..), T'V'(T'V') )
 
-import Compiler.TypeSystem.Infer ( Infer )
+import Compiler.TypeSystem.Infer ( Infer, Kind'Check, add'constraints )
 import Compiler.TypeSystem.Constraint ( Constraint (Unify) )
 import Control.Monad.Extra (concatMapM)
 import Compiler.TypeSystem.Kind.Infer.Type (infer'type)
@@ -16,7 +14,7 @@ import Compiler.TypeSystem.Kind.Infer.Type (infer'type)
 import Compiler.TypeSystem.Utils.Infer ( merge'into'k'env, lookup'k'env )
 
 
-infer'data :: Data -> Infer ([(Name, Kind)], [(Name, Kind)], [Constraint Kind])
+infer'data :: Data -> Kind'Check ([(Name, Kind)], [(Name, Kind)])
 infer'data Data{ type'name = t'n@(T'C t'name k), type'params = t'params, constructors = cons } = do
   -- potrebuju tohle - musim vyrobit tu typovou aplikaci t'name na vsechny type parametry a tomu priradit Kind *
   -- nejsem si tim uplne jistej, ale myslim, ze to by melo uplne stacit
@@ -54,32 +52,34 @@ infer'data Data{ type'name = t'n@(T'C t'name k), type'params = t'params, constru
   --  Get the Kind of the Type Constructor itself
   kind <- lookup'k'env t'name
 
-  let assumptions = map (\ (T'V name kind) -> (name, kind)) t'params
+  let assumptions = map (\ (T'V' name kind) -> (name, kind)) t'params
 
-  let t = foldl (\ t'acc t'v -> T'App t'acc $ T'Var t'v) (T'Con t'n) t'params -- Type Name applied to all type parameters
-  (k, k'cs) <- merge'into'k'env assumptions (infer'type t) -- merging assumptions about data type variables and their kinds
+  let t = foldl (\ t'acc t'v -> T'App t'acc $ T'Var' t'v) (T'Con t'n) t'params -- Type Name applied to all type parameters
+  k <- merge'into'k'env assumptions (infer'type t) -- merging assumptions about data type variables and their kinds
   let k'c = k `Unify` K'Star
-  constructors'k'cs <- merge'into'k'env assumptions (concatMapM collect'con cons) -- TODO: Will it work like this? Amazing!
-  let constraints = k'c : k'cs ++ constructors'k'cs
+  add'constraints [k `Unify` K'Star]
+
+  merge'into'k'env assumptions (mapM_ collect'con cons) -- TODO: Will it work like this? Amazing!
 
   let type'assumptions = [(t'name, kind)] -- assigning Type defined by this `data` its inferred Kind
 
-  return (type'assumptions, [], constraints)
+  return (type'assumptions, [])
   
   
-infer'n'unify :: Type -> Infer [Constraint Kind]
+infer'n'unify :: Type -> Kind'Check ()
 infer'n'unify t = do
-  (k, k'cs) <- infer'type t
-  return $ (k `Unify` K'Star) : k'cs
+  k <- infer'type t
+  add'constraints [k `Unify` K'Star]
+  return ()
 
 
-collect'con :: Constr'Decl -> Infer [Constraint Kind]
+collect'con :: Constr'Decl -> Kind'Check ()
 collect'con (Con'Decl _ types) = do
-  -- kinds <- foldM infer'many [] types
-  concatMapM infer'n'unify types
+  mapM_ infer'n'unify types
 
 collect'con (Con'Record'Decl _ fields) = do
-  concatMapM infer'n'unify $ map snd fields
+  -- mapM_ infer'n'unify $ map snd fields
+  mapM_ (infer'n'unify . snd) fields
 
 
 

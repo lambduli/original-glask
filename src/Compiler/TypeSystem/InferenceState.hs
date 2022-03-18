@@ -1,14 +1,19 @@
 module Compiler.TypeSystem.InferenceState where
 
 
-import Compiler.Counter
+import Compiler.Counter ( Counter, State(..) )
 
-type Infer'State = Counter
+import Compiler.TypeSystem.Constraint ( Constraint )
+
+-- type Infer'State = Counter
 
 
--- | Inference State
--- newtype Infer'State = Infer'State { count :: Int }
+data Infer'State a = Infer'State { counter :: Counter, constraints :: [Constraint a] }
 
--- | initial Inference State
--- init'infer'state :: Infer'State
--- init'infer'state = Infer'State{ count = 0 }
+
+instance State (Infer'State a) where
+  get'counter Infer'State{ counter = counter }
+    = counter
+  update'counter counter infer'state
+    = infer'state{ counter = counter }
+

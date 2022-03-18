@@ -3,7 +3,7 @@ module Compiler.Syntax.Declaration where
 import Data.List ( intercalate )
 
 
-import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(..), T'V(..), Type )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(..), T'V'(..), Type )
 import Compiler.Syntax.Predicate ( Predicate )
 import Compiler.Syntax.Instance ( Instance )
 import Compiler.Syntax.Signature ( Signature(..) )
@@ -52,13 +52,13 @@ instance Show Declaration where
     = "instance " ++ show qual'pred ++ " where " ++ show decls
 
 
-data Data = Data { type'name :: T'C, type'params :: [T'V], constructors :: [Constr'Decl] }  -- Data type declaration -- name type'params list'of'consturctors'with'params
+data Data = Data { type'name :: T'C, type'params :: [T'V'], constructors :: [Constr'Decl] }  -- Data type declaration -- name type'params list'of'consturctors'with'params
   deriving (Eq)
 
 
 instance Show Data where
   show (Data (T'C name k) params constrs)
-    = "data " ++ name ++ " " ++ unwords (map (\ (T'V n k) -> n) params) ++ " = " ++ intercalate " | " (map show constrs)
+    = "data " ++ name ++ " " ++ unwords (map (\ (T'V' n k) -> n) params) ++ " = " ++ intercalate " | " (map show constrs)
 
 
 data Constr'Decl
@@ -74,10 +74,10 @@ instance Show Constr'Decl where
     = name ++ " { " ++ intercalate ", " (map (\ (name, type') -> name ++ " :: " ++ show type') pairs) ++ " }"
 
 
-data Class = Class { class'name :: Name, class'param :: T'V, class'supers :: [Predicate], class'declarations :: [Declaration] }
+data Class = Class { class'name :: Name, class'param :: T'V', class'supers :: [Predicate], class'declarations :: [Declaration] }
   deriving (Eq)
 
 
 instance Show Class where
-  show (Class name (T'V param kind) supers type'decls)
+  show (Class name (T'V' param kind) supers type'decls)
     = "class " ++ show supers ++ " => " ++ name ++ " " ++ param ++ " where " ++ show type'decls
