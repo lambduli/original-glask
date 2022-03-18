@@ -64,6 +64,7 @@ token :-
 <0>         infixl                      { plain'tok $ Tok'Infixl }
 <0>         infix                       { plain'tok $ Tok'Infix }
 <0>         infixr                      { plain'tok $ Tok'Infixr }
+<0>         forall                      { plain'tok $ Tok'Forall }
 
 
 -- special symbols

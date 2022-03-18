@@ -2,22 +2,26 @@ module Compiler.TypeSystem.Utils.Class where
 
 
 import qualified Data.Map.Strict as Map
-import Data.Maybe
-import Control.Monad.Except
-import Control.Monad.Extra
-import Control.Monad.Trans.Except (catchE)
+import Data.Maybe ( isJust, isNothing )
+import Control.Monad.Except ( liftM, ExceptT, MonadError(throwError) )
+import Control.Monad.Extra ( liftM, anyM, ifM )
+import Control.Monad.Trans.Except ( catchE )
 
 
-import Compiler.Syntax
+import Compiler.Syntax.Instance ( Instance )
+import Compiler.Syntax.Name ( Name )
+import Compiler.Syntax.Predicate ( Predicate(..) )
+import Compiler.Syntax.Qualified ( Qualified((:=>)) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'V', Type(..), M'V(..) )
 
-import Compiler.TypeSystem.Error
-import Compiler.TypeSystem.Solver.Substitution
-import Compiler.TypeSystem.Solver.Substitutable
-import Compiler.TypeSystem.InferenceEnv
-import Compiler.TypeSystem.Class
-import Compiler.TypeSystem.Solver.Solve
-import Compiler.TypeSystem.Solver.Unify
-import Compiler.TypeSystem.Type.Constants
+import Compiler.TypeSystem.Error ( Error(Unexpected) )
+import Compiler.TypeSystem.Solver.Substitution ( Subst )
+import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply) )
+import Compiler.TypeSystem.InferenceEnv ( Class'Env(..) )
+import Compiler.TypeSystem.Class ( Class )
+import Compiler.TypeSystem.Solver.Solve ( Solve )
+import Compiler.TypeSystem.Solver.Unify ( Unify(match, unify) )
+import Compiler.TypeSystem.Type.Constants ( t'Double, t'Int )
 
 
 {- TODO: NOTE: it's partial, I don't quite like that. Fix that later. -}
@@ -85,7 +89,7 @@ add'inst preds pred@(Is'In name _) cl'env
  -}
 overlap :: Predicate -> Predicate -> Solve Bool
 overlap p q = do
-  p `unify` q :: Solve (Subst T'V Type)
+  p `unify` q :: Solve (Subst M'V Type)
   return False
 -- takze co se tady deje
 -- moje unify nevraci Maybe (Subst ...)
@@ -112,7 +116,7 @@ by'inst cl'env pred@(Is'In name type') =
   where
       try'inst :: Instance -> Solve [Predicate]
       try'inst (preds :=> head) = do
-        u <- match head pred :: Solve (Subst T'V Type)
+        u <- match head pred :: Solve (Subst M'V Type)
         return (map (apply u) preds)
 
       first'defined :: [Instance] -> Solve [Predicate]
@@ -156,10 +160,14 @@ tryE m = catchE (liftM Right m) (return . Left)
 in'hnf :: Predicate -> Bool
 in'hnf (Is'In class'name type') = hnf type'
   where
-    hnf (T'Var var) = True
+    hnf (T'Var' var) = True
+    hnf (T'Meta var) = True -- NOTE: I am not sure why this needs to be here, perhaps I need to check where the `in'hnf` is exactly used
     hnf (T'Con con) = False
     hnf (T'App type'l _) = hnf type'l
     hnf (T'Tuple types) = True
+    hnf (T'Forall tvs qual'type) = error "forall inside the predicate -- in'hnf" -- TODO: implement later
+    --  TODO: I am not ever sure it needs to be implemented -- so far it seems like it can't really happen -- specificaly - having a forall inside the Predicate
+
     -- leaving out TyTuple -> I will refactor it out eventually anyway
     -- TODO: I implemented it for now, BUT I am not sure if a Tuple type is in the head normal form
     -- in any case - let's get rid of special case for the Tuple ASAP

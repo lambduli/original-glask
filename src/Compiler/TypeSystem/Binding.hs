@@ -1,14 +1,15 @@
 module Compiler.TypeSystem.Binding where
 
 
-import Compiler.Syntax
+import Compiler.Syntax.BindGroup ( Bind'Group )
+import Compiler.Syntax.Type ( Sigma'Type )
 
 
 newtype Implicit = Implicit Bind'Group
   deriving (Show)
 
 
-data Explicit = Explicit Scheme Bind'Group
+data Explicit = Explicit Sigma'Type Bind'Group
   deriving (Show)
 
 
@@ -22,5 +23,5 @@ data Explicit = Explicit Scheme Bind'Group
 
   Bind'Group - The method implementation itself.
 -}
-data Method = Method Scheme {- (Subst T'V Type) -} Bind'Group
+data Method = Method Sigma'Type {- (Subst T'V Type) -} Bind'Group
   deriving (Show)

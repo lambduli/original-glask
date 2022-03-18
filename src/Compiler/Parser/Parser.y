@@ -50,6 +50,7 @@ import Compiler.Syntax.Term
   infixl        { Tok'Infixl _ }
   infix         { Tok'Infix _ }
   infixr        { Tok'Infixr _ }
+  forall        { Tok'Forall _ }
 
 
   '->'          { Tok'Operator "->" _ }
@@ -62,6 +63,7 @@ import Compiler.Syntax.Term
 
   varid         { Tok'Ident'Var $$ _ }
   conid         { Tok'Ident'Const $$ _ }
+  dot           { Tok'Operator "." _ }
   op            { Tok'Operator $$ _ }
   opcon         { Tok'Operator'Const $$ _ }
 
@@ -157,7 +159,7 @@ Params          ::  { [String] }
 
 LowIdent        ::  { String }
                 :   varid                                           { $1 }
-                |   '(' op ')'                                      { $2 }
+                |   '(' Op ')'                                      { $2 }
 
 
 -- UpIdent         ::  { String }
@@ -176,8 +178,13 @@ OpInfix         ::  { Term'Id }
                 |   '`' conid '`'                                   { Term'Id'Const $2 }
 
 
+Op              ::  { String }
+                :   op                                              { $1 }
+                |   dot                                             { "." }
+
+
 Oper            ::  { Term'Id }
-                :   op                                              { Term'Id'Var $1 }
+                :   Op                                              { Term'Id'Var $1 }
                 |   opcon                                           { Term'Id'Const $1 }
 
 
@@ -205,7 +212,7 @@ TypeSigns       ::  { [Term'Decl] }
 
 {- Class Declaration -}
 ClassDecl       ::  { Term'Decl }
-                :   class ClassDecl2 ClassSigns                     { let { (ctx, name, var'name) = $2 } in Class name var'name ctx $3 }
+                :   class ClassDecl2 ClassSigns                     { let { (ctx, name, var'name) = $2 } in Class'Decl name var'name ctx $3 }
 
 
 ClassDecl2      ::  { ([Term'Pred], Name, Name) }
@@ -484,6 +491,9 @@ AType             ::  { Term'Type }
                   |   '(' Type ',' OneOrManySeparated(Type) ')'     { Term'T'Tuple ($2 : $4) }
                   |   '[' Type ']'                                  { Term'T'List $2 }
                   |   '(' Type ')'                                  { $2 }
+                  |   forall NoneOrMany(varid) dot QualType         { Term'T'Forall (map Term'Id'Var $2) $4 }
+                  --  ^ this line introduces about 12 new shift/reduce conflicts - if I forced the forall type to be wrapped in the parens it would not
+
 
 
 GTyCon            ::  { Term'Type }

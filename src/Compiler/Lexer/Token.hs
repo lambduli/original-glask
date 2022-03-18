@@ -26,6 +26,7 @@ data Token
   | Tok'Infixl Position     -- infixl
   | Tok'Infix Position      -- infix
   | Tok'Infixr Position     -- infixr
+  | Tok'Forall Position     -- forall
 
   -- forms of identifiers
   | Tok'Ident'Var String Position
@@ -74,6 +75,7 @@ instance Located Token where
   at (Tok'Infixl position) = position
   at (Tok'Infix position) = position
   at (Tok'Infixr position) = position
+  at (Tok'Forall position) = position
 
   at (Tok'Ident'Var _ position) = position
   at (Tok'Ident'Const _ position) = position
@@ -122,6 +124,7 @@ infix 4 ~~
 (Tok'Infixl _) ~~ (Tok'Infixl _) = True
 (Tok'Infix _) ~~ (Tok'Infix _) = True
 (Tok'Infixr _) ~~ (Tok'Infixr _) = True
+(Tok'Forall _) ~~ (Tok'Forall _) = True
 (Tok'Ident'Var _ _) ~~ (Tok'Ident'Var _ _) = True
 (Tok'Ident'Const _ _) ~~ (Tok'Ident'Const _ _) = True
 (Tok'Operator _ _) ~~ (Tok'Operator _ _) = True

@@ -8,6 +8,7 @@ import Compiler.Analysis.Syntactic.ConstrEnv ( Constr'Env )
 import Compiler.Analysis.Syntactic.FixityEnv ( Fixity'Env )
 import Compiler.Analysis.Syntactic.FieldEnv ( Field'Env )
 import Compiler.Analysis.Syntactic.SynonymEnv ( Synonym'Env )
+import Compiler.Analysis.Syntactic.ConstraintEnv ( Constraint'Env )
 
 import Compiler.TypeSystem.InferenceEnv ( Kind'Env )
 
@@ -17,5 +18,6 @@ data Translate'Env = Trans'Env
   , constructors :: Constr'Env
   , fields :: Field'Env
   , kind'context :: Kind'Env
-  , synonyms :: Synonym'Env }
+  , synonyms :: Synonym'Env
+  , classes :: Constraint'Env }
   deriving (Show)

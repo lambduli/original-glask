@@ -1,33 +1,21 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 module Compiler.TypeSystem.Solver where
 
 
-import Data.List
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-import Data.Functor.Identity
+import Data.Functor.Identity ( Identity(runIdentity) )
+import Control.Monad.Except ( runExceptT )
 
-import Control.Monad.Except
-
-
-import Compiler.Syntax
-
-import Compiler.TypeSystem.Error
-
-import Compiler.TypeSystem.Infer
-import Compiler.TypeSystem.Constraint
-import Compiler.TypeSystem.InferenceEnv
-
-import Compiler.TypeSystem.Solver.Solve
-import Compiler.TypeSystem.Solver.Substitution
-import Compiler.TypeSystem.Solver.Substitutable
-import Compiler.TypeSystem.Solver.Occurs
-import Compiler.TypeSystem.Solver.Composable
-import Compiler.TypeSystem.Solver.Bind
-import Compiler.TypeSystem.Solver.Unify
+import Compiler.TypeSystem.Error ( Error )
+import Compiler.TypeSystem.Constraint ( Constraint(..) )
+import Compiler.TypeSystem.Solver.Solve ( Solve )
+import Compiler.TypeSystem.Solver.Substitution ( empty'subst, Subst )
+import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(..) )
+import Compiler.TypeSystem.Solver.Composable ( Composable(compose) )
+import Compiler.TypeSystem.Solver.Unify ( Unify(..) )
 
 
 run'solve :: (Ord k, Substitutable k a a, Unify a k a, Composable k a) => [Constraint a] -> Either Error (Subst k a)
@@ -49,6 +37,9 @@ solver :: (Ord k, Substitutable k a a, Unify a k a, Composable k a) => Unifier k
 solver (subst, constraints) =
   case constraints of
     [] -> return subst
-    ((type'l `Unify` type'r) : constrs) -> do
-      subst'  <- type'l `unify` type'r
+    ((left `Match` right) : constrs) -> do
+      subst' <- left `match` right
+      solver (subst' `compose` subst, apply subst' constrs)
+    ((left `Unify` right) : constrs) -> do
+      subst'  <- left `unify` right
       solver (subst' `compose` subst, apply subst' constrs)

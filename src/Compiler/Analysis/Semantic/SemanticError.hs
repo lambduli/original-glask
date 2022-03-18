@@ -1,16 +1,19 @@
 module Compiler.Analysis.Semantic.SemanticError where
 
-import Data.List.Extra (intercalate)
+import Data.List.Extra ( intercalate )
 
 
-import Compiler.Syntax.Name
-import Compiler.Syntax.Type
-import Compiler.Syntax.Term.Expression
+import Compiler.Syntax.Name ( Name )
+import Compiler.Syntax.Type ( Type )
+import Compiler.Syntax.Term.Expression ( Term'Expr )
+import Compiler.Syntax.Predicate ( Predicate )
+import Compiler.Syntax.Qualified ( Qualified((:=>)) )
 
 
 data Semantic'Error
   = Unbound'T'Var Type
   | Not'In'Scope'Data Name
+  | Not'In'Scope'Class Name
   | Wrong'Fields Name [Name]
   | Uninitialized'Fields Name [Name]
   | Empty'Record'Update Term'Expr
@@ -19,6 +22,7 @@ data Semantic'Error
   | Synonym'Not'Fully'Applied Name
   | Synonym'Cycle [(Name, Type)]
   | Many'Errors [Semantic'Error]
+  | Ambiguous'Type [Predicate] Type
 
   | Internal String
 
@@ -30,6 +34,7 @@ data Semantic'Error
 instance Show Semantic'Error where
   show (Unbound'T'Var ty) = "Semantic Error: Unbound Type Variable " ++ show ty
   show (Not'In'Scope'Data s) = "Semantic Error: Data Not In Scope " ++ s
+  show (Not'In'Scope'Class c) = "Semantic Error: Type Class Not In Scope " ++ c
   show (Wrong'Fields s ss) = "Semantic Error: Wrong Fields On " ++ s ++ " " ++ show ss
   show (Uninitialized'Fields s ss) = "Semantic Error: Unitialized Fields In " ++ s ++ " " ++ show ss
   show (Empty'Record'Update te) = "Semenatic Error: Empty Record Update (TODO: print the problematic expression)"
@@ -43,5 +48,7 @@ instance Show Semantic'Error where
         prnt (name, type') = "  type " ++ name ++ " = " ++ show type'
   show (Many'Errors errs)
     = "Semantic Errors: " ++ intercalate "\n" (map show errs)
+  show (Ambiguous'Type preds type')
+    = "Semantic Error: Ambiguous type: `" ++ show (preds :=> type') ++ "'"
   show (Internal message)
     = "INTERNAL Semantic Error: " ++ message

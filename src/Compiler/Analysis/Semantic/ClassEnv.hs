@@ -1,13 +1,18 @@
-module Compiler.Analysis.Semantic.Class where
+module Compiler.Analysis.Semantic.ClassEnv where
 
 import qualified Data.Map.Strict as Map
-import Data.Bifunctor
+import Data.Bifunctor ( Bifunctor(second) )
 
-import Compiler.Syntax
+import Compiler.Syntax.Name ( Name )
+import qualified Compiler.Syntax.Declaration as Syntax
+import Compiler.Syntax.Instance ( Instance )
+import Compiler.Syntax.Predicate ( Predicate(..) )
+import Compiler.Syntax.Qualified ( Qualified((:=>)) )
+import Compiler.Syntax.Declaration ( Declaration(..) )
 
-import Compiler.TypeSystem.Class
-import Compiler.TypeSystem.InferenceEnv
-import Compiler.TypeSystem.Type.Constants (t'Int, t'Double)
+import Compiler.TypeSystem.Class ( Class, Supers )
+import Compiler.TypeSystem.InferenceEnv ( Class'Env(..) )
+import Compiler.TypeSystem.Type.Constants ( t'Int, t'Double )
 
 
 {- This module builds a Class'Env for the Type Inference
@@ -19,7 +24,7 @@ extract :: [Declaration] -> Class'Env
 extract declarations = Class'Env{ classes = classes, defaults = [t'Int, t'Double] }
   where
     is'class :: Declaration -> Bool
-    is'class (Class _ _ _ _) = True
+    is'class (Class'Decl _) = True
     is'class _ = False
 
     is'instance :: Declaration -> Bool
@@ -27,7 +32,7 @@ extract declarations = Class'Env{ classes = classes, defaults = [t'Int, t'Double
     is'instance _ = False
 
     cls'lst :: [(Name, (Supers, [Instance]))]
-    cls'lst = map (\ (Class name var preds decls) -> (name, (supers preds, []))) $ filter is'class declarations
+    cls'lst = map (\ (Class'Decl (Syntax.Class name var preds decls)) -> (name, (supers preds, []))) $ filter is'class declarations
 
     supers :: [Predicate] -> [Name]
     supers = map (\ (Is'In name type') -> name) -- where type' is assumed to only ever be a Type Variable

@@ -1,8 +1,8 @@
 module Compiler.TypeSystem.Type.Constants where
 
 
-import Compiler.Syntax.Type
-import Compiler.Syntax.Kind
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(T'C), Type(T'App, T'Con) )
+import Compiler.Syntax.Kind ( Kind(K'Arr, K'Star) )
 
 
 t'Bool, t'Int, t'Double, t'Char, t'Arr :: Type

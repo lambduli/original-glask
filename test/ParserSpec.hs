@@ -67,7 +67,7 @@ spec = do
   describe "Test parsing of a simple class declarations" $ do
 
     it "parses a small class declaration" $ do
-      "class Foo a" ~.. [Class "Foo" "a" [] []]
+      "class Foo a" ~.. [Class'Decl "Foo" "a" [] []]
 
 
   describe "Test parsing type expressions" $ do

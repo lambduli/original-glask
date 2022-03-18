@@ -4,17 +4,25 @@ module Compiler.TypeSystem.InferenceEnv where
 import qualified Data.Map.Strict as Map
 
 
-import Compiler.Syntax.Name
-import Compiler.Syntax.Type
-import Compiler.Syntax.Kind
-import Compiler.Syntax.Qualified
-import {-# SOURCE #-} Compiler.Syntax.Scheme
+import Compiler.Syntax.Name ( Name )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'C(T'C), T'V'(T'V'), Type(..) )
+import Compiler.Syntax.Kind ( Kind(K'Star, K'Arr) )
+import Compiler.Syntax.Qualified ( Qualified((:=>)) )
 
-import Compiler.TypeSystem.Type.Constants
-import Compiler.TypeSystem.Class
+import Compiler.TypeSystem.Type.Constants ( t'Bool, t'Char, t'Double, t'Int, type'fn )
+import Compiler.TypeSystem.Class ( Class )
+import Compiler.TypeSystem.Solver.Substitution ( Subst )
 
 
-data Infer'Env = Infer'Env { kind'env :: Kind'Env, type'env :: Type'Env, class'env :: Class'Env }
+data Infer'Env = Infer'Env  { kind'env :: Kind'Env
+                            , type'env :: Type'Env
+                            , class'env :: Class'Env
+                            , constraint'env :: Constraint'Env
+                            , kind'substitution :: Subst Name Kind }
+  deriving (Show)
+
+
+type Constraint'Env = Map.Map Name Kind -- This environment assigns each type class-name a Kind for its single type parameter
 
 
 type Kind'Env = Map.Map Name Kind
@@ -33,25 +41,25 @@ init'k'env = Map.fromList
   -- Or do I define list in the prelude in some (more or less) "hacky" way?
 
 
-type Type'Env = Map.Map Name Scheme
+type Type'Env = Map.Map Name Sigma'Type -- Scheme
 
 init't'env :: Type'Env
 init't'env = Map.fromList
-  [ ("#fst",    For'All [T'V "a" K'Star, T'V "b" K'Star]   $ [] :=> (T'Tuple [T'Var (T'V "a" K'Star), T'Var (T'V "b" K'Star)] `type'fn` T'Var (T'V "a" K'Star)))
-  , ("#snd",    For'All [T'V "a" K'Star, T'V "b" K'Star]   $ [] :=> (T'Tuple [T'Var (T'V "a" K'Star), T'Var (T'V "b" K'Star)] `type'fn` T'Var (T'V "b" K'Star)))
-  , ("#=",      For'All [T'V "a" K'Star]                   $ [] :=> (T'Tuple [T'Var (T'V "a" K'Star), T'Var (T'V "a" K'Star)] `type'fn` t'Bool))
-  , ("#<",      For'All [T'V "a" K'Star]                   $ [] :=> (T'Tuple [T'Var (T'V "a" K'Star), T'Var (T'V "a" K'Star)] `type'fn` t'Bool))
-  , ("#>",      For'All [T'V "a" K'Star]                   $ [] :=> (T'Tuple [T'Var (T'V "a" K'Star), T'Var (T'V "a" K'Star)] `type'fn` t'Bool))
-  , ("#+",      For'All []                                 $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
-  , ("#+.",     For'All []                                 $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
-  , ("#*",      For'All []                                 $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
-  , ("#*.",     For'All []                                 $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
-  , ("#-",      For'All []                                 $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
-  , ("#-.",     For'All []                                 $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
-  , ("#div",    For'All []                                 $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
-  , ("#/",      For'All []                                 $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
-  , ("#show",   For'All [T'V "a" K'Star]                   $ [] :=> (T'Var (T'V "a" K'Star) `type'fn` T'App (T'Con (T'C "List" (K'Arr K'Star K'Star))) t'Char)) -- wiring the List type into the compiler
-  , ("#debug",  For'All [T'V "a" K'Star]                   $ [] :=> (T'Var (T'V "a" K'Star) `type'fn` T'Var (T'V "a" K'Star)))
+  [ ("#fst",    T'Forall [T'V' "a" K'Star, T'V' "b" K'Star]   $ [] :=> (T'Tuple [T'Var' (T'V' "a" K'Star), T'Var' (T'V' "b" K'Star)] `type'fn` T'Var' (T'V' "a" K'Star)))
+  , ("#snd",    T'Forall [T'V' "a" K'Star, T'V' "b" K'Star]   $ [] :=> (T'Tuple [T'Var' (T'V' "a" K'Star), T'Var' (T'V' "b" K'Star)] `type'fn` T'Var' (T'V' "b" K'Star)))
+  , ("#=",      T'Forall [T'V' "a" K'Star]                   $ [] :=> (T'Tuple [T'Var' (T'V' "a" K'Star), T'Var' (T'V' "a" K'Star)] `type'fn` t'Bool))
+  , ("#<",      T'Forall [T'V' "a" K'Star]                   $ [] :=> (T'Tuple [T'Var' (T'V' "a" K'Star), T'Var' (T'V' "a" K'Star)] `type'fn` t'Bool))
+  , ("#>",      T'Forall [T'V' "a" K'Star]                   $ [] :=> (T'Tuple [T'Var' (T'V' "a" K'Star), T'Var' (T'V' "a" K'Star)] `type'fn` t'Bool))
+  , ("#+",      T'Forall []                                 $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
+  , ("#+.",     T'Forall []                                 $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
+  , ("#*",      T'Forall []                                 $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
+  , ("#*.",     T'Forall []                                 $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
+  , ("#-",      T'Forall []                                 $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
+  , ("#-.",     T'Forall []                                 $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
+  , ("#div",    T'Forall []                                 $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
+  , ("#/",      T'Forall []                                 $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
+  , ("#show",   T'Forall [T'V' "a" K'Star]                   $ [] :=> (T'Var' (T'V' "a" K'Star) `type'fn` T'App (T'Con (T'C "List" (K'Arr K'Star K'Star))) t'Char)) -- wiring the List type into the compiler
+  , ("#debug",  T'Forall [T'V' "a" K'Star]                   $ [] :=> (T'Var' (T'V' "a" K'Star) `type'fn` T'Var' (T'V' "a" K'Star)))
   ]
 -- TODO: revise the list in the future
 

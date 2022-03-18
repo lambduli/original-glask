@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bd419d1c343f1993c17a0a9d089b5149e6872da86de9131d354367d07e0d2497
+-- hash: 23244bc3cd0522529a744b00c7eb85f3fe963cb6b526747d2dd5dbe8b3a9dcc9
 
 name:           glask
 version:        0.1.0.0
@@ -28,14 +28,18 @@ source-repository head
 library
   exposed-modules:
       Compiler.Analysis.Extract
-      Compiler.Analysis.Semantic.Class
+      Compiler.Analysis.Semantic.ClassEnv
       Compiler.Analysis.Semantic.Data
-      Compiler.Analysis.Semantic.DependencyAnalysis
+      Compiler.Analysis.Semantic.Dependency.Binding
+      Compiler.Analysis.Semantic.Dependency.Depends
+      Compiler.Analysis.Semantic.Dependency.Types
       Compiler.Analysis.Semantic.SemanticError
       Compiler.Analysis.Semantic.Synonym.Cycles
       Compiler.Analysis.Semantic.Synonym.FullyApplied
       Compiler.Analysis.Syntactic.Annotations
       Compiler.Analysis.Syntactic.Bindings
+      Compiler.Analysis.Syntactic.Class
+      Compiler.Analysis.Syntactic.ConstraintEnv
       Compiler.Analysis.Syntactic.ConstrEnv
       Compiler.Analysis.Syntactic.Constructors
       Compiler.Analysis.Syntactic.Data
@@ -72,7 +76,6 @@ library
       Compiler.Syntax.Pattern
       Compiler.Syntax.Predicate
       Compiler.Syntax.Qualified
-      Compiler.Syntax.Scheme
       Compiler.Syntax.Signature
       Compiler.Syntax.Term
       Compiler.Syntax.Term.Declaration
@@ -81,12 +84,14 @@ library
       Compiler.Syntax.Term.Pattern
       Compiler.Syntax.Term.Predicate
       Compiler.Syntax.Term.Type
+      Compiler.Syntax.TFun
       Compiler.Syntax.ToAST
       Compiler.Syntax.ToAST.ESYA
       Compiler.Syntax.ToAST.Translate
       Compiler.Syntax.ToAST.TranslateEnv
       Compiler.Syntax.ToAST.TranslateState
       Compiler.Syntax.Type
+      Compiler.TypeSystem.Actual
       Compiler.TypeSystem.Ambiguity
       Compiler.TypeSystem.Assumption
       Compiler.TypeSystem.Binding
@@ -94,15 +99,22 @@ library
       Compiler.TypeSystem.Class
       Compiler.TypeSystem.Constraint
       Compiler.TypeSystem.Error
+      Compiler.TypeSystem.Expected
       Compiler.TypeSystem.Infer
       Compiler.TypeSystem.InferenceEnv
       Compiler.TypeSystem.InferenceState
+      Compiler.TypeSystem.Kind.Infer.Annotation
+      Compiler.TypeSystem.Kind.Infer.Class
+      Compiler.TypeSystem.Kind.Infer.Data
+      Compiler.TypeSystem.Kind.Infer.Program
       Compiler.TypeSystem.Kind.Infer.Type
+      Compiler.TypeSystem.Kind.Infer.TypeSection
       Compiler.TypeSystem.Program
       Compiler.TypeSystem.Solver
       Compiler.TypeSystem.Solver.Bind
       Compiler.TypeSystem.Solver.Composable
-      Compiler.TypeSystem.Solver.Inject
+      Compiler.TypeSystem.Solver.InvolvesPoly
+      Compiler.TypeSystem.Solver.Lift
       Compiler.TypeSystem.Solver.Occurs
       Compiler.TypeSystem.Solver.Solve
       Compiler.TypeSystem.Solver.Substitutable
@@ -119,14 +131,15 @@ library
       Compiler.TypeSystem.Type.Infer.Method
       Compiler.TypeSystem.Type.Infer.Pattern
       Compiler.TypeSystem.Type.Infer.Program
+      Compiler.TypeSystem.TypeSection
       Compiler.TypeSystem.Utils.Class
       Compiler.TypeSystem.Utils.Infer
-      Interpreter.Analyses
-      Interpreter.Expression
-      Interpreter.Load
-      Interpreter.Program
-      Interpreter.Repl
-      Interpreter.Type
+      REPL.Analyses
+      REPL.Expression
+      REPL.Load
+      REPL.Program
+      REPL.Repl
+      REPL.Type
   other-modules:
       Paths_glask
   hs-source-dirs:

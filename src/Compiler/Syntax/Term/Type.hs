@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Compiler.Syntax.Term.Type where
 
@@ -6,6 +7,7 @@ module Compiler.Syntax.Term.Type where
 import qualified Data.Set as Set
 
 import Compiler.Syntax.Term.Identifier
+import Compiler.Syntax.Term.Predicate
 
 import Compiler.TypeSystem.Solver.Substitutable
 
@@ -16,6 +18,7 @@ data Term'Type
   | Term'T'List Term'Type
   | Term'T'Arrow [Term'Type]
   | Term'T'App [Term'Type]
+  | Term'T'Forall [Term'Id] ([Term'Pred], Term'Type)
   deriving (Eq)
 
 
@@ -39,3 +42,12 @@ instance Term Term'Id Term'Type where
 
   free'vars (Term'T'App term'types)
     = foldl (\ set' t' -> Set.union set' (free'vars t')) Set.empty term'types
+
+  free'vars (Term'T'Forall vars term'qual'type)
+  --  free variables inside forall must not be bound by the forall's list
+    = free'vars term'qual'type `Set.difference` Set.fromList vars
+
+
+instance Term Term'Id ([Term'Pred], Term'Type) where
+  free'vars (term'preds, term'type)
+    = free'vars term'preds `Set.union` free'vars term'type

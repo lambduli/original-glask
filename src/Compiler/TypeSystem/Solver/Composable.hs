@@ -1,24 +1,24 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Compiler.TypeSystem.Solver.Composable where
 
 
-import Data.List
+import Data.List ( intersect )
 import qualified Data.Map.Strict as Map
-import Control.Monad.Except
+import Control.Monad.Except ( MonadError(throwError) )
 
 
-import Compiler.Syntax
+import Compiler.Syntax.Kind ( Kind (K'Var) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Type (T'Meta), T'V', M'V )
 
-import Compiler.TypeSystem.Error
+import Compiler.TypeSystem.Error ( Error(Unexpected) )
 
-import Compiler.TypeSystem.Solver.Substitution
-import Compiler.TypeSystem.Solver.Substitutable
-import Compiler.TypeSystem.Solver.Solve
-import Compiler.TypeSystem.Solver.Inject
+import Compiler.TypeSystem.Solver.Substitution ( Subst(..) )
+import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(..) )
+import Compiler.TypeSystem.Solver.Solve ( Solve )
+import Compiler.TypeSystem.Solver.Lift ( Lift(..) )
 
 
 
@@ -30,18 +30,20 @@ class Composable k v where
   -- I know this code looks terrible
   -- but there is a good reason to have it look like that (lot's of constraints and scoped types)
   -- TODO: explain in greater detail how it works both from evaluation and type level viewpoint
-  merge :: (Ord k, Substitutable k v v, Inject k v, Eq v) => Subst k v -> Subst k v -> Solve (Subst k v)
+  merge :: (Ord k, Substitutable k v v, Lift k v, Eq v) => Subst k v -> Subst k v -> Solve (Subst k v)
   s1@(Sub sub'l) `merge` s2@(Sub sub'r)
     = if agree
       then return $ Sub $ sub'l `Map.union` sub'r
       else throwError $ Unexpected "merge fails"
         where
           agree = all equivalent (Map.keys sub'l `intersect` Map.keys sub'r)
-          equivalent :: (Inject k v, Substitutable k v v) => k -> Bool
-          equivalent var = apply s1 injected == apply s2 injected
+          equivalent :: (Lift k v, Substitutable k v v) => k -> Bool
+          equivalent var = apply s1 lifted == apply s2 lifted
             where
-              injected :: v
-              injected = inject var
+              lifted :: v
+              lifted = lift var
+
+  -- lift :: k -> v
 
 
 
@@ -93,7 +95,7 @@ class Composable k v where
 -- TODO: I am going to remove these too (same as the Composable class declaration)
 -- I just want to keep them for a little while
 
-instance Composable T'V Type
+instance Composable M'V Type
 -- instance Composable TVar Type where
 --   -- compose :: (Substitutable k a a, Ord k) => Subst k a -> Subst k a -> Subst k a
 --   (Sub sub'l) `compose` (Sub sub'r)

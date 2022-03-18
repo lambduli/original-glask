@@ -3,12 +3,11 @@
 module Compiler.Syntax.Term.Predicate where
 
 
-import Compiler.Syntax.Name
+import Compiler.Syntax.Name ( Name )
 
-import Compiler.TypeSystem.Solver.Substitutable
-import Compiler.Syntax.Term.Identifier
-
-import Compiler.Syntax.Term.Type
+import Compiler.TypeSystem.Solver.Substitutable ( Term(..) )
+import Compiler.Syntax.Term.Identifier ( Term'Id )
+import {-# SOURCE #-} Compiler.Syntax.Term.Type ( Term'Type )
 
 data Term'Pred = Is'In Name Term'Type
   deriving (Eq)

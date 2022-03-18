@@ -1,5 +1,5 @@
 module Compiler.Syntax
-  ( Declaration(..), Constr'Decl(..), Fixity(..), Data(..)
+  ( Declaration(..), Constr'Decl(..), Fixity(..), Data(..), Class(..)
   , Expression(..)
   , HasKind(..)
   , Kind(..)
@@ -9,9 +9,8 @@ module Compiler.Syntax
   , Pattern(..)
   , Predicate(..)
   , Qualified(..)
-  , Scheme(..)
   , Signature(..)
-  , T'V(..), T'C(..), Type(..)
+  , T'V'(..), T'C(..), Type(..), Sigma'Type, Rho'Type, Tau'Type, M'V(..)
   , Bind'Group(..)
   , Instance
   ) where
@@ -27,9 +26,8 @@ import Compiler.Syntax.Name
 import Compiler.Syntax.Pattern
 import Compiler.Syntax.Predicate
 import Compiler.Syntax.Qualified
-import Compiler.Syntax.Scheme
 import Compiler.Syntax.Signature
-import Compiler.Syntax.Type
+import {-# SOURCE #-} Compiler.Syntax.Type
 import Compiler.Syntax.BindGroup
 import Compiler.Syntax.Instance
 import Compiler.Syntax.Fixity

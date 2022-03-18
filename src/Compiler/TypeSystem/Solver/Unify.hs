@@ -1,20 +1,24 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Compiler.TypeSystem.Solver.Unify where
 
 
-import Control.Monad.Except
+import Control.Monad.Except ( MonadError(throwError) )
 
-import Compiler.Syntax
+import Compiler.Syntax.Kind ( Kind(..) )
+import Compiler.Syntax.Predicate ( Predicate(..) )
+import Compiler.Syntax.Qualified ( Qualified )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'V', Type(..), M'V(..) )
 
-import Compiler.TypeSystem.Error
-import Compiler.TypeSystem.Solver.Substitution
-import Compiler.TypeSystem.Solver.Substitutable
-import Compiler.TypeSystem.Solver.Solve
-import Compiler.TypeSystem.Solver.Bind
-import Compiler.TypeSystem.Solver.Composable
+import Compiler.TypeSystem.Error ( Error(..) )
+import Compiler.TypeSystem.Solver.Substitution ( empty'subst, Subst )
+import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply) )
+import Compiler.TypeSystem.Solver.Solve ( Solve )
+import Compiler.TypeSystem.Solver.Bind ( Bind(bind) )
+import Compiler.TypeSystem.Solver.Composable ( Composable(merge, compose) )
+import Compiler.Syntax.HasKind ( HasKind(kind) )
 
 
 {-  Typing Haskell in Haskell commentary:
@@ -41,16 +45,19 @@ class Unify a k x where
 
 
 {-               a   k   x       -}
-instance Unify Type T'V Type where
+instance Unify Type M'V Type where
   unify t1 t2 | t1 == t2
     = return empty'subst
 
-  unify (T'Var var) t
+  unify (T'Meta var) t | kind var == kind t
     = var `bind` t
 
-  unify t (T'Var var)
+  unify t (T'Meta var) | kind var == kind t
     = var `bind` t
-  -- TODO: use the k's to make sure we are unifying only Type Variable of specific Kind with the Type of the same Kind
+
+  -- PTIART - from now on - T'Vars only unify with themselves or T'Metas
+  unify (T'Var' var'l) (T'Var' var'r) | var'l == var'r
+    = return empty'subst
 
   unify (T'App t1 t2) (T'App t3 t4)
     = [t1, t2] `unify` [t3, t4]
@@ -68,15 +75,20 @@ instance Unify Type T'V Type where
   unify t1 t2
     = throwError $ Type'Shape'Mismatch t1 t2
 
+
   match t1 t2 | t1 == t2
     = return empty'subst
 
-  match (T'Var var) t
-    = throwError $ Unexpected "I wanted this to break. Find me and let the comments and notes guide you." -- I want it to explode when this case is triggered
+  -- match (T'Var var) t
+  --   = throwError $ Unexpected "I wanted this to break. Find me and let the comments and notes guide you." -- I want it to explode when this case is triggered
+  {-  NOTE: I commented the one below at some point and created the one above.
+            The reason for that was simple (I think) - the one below enforces the Kinds to be equal.
+            That wasn't really possible - because I wasn't planning on doing the Kind Inference BEFORE the type inference.
 
-  -- match (T'Var var) t | kind var == kind t -- I don't think I can actually do that
-  --   = var `bind` t
-    -- I think, they sometimes might not be the same Kind Variable
+            I am not really sure why I chose to make just this one explode and not others. But that is what I think I had in mind.
+   -}
+  match (T'Var' var) t | kind var == kind t
+    = undefined -- var `bind` t
 
   match (T'App l r) (T'App l' r') = do
     sub'l <- l `match` l'
@@ -87,6 +99,13 @@ instance Unify Type T'V Type where
     = return empty'subst
 
   -- TODO: there's T'Tuple missing - I guess I expected I will make it into a user-defined Type so probably not need to handle it here then...
+
+  -- TODO: can forall unify with anything? we will know after I read the rest of the PIART
+  --        it may even be impossible but I don't know right now
+  match (T'Forall _ _) _ = do
+    undefined
+  match _ (T'Forall _ _) = do
+    undefined
 
   match t1 t2
     = throwError $ Type'Shape'Mismatch t1 t2
@@ -129,7 +148,7 @@ instance Unify Kind String Kind where
     = throwError $ Kind'Shape'Mismatch k1 k2
 
 
-instance Unify [Type] T'V Type where
+instance Unify [Type] M'V Type where
   unify [] []
     = return empty'subst
 
@@ -141,9 +160,18 @@ instance Unify [Type] T'V Type where
   unify t'l t'r
     = throwError $ Type'Unif'Count'Mismatch t'l t'r
 
-  
-  match = undefined -- TODO: I guess fix later.
 
+  match [] []
+    = return empty'subst
+
+  match (t'l : ts'l) (t'r : ts'r) = do
+    su1 <- t'l `match` t'r
+    su2 <- apply su1 ts'l `match` apply su1 ts'r
+    return (su2 `compose` su1)
+
+  match t'l t'r
+    = throwError $ Type'Unif'Count'Mismatch t'l t'r
+  
 
 -- instance Unify'Many T'V [] Type where
 --   unify'many [] []
@@ -188,18 +216,25 @@ instance Unify [Kind] String Kind where
 --     = throwError $ Kind'Unif'Count'Mismatch t'l t'r
 
 
-instance Unify Predicate T'V Type where
+instance Unify Predicate M'V Type where
   {- NOTE: The duplicity in the implementation of `lift` is really bothersome. -}
   unify = lift unify
     where
-      lift :: (Type -> Type -> Solve (Subst T'V Type)) -> Predicate -> Predicate -> Solve (Subst T'V Type)
+      lift :: (Type -> Type -> Solve (Subst M'V Type)) -> Predicate -> Predicate -> Solve (Subst M'V Type)
       lift fn (Is'In name'l type'l) (Is'In name'r type'r)
         | name'l == name'r  = fn type'l type'r
         | otherwise         = throwError $ Unexpected $ "Unification Error: Type Classes `" ++ name'l ++ "` and `" ++ name'r ++ "` differ and can not be unified."
 
   match = lift match
     where
-      lift :: (Type -> Type -> Solve (Subst T'V Type)) -> Predicate -> Predicate -> Solve (Subst T'V Type)
+      lift :: (Type -> Type -> Solve (Subst M'V Type)) -> Predicate -> Predicate -> Solve (Subst M'V Type)
       lift fn (Is'In name'l type'l) (Is'In name'r type'r)
         | name'l == name'r  = fn type'l type'r
         | otherwise         = throwError $ Unexpected $ "Unification Error: Type Classes `" ++ name'l ++ "` and `" ++ name'r ++ "` differ and can not be unified."
+
+
+-- NOTE: I am not sure why I have made this instance but aparently it's not used anywhere - so commenting it out.
+-- instance Unify t T'V Type => Unify (Qualified t) T'V Type where
+--   unify = undefined
+
+--   match = undefined

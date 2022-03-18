@@ -1,8 +1,8 @@
 module Compiler.Syntax.Predicate where
 
 
-import Compiler.Syntax.Name
-import Compiler.Syntax.Type
+import Compiler.Syntax.Name ( Name )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Type )
 
 
 data Predicate = Is'In Name Type

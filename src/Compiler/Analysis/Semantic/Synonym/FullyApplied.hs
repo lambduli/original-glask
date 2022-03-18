@@ -1,16 +1,18 @@
 module Compiler.Analysis.Semantic.Synonym.FullyApplied where
 
-import Control.Monad.Reader
+import Control.Monad.Reader ( liftM2, runReader, MonadReader(ask), Reader )
 import Control.Applicative (Applicative(liftA2))
-import Control.Monad.Extra
+import Control.Monad.Extra ( maybeM )
 import qualified Data.Map.Strict as Map
 
-import Compiler.Syntax.Term
+import Compiler.Syntax.Term.Declaration ( Term'Constr'Decl(..), Term'Decl(..) )
+import Compiler.Syntax.Term.Expression ( Term'Expr (..) )
+import Compiler.Syntax.Term.Identifier ( Term'Id(Term'Id'Const, Term'Id'Var) )
+import Compiler.Syntax.Term.Type ( Term'Type(..) )
 
-import Compiler.Analysis.Syntactic.SynonymEnv
+import Compiler.Analysis.Syntactic.SynonymEnv ( Synonym'Env )
 
-import Compiler.Analysis.Semantic.SemanticError
-import Compiler.Syntax.Term.Expression
+import Compiler.Analysis.Semantic.SemanticError ( Semantic'Error(..) )
 
 type Partially'Applied'Synonyms = Reader Synonym'Env [Semantic'Error]
 
@@ -53,6 +55,7 @@ instance Find'Error Term'Decl where
     = find term'expr
     
   find (Signature name (qualifiers, term'type))
+  --  aliases for Constraints are not allowed -- therefore it's not necessary to check term'preds
     = find term'type
     
   find (Data'Decl type'name type'params term'constr'declarations)
@@ -64,7 +67,7 @@ instance Find'Error Term'Decl where
   find Fixity{}
     = return []
     
-  find (Class class'name type'param supers term'declarations)
+  find (Class'Decl class'name type'param supers term'declarations)
     = concat <$> mapM find term'declarations
     
   find (Instance _ term'declarations)
@@ -114,6 +117,7 @@ instance Find'Error Term'Expr where
   {- NOTE: I am not sure this way of writing it is the most elegant. I like that it does not feature a `do` though. -}
 
   find (Term'E'Ann term'expr (term'preds, term'type))
+  --  aliases for Constraints are not allowed -- therefore it's not necessary to check term'preds
     = let e = find term'expr
           t = find term'type
       in liftM2 (++) e t
@@ -172,6 +176,10 @@ instance Find'Error Term'Type where
                           else ts'errs
         
         types -> concat <$> mapM find types
+
+  find (Term'T'Forall vars (term'preds, term'type))
+  --  aliases for Constraints are not allowed -- therefore it's not necessary to check term'preds
+    = find term'type
 
 
 instance Find'Error Term'Constr'Decl where
