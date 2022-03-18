@@ -8,7 +8,8 @@ import Compiler.TypeSystem.Constraint ( Constraint )
 -- type Infer'State = Counter
 
 
-data Infer'State a = Infer'State { counter :: Counter, constraints :: [Constraint a] }
+data Infer'State a = Infer'State  { counter :: Counter
+                                  , constraints :: [Constraint a] }
 
 
 instance State (Infer'State a) where

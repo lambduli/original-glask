@@ -35,6 +35,8 @@ $opchar               = [$symbol $lower $upper $digit \:]
 @operator             = $opstart $opchar*
 @opconstr             = \: $opchar*
 
+@namedhole            = \_ $idchar*
+
 
 $space                = [\ \t\f\v]
 
@@ -55,7 +57,8 @@ token :-
 <0>         case                        { plain'tok Tok'Case }
 <0>         of                          { plain'tok Tok'Of }
 <0>         type                        { plain'tok Tok'Type }
-<0>         \_                          { plain'tok Tok'Underscore }
+<0>         @namedhole                  { parametrized'tok Tok'Named'Hole id }
+-- <0>         \_                          { plain'tok Tok'Underscore }
 <0>         "\"                         { plain'tok Tok'Lambda }
 <0>         class                       { plain'tok Tok'Class }
 <0>         instance                    { plain'tok Tok'Instance }

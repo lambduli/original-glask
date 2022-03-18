@@ -301,6 +301,9 @@ instance To'AST Term'Expr Expression where
         let the'match = Match { patterns = [pattern], rhs = rhs }
         return $ Case expr [the'match]
 
+  to'ast (Term'E'Hole name) = do
+    return $ Hole name
+
 
 look'for'constr :: [(Name, Term'Expr)] -> Term'Expr -> Translate Constr'Info
 look'for'constr field'assigns t'expr = do

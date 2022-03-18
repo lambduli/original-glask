@@ -39,8 +39,8 @@ import Compiler.Syntax.Term
   in            { Tok'In _ }
   case          { Tok'Case _ }
   of            { Tok'Of _ }
-  type          { Tok'Type _ }
-  '_'           { Tok'Underscore _ }
+  type          { Tok'Type _ }          
+  '_'           { Tok'Named'Hole $$ _ }
   lambda        { Tok'Lambda _ }
   class         { Tok'Class _ }
   instance      { Tok'Instance _ }
@@ -380,6 +380,7 @@ AExp            ::  { Term'Expr }
                                                                       ; _ -> Term'E'Labeled'Update $1 $3 } }
                 |   '(' Oper ')'                                    { Term'E'Op $2 }
                 |   '(' ')'                                         { Term'E'Id $ Term'Id'Const "()" }
+                |   '_'                                             { Term'E'Hole $1 }
 
 
 FieldBind       ::  { (Name, Term'Expr) }

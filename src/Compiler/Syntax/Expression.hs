@@ -24,6 +24,7 @@ data Expression
   | Let [Declaration] Expression
   | Ann Expression Sigma'Type -- (Qualified Type) -- TODO: higher-rank -- should it be qualified type or should it be just Type with the invariant that it's Forall?
   | Case Expression [Match]
+  | Hole Name
   -- | Intro Name [Expression]
   deriving (Eq)
 
@@ -41,4 +42,5 @@ instance Show Expression where
   show (Let decls body) = "let " ++ intercalate "\n" (map show decls) ++ " in " ++ show body
   show (Ann type' expr) = show expr ++ " :: " ++ show type'
   show (Case expr options) = "case " ++ show expr ++ " of \n { " ++ "TODO: show options" ++ " }"
+  show (Hole name) = name
   -- show (Intro name exprs) = "(" ++ name ++ " " ++ unwords (map show exprs) ++ ")"

@@ -137,6 +137,9 @@ instance Find'Error Term'Expr where
           us = concat <$> mapM (\ (_, term'expr) -> find term'expr) field'updates
       in liftM2 (++) e us
 
+  find (Term'E'Hole name)
+    = return []
+
 
 instance Find'Error Term'Type where
   find (Term'T'Id (Term'Id'Var name))

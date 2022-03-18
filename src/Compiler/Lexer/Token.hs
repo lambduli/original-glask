@@ -16,7 +16,8 @@ data Token
   | Tok'Case Position       -- case
   | Tok'Of Position         -- of
   | Tok'Type Position       -- type
-  | Tok'Underscore Position -- _
+  -- | Tok'Underscore Position -- _
+  | Tok'Named'Hole String Position -- _named
   | Tok'Lambda Position     -- \
   | Tok'Class Position      -- class
   | Tok'Instance Position   -- instance
@@ -65,7 +66,8 @@ instance Located Token where
   at (Tok'Case position) = position
   at (Tok'Of position) = position
   at (Tok'Type position) = position
-  at (Tok'Underscore position) = position
+  at (Tok'Named'Hole _ position) = position
+  -- at (Tok'Underscore position) = position
   at (Tok'Lambda position) = position
   at (Tok'Class position) = position
   at (Tok'Instance position) = position
@@ -114,7 +116,8 @@ infix 4 ~~
 (Tok'Case _) ~~ (Tok'Case _) = True
 (Tok'Of _) ~~ (Tok'Of _) = True
 (Tok'Type _) ~~ (Tok'Type _) = True
-(Tok'Underscore _) ~~ (Tok'Underscore _) = True
+(Tok'Named'Hole _ _) ~~ (Tok'Named'Hole _ _) = True
+-- (Tok'Underscore _) ~~ (Tok'Underscore _) = True
 (Tok'Lambda _) ~~ (Tok'Lambda _) = True
 (Tok'Class _) ~~ (Tok'Class _) = True
 (Tok'Instance _) ~~ (Tok'Instance _) = True

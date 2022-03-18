@@ -28,7 +28,7 @@ import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Declaration ( infer'decls )
 import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env, inst'sigma, unify'fun, check'sigma, infer'rho, check'rho, subs'check, skolemise, generalize, quantify, qualify, instantiate )
 import Compiler.TypeSystem.Expected ( Expected (Infer, Check) )
 import Compiler.TypeSystem.Actual ( Actual (Checked, Inferred) )
-import Compiler.TypeSystem.Error ( Error(Unexpected) )
+import Compiler.TypeSystem.Error ( Error(Unexpected, Typed'Hole) )
 import Compiler.Syntax.TFun ( pattern T'Fun )
 
 
@@ -36,21 +36,21 @@ import Compiler.Syntax.TFun ( pattern T'Fun )
 infer'expr :: Expression -> Expected Rho'Type -> Type'Check ([Predicate], Actual Rho'Type)
 -- PTIART
 infer'expr (Var var'name) expected = do
-  sigma <- lookup't'env var'name
+  sigma <- lookup't'env var'name expected
   inst'sigma sigma expected
   -- preds :=> type' <- lookup't'env var'name
   -- return (preds, type', [])
 
 -- PTIART
 infer'expr (Const const'name) expected = do
-  sigma <- lookup't'env const'name
+  sigma <- lookup't'env const'name expected
   inst'sigma sigma expected
   -- preds :=> type' <- lookup't'env const'name
   -- return (preds, type', [])
 
 -- PTIART
 infer'expr (Op op'name) expected = do
-  sigma <- lookup't'env op'name
+  sigma <- lookup't'env op'name expected
   inst'sigma sigma expected
   -- preds :=> type' <- lookup't'env op'name
   -- return (preds, type', [])
@@ -343,3 +343,6 @@ infer'expr (Case expr matches) expected = do
 --          So all I need is to retrieve it from there.
 -- infer'expr (Intro name exprs) = do
   -- undefined
+
+infer'expr (Hole name) expected = do
+  throwError $ Typed'Hole name expected

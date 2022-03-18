@@ -99,11 +99,11 @@ put'in't'env (var, scheme) m = do
 {- TODO NOTE: What about creating some type class for Kind, Type and such
 - it would define lookup method and the correct return type would be figured from the type "context"
 (as in - call site) -}
-lookup't'env :: String -> Type'Check Sigma'Type
-lookup't'env var = do
+lookup't'env :: String -> Expected Type -> Type'Check Sigma'Type
+lookup't'env var expected = do
   env <- asks type'env
   case Map.lookup var env of
-    Nothing     ->  throwError $ Unbound'Var var
+    Nothing     ->  throwError $ Unbound'Var var expected
     Just scheme ->  return scheme
 
 

@@ -3,8 +3,10 @@ module Compiler.TypeSystem.Error where
 
 import Compiler.Syntax.Kind ( Kind )
 import Compiler.Syntax.Name ( Name )
+import Compiler.Syntax.HasKind ( HasKind(kind) )
 import {-# SOURCE #-} Compiler.Syntax.Type ( Type, M'V )
-import Compiler.Syntax.HasKind (HasKind(kind))
+
+import Compiler.TypeSystem.Expected ( Expected )
 
 
 data Error
@@ -12,7 +14,7 @@ data Error
   | Infinite'Kind Kind Kind
   | Type'Unif'Mismatch Type Type
   | Kind'Unif'Mismatch Kind Kind
-  | Unbound'Var Name
+  | Unbound'Var Name (Expected Type)
   | Unbound'Type'Var String
   | Type'Shape'Mismatch Type Type
   | Kind'Shape'Mismatch Kind Kind
@@ -21,6 +23,7 @@ data Error
   | Signature'Too'General Type Type
   | Context'Too'Weak
   | Impredicative M'V Type -- Error reported when predicativity assumption is to be broken. (Unifying type variable with sigma type.)
+  | Typed'Hole Name (Expected Type)
 
   | Unexpected String -- this is just temporary helper constructor for me to debug stuff ... mostly
   deriving (Eq)
@@ -41,8 +44,8 @@ instance Show Error where
   show (Kind'Unif'Mismatch kind'a kind'b)
     = "Couldn't match kind `" ++ show kind'a ++ "` with `" ++ show kind'b ++ "`"
   
-  show (Unbound'Var name)
-    = "Unknown variable " ++ name
+  show (Unbound'Var name expected)
+    = "Unknown variable " ++ name ++ " expected type: " ++ show expected
   
   show (Unbound'Type'Var name)
     = "Unknown type variable " ++ name
@@ -65,6 +68,10 @@ instance Show Error where
 
   show (Impredicative t'var type')
     = "Impredicative type - type variable '" ++ show t'var ++ "' can't be unified with the poly type '" ++ show type' ++ "'."
+
+  show (Typed'Hole name expected)
+    = "Found a hole '" ++ name ++ "' :: " ++ show expected ++ " -- TODO: relevant bindings, type in infer mode and so on..."
+
 
   show (Unexpected s)
     = "Something bad happened: " ++ s

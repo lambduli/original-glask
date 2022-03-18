@@ -19,6 +19,14 @@ module Main where
 ; num :: Num a => a
 ; num = 23
 
+
+
+-- NOW I WANT TO TEST FINDING A VARIABLE NOT IN SCOPE
+; not'in :: a -> b -> Int
+; not'in = \ _ y -> _
+
+
+
 ; tru = True
 
 ; lambda = \ a b c -> c

@@ -268,6 +268,9 @@ instance Depends Expression (Set.Set Int) where
   depends'on (Lit lit) indexer
     = Set.empty
 
+  depends'on (Hole _) _
+    = Set.empty
+
   depends'on (Abs param'pattern body) indexer
     = depends'on body indexer
 

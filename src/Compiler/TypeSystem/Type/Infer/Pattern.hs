@@ -41,7 +41,7 @@ infer'pat (P'Var name) (Check sigma) = do
 
 -- PTIART
 infer'pat (P'Con name patterns) expected = do
-  sigma <- lookup't'env name
+  sigma <- lookup't'env name expected
   _ :=> rho <- instantiate sigma -- NOTE: the context should always be empty, since we can't qualify constructors - it's safe to ignore it then
   -- TODO: Now I need to take `rho` and split it into a list of argument types and a resulting type
   let (arg'types, res'type) = split'data'cons rho

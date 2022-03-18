@@ -33,6 +33,7 @@ data Term'Expr
   | Term'E'Case Term'Expr [(Term'Pat, Term'Expr)]
   | Term'E'Labeled'Constr Name [(Name, Term'Expr)]
   | Term'E'Labeled'Update Term'Expr [(Name, Term'Expr)]
+  | Term'E'Hole Name
   deriving (Eq)
 
 
