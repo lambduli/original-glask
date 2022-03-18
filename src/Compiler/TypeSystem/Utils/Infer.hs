@@ -1,4 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Compiler.TypeSystem.Utils.Infer where
 
@@ -16,13 +18,14 @@ import Compiler.Counter ( Counter(Counter, counter), fresh, real'fresh, letters 
 
 import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.HasKind ( HasKind(kind) )
-import Compiler.Syntax.Kind ( Kind )
+import Compiler.Syntax.Kind ( Kind (K'Star) )
 import Compiler.Syntax.Predicate ( Predicate )
 import Compiler.Syntax.Qualified ( Qualified(..) )
-import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'V(..), Type(T'Forall, T'Var) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'V'(..), Type(T'Forall, T'Var', T'Meta), Rho'Type, Tau'Type, M'V(..) )
+import Compiler.Syntax.TFun ( pattern T'Fun )
 
 import Compiler.TypeSystem.Error ( Error(Unexpected, Unbound'Var, Unbound'Type'Var) )
-import Compiler.TypeSystem.Infer ( Infer )
+import Compiler.TypeSystem.Infer ( Infer, run'infer, Type'Check, Kind'Check, add'constraints, get'constraints )
 import Compiler.TypeSystem.InferenceEnv ( Class'Env, Infer'Env(Infer'Env, type'env, kind'env, constraint'env), Type'Env )
 import Compiler.TypeSystem.Ambiguity ( ambiguities, candidates, Ambiguity )
 import Compiler.TypeSystem.Solver.Solve ( Solve )
@@ -30,11 +33,34 @@ import Compiler.TypeSystem.Solver.Substitution ( Subst(..) )
 import Compiler.TypeSystem.Utils.Class ( reduce )
 import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
 import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term(free'vars) )
+import Compiler.TypeSystem.Type.Constants ( type'fn )
 
 
--- NOTE: temporarily I will put it here
-quantify :: [T'V] -> Qualified Type -> Sigma'Type
-quantify = T'Forall
+import Compiler.Syntax.Expression ( Expression )
+import Compiler.TypeSystem.Expected ( Expected(..) )
+import Compiler.TypeSystem.Actual ( Actual(..) )
+import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Expression ( infer'expr )
+import Compiler.TypeSystem.Solver ( run'solve )
+
+
+quantify :: [M'V] -> Qualified Type -> Sigma'Type
+quantify meta'vars q'type = sigma
+  where
+    tvs = map meta'to'tv meta'vars
+
+    meta'to'tv :: M'V -> T'V'
+    meta'to'tv (Tau name kind) = T'V' name kind
+    meta'to'tv (Sigma _ _) = error "Internal Error - 'quantify' was called with a list containing σ meta variable."
+    -- the question is - is it ever allowed for the meta variable to be a sigma?
+    -- I think it should never happen.
+    -- so maybe it would be best to panic in such cases with some usefull message
+
+    mapping = zip meta'vars $ map T'Var' tvs
+    subst = Sub $ Map.fromList mapping
+    
+    q'type' = apply subst q'type
+
+    sigma = T'Forall tvs q'type'
 -- now, here's the thing
 -- because I keep both names and kinds of the parametrized type variables
 -- as opposed to only keeping kinds (as does Jones)
@@ -43,13 +69,12 @@ quantify = T'Forall
 -- similarly, because I don't represent bound type variables with distinct data construct (TGen)
 -- I don't really need to do any substitution application on the qualified type
 
--- now, that begs the question, do I really need to have this function?
--- I think not.
 
-
+{-  INVARIANT:  The argument must not contain any M'Vs  -}
 to'scheme :: Type -> Sigma'Type
 to'scheme sigma@(T'Forall _ _) = sigma
 to'scheme t = T'Forall [] ([] :=> t)
+
 
 {- Qualifies the Type with no Predicates -}
 qualify :: Type -> Qualified Type
@@ -59,13 +84,13 @@ qualify t = [] :=> t
 -- TODO: I really feel like generalizing all the merge'into'... and put'in'... and lookup'...
 --        is the best way to go around. Then put them in some shared Utils module and use them
 --        across all parts of the pipeline.
-merge'into't'env :: [(String, Sigma'Type)] -> Infer a -> Infer a
+merge'into't'env :: [(String, Sigma'Type)] -> Type'Check a -> Type'Check a
 merge'into't'env bindings m = do
   let scope e@Infer'Env{ type'env = t'env } = e{ type'env = Map.fromList bindings `Map.union` t'env}
   local scope m
 
 
-put'in't'env :: (String, Sigma'Type) -> Infer a -> Infer a
+put'in't'env :: (String, Sigma'Type) -> Type'Check a -> Type'Check a
 put'in't'env (var, scheme) m = do
   let scope e@Infer'Env{ type'env = t'env } = e{ type'env = Map.insert var scheme (Map.delete var t'env) }
   local scope m
@@ -74,33 +99,33 @@ put'in't'env (var, scheme) m = do
 {- TODO NOTE: What about creating some type class for Kind, Type and such
 - it would define lookup method and the correct return type would be figured from the type "context"
 (as in - call site) -}
-lookup't'env :: String -> Infer (Qualified Type)
+lookup't'env :: String -> Type'Check Sigma'Type
 lookup't'env var = do
   env <- asks type'env
   case Map.lookup var env of
     Nothing     ->  throwError $ Unbound'Var var
-    Just scheme ->  instantiate scheme
+    Just scheme ->  return scheme
 
 
-merge'into'k'env :: [(String, Kind)] -> Infer a -> Infer a
+merge'into'k'env :: [(String, Kind)] -> Kind'Check a -> Kind'Check a
 merge'into'k'env bindings m = do
   let scope e@Infer'Env{ kind'env = k'env } = e{ kind'env = Map.fromList bindings `Map.union` k'env }
   local scope m
 
 
-merge'into'constr'env :: [(Name, Kind)] -> Infer a -> Infer a
+merge'into'constr'env :: [(Name, Kind)] -> Kind'Check a -> Kind'Check a
 merge'into'constr'env bindings m = do
   let scope e@Infer'Env{ constraint'env = constr'env } = e{ constraint'env = Map.fromList bindings `Map.union` constr'env }
   local scope m
 
 
-put'in'k'env :: (String, Kind) -> Infer a -> Infer a
+put'in'k'env :: (String, Kind) -> Kind'Check a -> Kind'Check a
 put'in'k'env (var, kind') m = do
   let scope e@Infer'Env{ kind'env = k'env } = e{ kind'env = Map.insert var kind' (Map.delete var k'env) }
   local scope m
 
 
-lookup'k'env :: String -> Infer Kind
+lookup'k'env :: String -> Kind'Check Kind
 lookup'k'env var = do
   k'env <- asks kind'env
   case Map.lookup var k'env of
@@ -117,11 +142,18 @@ lookup'k'env var = do
           I really think it is worth considering.
           Probably also includes `normalize` and `generalize`? I am not sure what they do at this moment. Inspect yourself later.
 -}
-instantiate :: Sigma'Type -> Infer (Qualified Type)
+{- TODO: -}
+{-  This function needs to be modified so that it can transform quantified type variables into meta type variables. -}
+instantiate :: Sigma'Type -> Type'Check (Qualified Type)
 instantiate (T'Forall vars qual'type) = do
-  let params = map (\ (T'V name _) -> name) vars
-  fresh'strs <- mapM (\ (T'V n k) -> real'fresh params n >>= \ fresh -> return (fresh, k) ) vars
-  let ty'vars = map (\ (name, k) -> T'Var (T'V name k)) fresh'strs
+  let params = map (\ (T'V' n _) -> n) vars
+      kinds  = map (\ (T'V' _ k) -> k) vars
+
+      -- f (T'V' n k) = real'fresh params n >>= \ fresh -> return (fresh, k)
+  fresh'strs <- mapM (real'fresh params) vars
+
+  let assumptions = zip fresh'strs kinds
+      meta'vars = map (\ (name, k) -> T'Meta (Tau name k)) assumptions
   -- NOTE:  So I have fixed the issue where I wrongly instantiated the generic type variables to the Kind *.
   --        I have come to the conclusion that it is OK for all the instantiations of the same Scheme - resp. their generic type variables -
   --        to share the same set of Kind Variables.
@@ -135,10 +167,10 @@ instantiate (T'Forall vars qual'type) = do
   --        read :: String -> Phantom a
   --        I don't think it is possible for the `a` to be anything else than `*` in any instantiation.
   --        So the assumptions seems safe and sound.
-  let subst = Sub $ Map.fromList $ zip vars ty'vars
+  let subst = Sub $ Map.fromList $ zip vars meta'vars
   return $ apply subst qual'type
 
-{-  NOTE: Making the function covering/total. Instantiating non forall type is just an identity.  -}
+{-  NOTE: Making the function covering/total. Instantiating non forall type is just a lift into Qualified Type  -}
 instantiate type' = return $ qualify type'
 
 
@@ -165,11 +197,19 @@ close'over = normalize . generalize Map.empty
 normalize :: Sigma'Type -> Sigma'Type
 normalize (T'Forall vars q't) = T'Forall vars'norm q't'norm
   where
+    to'mapping (tv@(T'V' tv'name kind'), fresh'name) = (tv, T'V' fresh'name kind')
+    -- to'mapping (tv, fresh'name) = error $ show tv
+    
+    -- to'mapping (tv@(T'S tv'name kind'), fresh'name) = (tv, T'V fresh'name kind')
+
+
     pairs = zip vars letters
-    mapping = map (\ (tv@(T'V tv'name kind'), fresh'name) -> (tv, T'V fresh'name kind')) pairs
-    subst = Sub $ Map.fromList $ map (second T'Var) mapping
+    mapping = map to'mapping pairs
+    subst = Sub $ Map.fromList $ map (second T'Var') mapping
     vars'norm = map snd mapping
     q't'norm = apply subst q't
+
+normalize _ = error "Internal Error: 'normalize' was called with a non forall type."
 
 {-  TODO: I am not sure why it has to be that involved.
           It seems to me, that this function should just construct the normalizing substitution.
@@ -234,7 +274,10 @@ fixed - variables which APPEAR in the typing context (we shouldn't quantify over
 gs - set of variables we would like to quantify over
 preds - predicates to split
 -}
-split :: Class'Env -> [T'V] -> [T'V] -> [Predicate] -> Solve ([Predicate], [Predicate])
+
+-- ten prvni list jsou volny "meta" promenny ktery jsou volny v celem typing contextu
+-- ten druhej list, jsou volny "meta" promenny, ktery jsou volny v typu, ale nejsou volny v typovem contextu, takze tyhle budou generalizovany
+split :: Class'Env -> [M'V] -> [M'V] -> [Predicate] -> Solve ([Predicate], [Predicate])
 split cl'env fixed'vars gs preds = do
   preds' <- reduce cl'env preds
   let (deffered'preds, retained'preds) = partition (all (`elem` fixed'vars) . free'vars) preds'
@@ -242,7 +285,7 @@ split cl'env fixed'vars gs preds = do
   return (deffered'preds, retained'preds \\ retained'preds')
 
 
-with'defaults :: ([Ambiguity] -> [Type] -> a) -> Class'Env -> [T'V] -> [Predicate] -> Solve a
+with'defaults :: ([Ambiguity] -> [Type] -> a) -> Class'Env -> [M'V] -> [Predicate] -> Solve a
 with'defaults fn cl'env vars preds = do
   let vps = ambiguities cl'env vars preds
   tss <- mapM (candidates cl'env) vps
@@ -252,11 +295,227 @@ with'defaults fn cl'env vars preds = do
     else return $ fn vps $ map head tss
 
 
-defaulted'preds :: Class'Env -> [T'V] -> [Predicate] -> Solve [Predicate]
+defaulted'preds :: Class'Env -> [M'V] -> [Predicate] -> Solve [Predicate]
 defaulted'preds = with'defaults (\ vps ts -> concatMap snd vps)
 
 
-default'subst :: Class'Env -> [T'V] -> [Predicate] -> Solve (Subst T'V Type)
+default'subst :: Class'Env -> [M'V] -> [Predicate] -> Solve (Subst M'V Type)
 default'subst cl'env vars preds = do
   pairs <- with'defaults (zip . map fst) cl'env vars preds
+
   return $ Sub $ Map.fromList pairs
+
+
+{-  Utilities for working with Rank-N Types -}
+
+unify'fun :: Rho'Type -> Type'Check (Rho'Type, Rho'Type)
+unify'fun (arg't `T'Fun` res't)
+  = return (arg't, res't)
+
+unify'fun fun't = do
+  arg't <- fresh'meta
+  res't <- fresh'meta
+  let constraint = fun't `Unify` (arg't `T'Fun` res't)
+  add'constraints [constraint]
+  return (arg't, res't)
+
+
+{-  OUTWARD INVARIANT: All meta type variables have kind `*`. -}
+fresh'meta :: Type'Check Type
+fresh'meta = do
+  fresh'name <- fresh
+  return $ T'Meta $ Tau fresh'name K'Star
+
+
+skolemise :: Sigma'Type -> Type'Check ([T'V'], [Predicate], Rho'Type)
+skolemise (T'Forall tvs (preds :=> type')) = do                     --  PRPOLY
+  skolems <- new'skolem'vars tvs
+  let mapping = zipWith (\ tv skol -> (tv, T'Var' skol)) tvs skolems
+      subst   = Sub $ Map.fromList mapping
+  
+  let preds'subst = apply subst preds
+
+  (skolems', preds', rho) <- skolemise $ apply subst type'
+
+  return (skolems ++ skolems', preds'subst ++ preds', rho)
+
+skolemise (arg't `T'Fun` res't) = do                                --  PRFUN
+  (skolems, preds, rho) <- skolemise res't
+  return (skolems, preds, arg't `T'Fun` rho)
+
+skolemise type'                                                     --  MONO
+  = return ([], [], type')
+
+
+new'skolem'vars :: [T'V'] -> Type'Check [T'V']
+new'skolem'vars tvs = do
+  let names = map (\ (T'V' name _) -> name) tvs
+  
+  mapM (\ (T'V' name kind) -> real'fresh names name >>= \ fresh'name -> return $ T'V' fresh'name kind) tvs
+
+  -- mapM (\ (T'V name k) -> do
+  --   { fresh'name <- real'fresh names name
+  --   ; return $ T'V fresh'name k
+  -- }) tvs
+
+
+tc'rho :: Expression -> Expected Rho'Type -> Type'Check ([Predicate], Actual Rho'Type)
+tc'rho = infer'expr
+
+
+check'rho :: Expression -> Rho'Type -> Type'Check [Predicate]
+check'rho expr ty = do
+  result <- tc'rho expr (Check ty)
+  case result of
+    (_, Inferred _) -> throwError $ Unexpected "Internal Error while 'check'rho'"
+    (preds, Checked) -> do
+      return preds
+
+
+infer'rho :: Expression -> Type'Check ([Predicate], Rho'Type)
+infer'rho expr = do
+  result <- tc'rho expr Infer
+  case result of
+    (_, Checked) -> throwError $ Unexpected "Internal Error while 'infer'rho'"
+    (preds, Inferred type') -> do
+      return (preds, type')
+
+
+inst'sigma :: Sigma'Type -> Expected Rho'Type -> Type'Check ([Predicate], Actual Type)
+inst'sigma sigma Infer = do
+  preds :=> type' <- instantiate sigma
+  return (preds, Inferred type')
+inst'sigma sigma (Check rho) = do
+  preds <- subs'check'rho sigma rho
+  -- let oo = trace ("{{ tracing inst'sigma }}   constraints: " ++ show constraints ++ "   |  sigma: " ++ show sigma ++ "   |  rho: " ++ show rho) constraints
+  return (preds, Checked)
+
+
+subs'check :: Sigma'Type -> Sigma'Type -> Type'Check [Predicate]
+subs'check sigma'l sigma'r = do
+  (skolems, preds'r, rho'r) <- skolemise sigma'r
+  -- let aa = trace ("{{{{{  subs'check }}}}}     sigma'r: " ++ show sigma'r ++ " |  skolemised sigma'r - rho'r: " ++ show rho'r) skolems
+  preds <- subs'check'rho sigma'l rho'r
+
+  constraints <- get'constraints
+  case run'solve constraints :: Either Error (Subst M'V Type) of
+    Left err -> throwError err
+    Right subst -> do
+      let sigma'l' = apply subst sigma'l
+          sigma'r' = apply subst sigma'r
+      
+      let all'free = free'vars [sigma'l', sigma'r']
+
+      let bad'vars = filter (`elem` all'free) skolems
+
+      if not $ null bad'vars
+      then throwError $ Unexpected "Subsumption check failed! - Probable reason: Impredicative Polymorphism."
+      else return (preds'r ++ preds)
+
+
+-- Invariant: the second argument is in weak-prenex form
+subs'check'rho :: Sigma'Type -> Rho'Type -> Type'Check [Predicate]
+subs'check'rho sigma@(T'Forall _ _) rho = do                              --  SPEC
+  preds :=> rho' <- instantiate sigma
+  preds' <- subs'check'rho rho' rho
+  -- let bb = trace ("[[ tracing subs'check'rho SPEC ]]   sigma: " ++ show sigma ++ "   rho': " ++ show rho' ++ "   rho: " ++ show rho ++ "   constraints: " ++ show constraints) constraints
+  return (preds ++ preds')
+
+subs'check'rho rho'l (arg'r `T'Fun` res'r) = do                           --  FUN1
+  (arg'l, res'l) <- unify'fun rho'l
+  -- let oo = trace ("{{ tracing subs'check'rho FUN1 }}   arg'l : " ++ show arg'l ++ "   res'l: " ++ show res'l ++ "    | constraints: " ++ show constraints ++ "\n") constraints
+  subs'check'fun arg'l res'l arg'r res'r
+
+subs'check'rho (arg'l `T'Fun` res'l) rho'r = do                           --  FUN2
+  (arg'r, res'r) <- unify'fun rho'r
+  -- let oo = trace ("{{ tracing subs'check'rho FUN2 }}   arg'l : " ++ show arg'l ++ "   res'l: " ++ show res'l ++ "    | constraints: " ++ show constraints ++ "\n") constraints
+  subs'check'fun arg'l res'l arg'r res'r
+
+subs'check'rho tau'l tau'r = do                                           --  MONO
+  -- let aa = trace ("{{ tracing subs'check'rho MONO }}   taul: " ++ show tau'l ++ "   taur: " ++ show tau'r ++ "\n") tau'l
+  add'constraints [tau'l `Unify` tau'r]
+  return []
+
+
+subs'check'fun :: Sigma'Type -> Rho'Type -> Sigma'Type -> Rho'Type -> Type'Check [Predicate]
+subs'check'fun a1 r1 a2 r2 = do
+  preds <- subs'check a2 a1
+  preds' <- subs'check'rho r1 r2
+
+  -- let oo = trace ("{{ tracing subs'check'fun }}  a1: " ++ show a1 ++ "  r1: " ++ show r1 ++ "  a2: " ++ show a2 ++ "  r2: " ++ show r2) constraints
+  -- let ee = trace ("{{ tracing subs'check'fun }}  constraints: " ++ show constraints ++ "   constraints': " ++ show constraints' ++ "\n") oo
+
+  return (preds ++ preds')
+
+-- Tahle funkce bude orisek
+-- kdyz skolemisuju sigmu, dostanu qualified type
+-- a zda se me, ze pokud bych do check'rho poslal jenom rho
+-- mohl bych ztratit tu informaci, ze expr "domnele" pozaduje nejaky Predicates
+-- hodne zalezi na tom, jak vlastne funguje check'rho
+-- pokud je tam nekde unifikace na bottom urovni, tak by snad mohlo stacit vratit ty Predicates
+-- protoze by se melo stat to, ze skolemy (ty jediny jsou kvalifikovany kontextem) se sunifikuji
+-- s odpovidajicimy meta promennymi (s nicim jinym ani nemuzou, krome sebe a to tady moc nepomuze)
+-- 
+-- na druhou stranu, je opravdu potreba to poradne promyslet, je klidne mozny, ze funkce, ktery operujici jako check'rho
+-- tedy nad rozbalenou sigmou, budou ve skutecnosti muset brat qualified rho
+-- otazka by pak ale byla - a to dost zasadni
+-- co se takhle uplne dole bude s Predicates delat?
+-- co s nima bude delat check'rho
+--
+-- dalsi moznost co me napada, je ze by se mohlo dat udelat to, co se dela na top levelu
+-- vyresit constrainty a sestavit substituci, aplikovat ji a pak zkusit zredukovat kontext a uvidet
+-- jestli je context OK, nebo je moc weak, nebo tak neco
+-- obavam se ale - ze to uplne nepujde v pripadech kdy nepujde o uplne primitivni expressions a typy
+-- napriklad 23 :: Int -- tohle je v pohode, (ale nevim, jestli tenhle pripad skonci tady, to je dost mozny ze vubec ne)
+-- napriklad (\ a -> show a) :: forall a . Show a => a -> String
+-- tak tohle se snad da zkontrolovat
+-- 
+{-  TODO: This function will need to be refactored, fixed and checked thoroughly. -}
+check'sigma :: Expression -> Sigma'Type -> Type'Check [Predicate]
+check'sigma expr sigma = do
+  (skolems, preds, rho) <- skolemise sigma
+  preds' <- check'rho expr rho
+  -- now I need to solve constraints, obtain the substitution, apply it to the sigma and the typing context
+  -- then I need to check that sigma, nor types in typing context contain any of the skolems
+  --
+  -- k tomuhle mam zajimavou poznamku, jak to mam momentalne, tak nemam constrainty ze zbyvajiciho systemu
+  -- mam jenom ty lokalni
+  -- a zajimalo by me, jestli lokalni constrainty staci prozkoumat
+  -- pokud staci, tak me zajima, jestli se pak musim starat o typy v typing contextu
+  -- nebo jestli staci zkontrolovat, ze se zadny skolem nedostane do sigmy
+  --
+  -- az to upravim tak, aby se constrainty ukladaly do state
+  -- tak budu mit pristup ke vsem ode vsad
+  -- pak tahle poznamka nebude nejspis vubec relevantni
+  constraints <- get'constraints
+  case run'solve constraints :: Either Error (Subst M'V Type) of
+    Left err -> throwError err
+    Right subst -> do
+      type'ctxt <- asks type'env
+      let type'ctxt'  = apply subst type'ctxt
+          sigma'      = apply subst sigma
+
+      let free'ctxt   = free'vars type'ctxt'
+          free'sigma  = free'vars sigma'
+          free'all    = free'ctxt `Set.union` free'sigma
+
+      let bad'vars  = filter (`elem` free'all) skolems
+
+      if not $ null bad'vars
+      then
+        throwError $ Unexpected "Type is not polymorphic enough!"
+      else do
+        return (preds ++ preds')
+
+
+-- TODO:  tady budu potrebovat trosku vymyslet neco vlastniho
+--        jak jsem se uz rozhodl, bude to spocivat v tom, ze posbiram constrainty, vyresim je, aplikuju substituci
+--        na sigmu, do ktere by tim padem mohly "leaknout" nektere skolemy, to zkontroluju zavolanim free'vars
+--        a checknutim, ze nema zadny prunik se skolem setem
+
+
+
+split'data'cons :: Rho'Type -> ([Sigma'Type], Tau'Type)
+split'data'cons (arg'type `T'Fun` res'type) = (arg'type : arg'types, out'type)
+  where (arg'types, out'type) = split'data'cons res'type
+split'data'cons rho = ([], rho)

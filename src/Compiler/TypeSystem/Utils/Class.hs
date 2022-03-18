@@ -12,7 +12,7 @@ import Compiler.Syntax.Instance ( Instance )
 import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.Predicate ( Predicate(..) )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
-import {-# SOURCE #-} Compiler.Syntax.Type ( T'V, Type(..) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'V', Type(..), M'V(..) )
 
 import Compiler.TypeSystem.Error ( Error(Unexpected) )
 import Compiler.TypeSystem.Solver.Substitution ( Subst )
@@ -89,7 +89,7 @@ add'inst preds pred@(Is'In name _) cl'env
  -}
 overlap :: Predicate -> Predicate -> Solve Bool
 overlap p q = do
-  p `unify` q :: Solve (Subst T'V Type)
+  p `unify` q :: Solve (Subst M'V Type)
   return False
 -- takze co se tady deje
 -- moje unify nevraci Maybe (Subst ...)
@@ -116,7 +116,7 @@ by'inst cl'env pred@(Is'In name type') =
   where
       try'inst :: Instance -> Solve [Predicate]
       try'inst (preds :=> head) = do
-        u <- match head pred :: Solve (Subst T'V Type)
+        u <- match head pred :: Solve (Subst M'V Type)
         return (map (apply u) preds)
 
       first'defined :: [Instance] -> Solve [Predicate]
@@ -160,7 +160,8 @@ tryE m = catchE (liftM Right m) (return . Left)
 in'hnf :: Predicate -> Bool
 in'hnf (Is'In class'name type') = hnf type'
   where
-    hnf (T'Var var) = True
+    hnf (T'Var' var) = True
+    hnf (T'Meta var) = True -- NOTE: I am not sure why this needs to be here, perhaps I need to check where the `in'hnf` is exactly used
     hnf (T'Con con) = False
     hnf (T'App type'l _) = hnf type'l
     hnf (T'Tuple types) = True

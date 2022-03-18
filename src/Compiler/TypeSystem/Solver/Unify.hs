@@ -10,7 +10,7 @@ import Control.Monad.Except ( MonadError(throwError) )
 import Compiler.Syntax.Kind ( Kind(..) )
 import Compiler.Syntax.Predicate ( Predicate(..) )
 import Compiler.Syntax.Qualified ( Qualified )
-import {-# SOURCE #-} Compiler.Syntax.Type ( T'V, Type(..) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'V', Type(..), M'V(..) )
 
 import Compiler.TypeSystem.Error ( Error(..) )
 import Compiler.TypeSystem.Solver.Substitution ( empty'subst, Subst )
@@ -45,16 +45,19 @@ class Unify a k x where
 
 
 {-               a   k   x       -}
-instance Unify Type T'V Type where
+instance Unify Type M'V Type where
   unify t1 t2 | t1 == t2
     = return empty'subst
 
-  unify (T'Var var) t | kind var == kind t
+  unify (T'Meta var) t | kind var == kind t
     = var `bind` t
 
-  unify t (T'Var var) | kind var == kind t
+  unify t (T'Meta var) | kind var == kind t
     = var `bind` t
-  -- TODO: use the k's to make sure we are unifying only Type Variable of specific Kind with the Type of the same Kind
+
+  -- PTIART - from now on - T'Vars only unify with themselves or T'Metas
+  unify (T'Var' var'l) (T'Var' var'r) | var'l == var'r
+    = return empty'subst
 
   unify (T'App t1 t2) (T'App t3 t4)
     = [t1, t2] `unify` [t3, t4]
@@ -72,6 +75,7 @@ instance Unify Type T'V Type where
   unify t1 t2
     = throwError $ Type'Shape'Mismatch t1 t2
 
+
   match t1 t2 | t1 == t2
     = return empty'subst
 
@@ -83,9 +87,8 @@ instance Unify Type T'V Type where
 
             I am not really sure why I chose to make just this one explode and not others. But that is what I think I had in mind.
    -}
-  match (T'Var var) t | kind var == kind t
-    = var `bind` t
-
+  match (T'Var' var) t | kind var == kind t
+    = undefined -- var `bind` t
 
   match (T'App l r) (T'App l' r') = do
     sub'l <- l `match` l'
@@ -145,7 +148,7 @@ instance Unify Kind String Kind where
     = throwError $ Kind'Shape'Mismatch k1 k2
 
 
-instance Unify [Type] T'V Type where
+instance Unify [Type] M'V Type where
   unify [] []
     = return empty'subst
 
@@ -213,18 +216,18 @@ instance Unify [Kind] String Kind where
 --     = throwError $ Kind'Unif'Count'Mismatch t'l t'r
 
 
-instance Unify Predicate T'V Type where
+instance Unify Predicate M'V Type where
   {- NOTE: The duplicity in the implementation of `lift` is really bothersome. -}
   unify = lift unify
     where
-      lift :: (Type -> Type -> Solve (Subst T'V Type)) -> Predicate -> Predicate -> Solve (Subst T'V Type)
+      lift :: (Type -> Type -> Solve (Subst M'V Type)) -> Predicate -> Predicate -> Solve (Subst M'V Type)
       lift fn (Is'In name'l type'l) (Is'In name'r type'r)
         | name'l == name'r  = fn type'l type'r
         | otherwise         = throwError $ Unexpected $ "Unification Error: Type Classes `" ++ name'l ++ "` and `" ++ name'r ++ "` differ and can not be unified."
 
   match = lift match
     where
-      lift :: (Type -> Type -> Solve (Subst T'V Type)) -> Predicate -> Predicate -> Solve (Subst T'V Type)
+      lift :: (Type -> Type -> Solve (Subst M'V Type)) -> Predicate -> Predicate -> Solve (Subst M'V Type)
       lift fn (Is'In name'l type'l) (Is'In name'r type'r)
         | name'l == name'r  = fn type'l type'r
         | otherwise         = throwError $ Unexpected $ "Unification Error: Type Classes `" ++ name'l ++ "` and `" ++ name'r ++ "` differ and can not be unified."

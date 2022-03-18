@@ -1,0 +1,32 @@
+module Main where
+{ 
+  class Num a
+
+; instance Num Int
+-- ; instance Num Double
+
+
+-- ; class Fractional a
+
+-- ; instance Fractional Double
+
+-- ; data String = String [Char]
+
+-- ; class Show a where
+--   { show :: a -> String }
+
+
+-- ; data Bool = True | False
+
+-- ; number :: Int
+; number = 23
+
+-- ; fnum :: Num a => a -> a
+-- ; fnum = \ a -> a
+-- 
+-- ; gnum :: Num a => a -> a -> a
+-- ; gnum = \ x y -> fnum x
+
+
+
+}

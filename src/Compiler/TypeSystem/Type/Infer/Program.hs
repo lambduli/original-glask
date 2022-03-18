@@ -8,22 +8,24 @@ import Control.Monad.State ( MonadState(get) )
 import Control.Monad.Extra ( concatMapM )
 
 
-import Compiler.Counter ( Counter(Counter, counter) )
+import Compiler.Counter ( Counter(Counter, counter), State (get'counter) )
 
 import Compiler.Syntax.Declaration ( Constr'Decl(..), Data(..) )
 import Compiler.Syntax.Kind ( Kind(K'Star) )
 import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
-import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'C(T'C), T'V, Type(..) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'C(T'C), T'V', Type(..), M'V )
 
 
 import Compiler.TypeSystem.Error ( Error )
 import Compiler.TypeSystem.Program ( Program(..) )
 import Compiler.TypeSystem.Binding ( Explicit(Explicit), Method (Method) )
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env(..), Kind'Env, Type'Env, Constraint'Env )
-import Compiler.TypeSystem.InferenceState ( Infer'State )
-import Compiler.TypeSystem.Infer ( run'infer, Infer )
-import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
+import Compiler.TypeSystem.InferenceState ( Infer'State(..) )
+import qualified Compiler.TypeSystem.InferenceState as I'State
+
+import Compiler.TypeSystem.Infer ( run'infer, Infer, Type'Check, get'constraints )
+-- import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
 import Compiler.TypeSystem.Type.Infer.BindSection ( check'seq, infer'bind'section, infer'seq )
 import Compiler.TypeSystem.Type.Infer.Method ( infer'method )
 import Compiler.TypeSystem.Kind.Infer.Type (infer'type)
@@ -38,9 +40,11 @@ import Compiler.TypeSystem.Kind.Infer.Program ( infer'kinds )
 import Compiler.TypeSystem.Kind.Infer.TypeSection ( infer'annotated, infer'methods )
 
 
-infer'whole'program :: Program -> Infer'Env -> Infer'State -> Either Error (Type'Env, Kind'Env, Constraint'Env, Infer'State)
-infer'whole'program program infer'env infer'state = do
-  ((k'env, class'env, kind'subst), infer'state') <- run'infer infer'env (infer'kinds program) infer'state
+infer'whole'program :: Program -> Infer'Env -> Counter -> Either Error (Type'Env, Kind'Env, Constraint'Env, Counter)
+infer'whole'program program infer'env counter = do
+  let k'infer'state = Infer'State{ I'State.counter = counter, constraints = [] }
+
+  ((k'env, class'env, kind'subst), k'infer'state') <- run'infer infer'env (infer'kinds program) k'infer'state
   
   let base't'env  = type'env infer'env
       base'k'env  = kind'env infer'env
@@ -67,16 +71,20 @@ infer'whole'program program infer'env infer'state = do
               Specificaly - it must not change kind'context nor class'context - there's no way
               some lone type signature to some function or method would be able to do that.
   -}
-  (new'expls, infer'state'') <- run'infer infer'env' (infer'annotated substituted'explicits) infer'state'
+  (new'expls, k'infer'state'') <- run'infer infer'env' (infer'annotated substituted'explicits) k'infer'state'
 
-  (new'methods, infer'state''') <- run'infer infer'env' (infer'methods substituted'methods) infer'state''
+  (new'methods, k'infer'state''') <- run'infer infer'env' (infer'methods substituted'methods) k'infer'state''
       
   let program' = program{ bind'section = (new'expls, implicits'list), methods = new'methods }
 
 
-  (t'env, inf'state) <- run'infer infer'env' (infer'types program') infer'state'''
+  let counter' = get'counter k'infer'state'''
+      t'infer'state = Infer'State{ I'State.counter = counter', constraints = [] }
+
+  (t'env, t'infer'state') <- run'infer infer'env' (infer'types program') t'infer'state
 
   let new't'env = t'env `Map.union` substituted't'env -- it shouldn't matter which direction this is
+      counter''  = get'counter t'infer'state'
 
   {-  NOTES:
       I don't need to apply the kind'susbt to the k'env.
@@ -86,10 +94,10 @@ infer'whole'program program infer'env infer'state = do
 
       Same works for class'env.
   -}
-  return (new't'env, new'k'env, new'class'env, inf'state)
+  return (new't'env, new'k'env, new'class'env, counter'')
 
 
-infer'types :: Program -> Infer Type'Env
+infer'types :: Program -> Type'Check Type'Env
 infer'types Program{ bind'section = bg, methods = methods } = do
   -- ([Predicate], [(Name, Scheme)], [Constraint Type], [Constraint Kind])
   (preds, assumptions, cs't) <- infer'bind'section bg
@@ -100,6 +108,7 @@ infer'types Program{ bind'section = bg, methods = methods } = do
             and would produce a tuples. Maybe I shoudl do that. So that functions like `infer'program` read more like a description and contain less implementation details.
   -}
   (preds', cs't') <- check'seq infer'method methods
+  -- QUESTION: hele nemel bych ty assumptions z infer'bind'section mergnout a pak teprve type checkovat methods?
 
   -- Question:  So all of the constraints were already solved in smaller groups of them.
   --            Do I expect some different result from solving them all?
@@ -112,20 +121,41 @@ infer'types Program{ bind'section = bg, methods = methods } = do
   --            So do I need the retained predicates to figure out ambiguities?
   --            If there are no ambiguities, do I get an empty list in `preds`?
   -- TODO:  Investigate. I want to know if it's going to be empty, if I only write declarations which are not ambiguous.
-  case run'solve (cs't ++ cs't') :: Either Error (Subst T'V Type) of
+  
+  cs't <- get'constraints
+  case run'solve cs't {- (cs't ++ cs't') -} :: Either Error (Subst M'V Type) of
     Left err -> throwError err
     Right subst -> do
       Infer'Env{ type'env = t'env, class'env = c'env } <- ask
+      -- return (apply subst $ Map.fromList assumptions)
+
+      
+      -- TODO: turning off Predicates for now
       let rs = runIdentity $ runExceptT $ reduce c'env (apply subst (preds ++ preds'))
       case rs of
-        Left err -> throwError err
+        Left err -> do
+          throwError err
         Right rs' -> do
           case runIdentity $ runExceptT $ default'subst c'env [] rs' of
-            Left err -> throwError err
+            Left err -> do
+              -- let message = "[[[ tracing infer'types ]]]"
+              --             ++ "\n|  c'env: " ++ show c'env
+              --             ++ "\n|  result: " ++ show (preds, assumptions, cs't)
+              --             ++ "\n|  rs': " ++ show rs'
+              --     t = trace message err
+              throwError err
             Right s' -> do
               case runIdentity $ runExceptT (s' `merge` subst) of
                 Left err -> throwError err
                 Right subst' -> do
+                  -- let sub = subst'
+                  --     message = "<<< tracing >>>   "
+                  --       ++ "\n|  sub " ++ show sub
+                  --       ++ "\n|  assumptions: " ++ show assumptions
+                  --       ++ "\n|  apply subst assumptions: " ++ show (apply sub assumptions)
+                  --       ++ "\n|  result: " ++ show (apply subst' $ Map.fromList assumptions)
+                  --       ++ "\n|"
+                  --     ss = trace message sub
                   {-  QUESTION: Shouldn't I somehow check that the defaulting substitution effectivelly eliminates all the predicates?  -}
                   {-            Or is it OK if there are some predicates which bubble-up to FROM the top level declarations?            -}
                   {-  What I meant was - if they are not eliminated by the defaulting substitution, they are effectively unsolved right?
@@ -138,4 +168,4 @@ infer'types Program{ bind'section = bg, methods = methods } = do
                   -- let ms = map (\ (n, q't) -> (n, close'over q't)) m'anns
                   -- return (apply subst' $ Map.fromList $ assumptions ++ ms, cs'k ++ cs'k')
 
-                  return (apply subst' $ Map.fromList assumptions)
+                  return $ apply subst' $ Map.fromList assumptions

@@ -3,7 +3,7 @@ module Compiler.TypeSystem.Error where
 
 import Compiler.Syntax.Kind ( Kind )
 import Compiler.Syntax.Name ( Name )
-import {-# SOURCE #-} Compiler.Syntax.Type ( T'V, Type )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Type, M'V )
 import Compiler.Syntax.HasKind (HasKind(kind))
 
 
@@ -20,7 +20,7 @@ data Error
   | Kind'Unif'Count'Mismatch [Kind] [Kind]
   | Signature'Too'General Type Type
   | Context'Too'Weak
-  | Unpredicative T'V Type -- Error reported when predicativity assumption is to be broken. (Unifying type variable with sigma type.)
+  | Impredicative M'V Type -- Error reported when predicativity assumption is to be broken. (Unifying type variable with sigma type.)
 
   | Unexpected String -- this is just temporary helper constructor for me to debug stuff ... mostly
   deriving (Eq)
@@ -36,7 +36,7 @@ instance Show Error where
       ++ show kind'a ++ " ~ " ++ show kind'b
   
   show (Type'Unif'Mismatch type'a type'b)
-    = "Couldn't match type `" ++ show type'a ++ "` with `" ++ show type'b ++ "`"
+    = "Couldn't match type `" ++ show type'a ++ " :: " ++ show (kind type'a) ++ "` with `" ++ show type'b ++ "` :: " ++ show (kind type'b)
   
   show (Kind'Unif'Mismatch kind'a kind'b)
     = "Couldn't match kind `" ++ show kind'a ++ "` with `" ++ show kind'b ++ "`"
@@ -63,8 +63,8 @@ instance Show Error where
   show (Context'Too'Weak)
     = "Context is too weak" -- TODO: add some info about what am I talking about too
 
-  show (Unpredicative t'var type')
-    = "Unpredicative type - type variable '" ++ show t'var ++ "' can't be unified with the poly type '" ++ show type' ++ "'."
+  show (Impredicative t'var type')
+    = "Impredicative type - type variable '" ++ show t'var ++ "' can't be unified with the poly type '" ++ show type' ++ "'."
 
   show (Unexpected s)
     = "Something bad happened: " ++ s

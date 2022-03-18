@@ -5,15 +5,17 @@ module Compiler.TypeSystem.Kind.Infer.TypeSection where
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Data.Bifunctor ( second )
+import Control.Monad.Reader ( MonadReader(ask) )
+import Control.Monad.State ( MonadState(get, put), evalStateT, StateT )
 import Control.Monad.Except ( MonadError(throwError) )
 
 
 import Compiler.Syntax.Declaration ( Data(..), Class(..) )
 import Compiler.Syntax.Kind ( Kind (K'Var, K'Star) )
 import Compiler.Syntax.Name ( Name )
-import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(..), T'V(..) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(..), T'V'(..) )
 
-import Compiler.TypeSystem.Infer ( Infer )
+import Compiler.TypeSystem.Infer ( Infer, Kind'Check, Type'Check, run'infer, add'constraints, get'constraints )
 import Compiler.TypeSystem.TypeSection ( Type'Section )
 import Compiler.TypeSystem.Constraint ( Constraint (Unify) )
 import Compiler.TypeSystem.Utils.Infer ( merge'into'k'env, merge'into'constr'env )
@@ -27,6 +29,8 @@ import Compiler.TypeSystem.Kind.Infer.Class ( infer'class )
 import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'infer'sigma )
 
 import Compiler.TypeSystem.Error ( Error )
+import Compiler.TypeSystem.InferenceState ( Infer'State(..) )
+import Compiler.Counter ( State(get'counter, update'counter) )
 
 
 {-  This module is a counter-part of the BindSection module in the Type Inference.
@@ -37,18 +41,20 @@ import Compiler.TypeSystem.Error ( Error )
 
 
 {-                                         Kind Assumptions Class Assumptions                   -}
-infer'type'section :: Type'Section -> Infer ([(Name, Kind)], [(Name, Kind)], [Constraint Kind])
+infer'type'section :: Type'Section -> Kind'Check ([(Name, Kind)], [(Name, Kind)])
 infer'type'section (data', classes) = do
   let type'assums   = [ (n, k) | Data (T'C n k) _ _ <- data' ]
-      constr'assums = [ (n, k) | Class n (T'V _ k) _ _ <- classes ]
+      constr'assums = [ (n, k) | Class n (T'V' _ k) _ _ <- classes ]
 
   {-            cl'assumps'd    should always be empty []  -}
-  (k'assumps'd, cl'assumps'd, k'cs'd) <- merge'into'k'env type'assums (merge'into'constr'env constr'assums ( infer'seq infer'data data' ))
+  (k'assumps'd, cl'assumps'd) <- merge'into'k'env type'assums (merge'into'constr'env constr'assums ( infer'seq infer'data data' ))
   
   {- k'assumps'c                should always be empty []  -}
-  (k'assumps'c, cl'assumps'c, k'cs'c) <- merge'into'k'env type'assums (merge'into'constr'env constr'assums ( infer'seq infer'class classes ))
+  (k'assumps'c, cl'assumps'c) <- merge'into'k'env type'assums (merge'into'constr'env constr'assums ( infer'seq infer'class classes ))
 
-  case run'solve (k'cs'd ++ k'cs'c) :: Either Error (Subst Name Kind) of
+  k'cs'all <- get'constraints
+
+  case run'solve k'cs'all {- (k'cs'd ++ k'cs'c) -} :: Either Error (Subst Name Kind) of
     Left err -> throwError err
     Right subst -> do
       -- co ted?
@@ -75,9 +81,9 @@ infer'type'section (data', classes) = do
                 This way the information that they have been defaulted to * is added to the constraints and will be available at the top level.
       -}
       let defaulting'constraints  = map (\ (n, k) -> K'Var n `Unify` k) defaulting'mapping
-          constraints             = k'cs'd ++ k'cs'c ++ defaulting'constraints
 
-      return (kind'assumps, class'assumps, constraints)
+      add'constraints defaulting'constraints
+      return (kind'assumps, class'assumps)
 
 
 make'default :: [(Name, Kind)] -> [(Name, Kind)]
@@ -87,28 +93,45 @@ make'default assumptions = map (, K'Star) all'kind'variables
     all'kind'variables = Set.toList $ free'vars $ map snd assumptions
 
 
-infer'seq :: (a -> Infer ([(Name, Kind)], [(Name, Kind)], [Constraint Kind])) -> [a] -> Infer ([(Name, Kind)], [(Name, Kind)], [Constraint Kind])
-infer'seq _ [] = return ([], [], [])
+infer'seq :: (a -> Kind'Check ([(Name, Kind)], [(Name, Kind)])) -> [a] -> Kind'Check ([(Name, Kind)], [(Name, Kind)])
+infer'seq _ [] = return ([], [])
 infer'seq ti (bs : bss) = do
-  (k'assumps, cl'assumps, k'cs) <- ti bs
-  (k'assumps', cl'assumps', k'cs') <- merge'into'k'env k'assumps (merge'into'constr'env cl'assumps ( infer'seq ti bss ))
-  return (k'assumps ++ k'assumps', cl'assumps ++ cl'assumps', k'cs ++ k'cs')
+  (k'assumps, cl'assumps) <- ti bs
+  (k'assumps', cl'assumps') <- merge'into'k'env k'assumps (merge'into'constr'env cl'assumps ( infer'seq ti bss ))
+  return (k'assumps ++ k'assumps', cl'assumps ++ cl'assumps')
 
 
+kind'specify'annotated :: [Explicit] -> Type'Check [Explicit]
+kind'specify'annotated explicits = do
+  infer'env <- ask
+  infer'state <- get
+  let counter         = get'counter infer'state
+      k'infer'state'  = Infer'State{ counter = counter, constraints = [] }
 
-infer'annotated :: [Explicit] -> Infer [Explicit]
+  case run'infer infer'env (infer'annotated explicits) k'infer'state' of
+    Left err ->
+      throwError err
+    Right (explicits', state) -> do
+      let counter   = get'counter state
+          new'state = update'counter counter infer'state
+      put new'state
+
+      return explicits'
+
+
+infer'annotated :: [Explicit] -> Kind'Check [Explicit]
 infer'annotated explicits = mapM do'kind'explicit explicits
   where
-    do'kind'explicit :: Explicit -> Infer Explicit
+    do'kind'explicit :: Explicit -> Kind'Check Explicit
     do'kind'explicit (Explicit sigma b'g) = do
       sigma' <- kind'infer'sigma sigma
       return $ Explicit sigma' b'g
 
 
-infer'methods :: [Method] -> Infer [Method]
+infer'methods :: [Method] -> Kind'Check [Method]
 infer'methods methods = mapM do'kind'method methods
   where
-    do'kind'method :: Method -> Infer Method
+    do'kind'method :: Method -> Kind'Check Method
     do'kind'method (Method sigma b'g) = do
       sigma' <- kind'infer'sigma sigma
       return $ Method sigma' b'g

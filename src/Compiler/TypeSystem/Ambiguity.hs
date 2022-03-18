@@ -6,23 +6,22 @@ import Data.List (filter)
 import Data.Foldable.Extra (allM)
 import Control.Monad (filterM)
 
-import Compiler.Syntax
-import Compiler.Syntax.Type
+import Compiler.Syntax.Name ( Name )
+import Compiler.Syntax.Predicate ( Predicate(..) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Type(T'Meta), M'V )
 
-import Compiler.TypeSystem.InferenceEnv
-import Compiler.TypeSystem.Solver.Substitutable
-import Compiler.TypeSystem.Infer
-import Compiler.TypeSystem.Solver
-import Compiler.TypeSystem.Solver.Solve
-import Compiler.TypeSystem.Utils.Class
+import Compiler.TypeSystem.InferenceEnv ( Class'Env(defaults) )
+import Compiler.TypeSystem.Solver.Substitutable ( Term(free'vars) )
+import Compiler.TypeSystem.Solver.Solve ( Solve )
+import Compiler.TypeSystem.Utils.Class ( entail )
 
 
-type Ambiguity = (T'V, [Predicate])
+type Ambiguity = (M'V, [Predicate])
 
 
 {- following implementation is really awkward, especially the right part of the list comprehension -}
 -- TODO: ^^^ so try to refactor it
-ambiguities :: Class'Env -> [T'V] -> [Predicate] -> [Ambiguity]
+ambiguities :: Class'Env -> [M'V] -> [Predicate] -> [Ambiguity]
 ambiguities cl'env vars preds = [(v, filter (elem v . free'vars) preds) | v <- toList $ free'vars preds `difference` fromList vars]
 
 
@@ -47,7 +46,7 @@ candidates :: Class'Env -> Ambiguity -> Solve [Type]
 candidates cl'env (v, qs) = do
   let is = [i | Is'In i t <- qs] -- all Class names from the constraints
   let ts = [t | Is'In i t <- qs] -- all types/parameters of the constraints
-  let ts' = [t' | all (T'Var v ==) ts, -- all the types must be just a `Type Variable v`
+  let ts' = [t' | all (T'Meta v ==) ts, -- all the types must be just a `Type Variable v`
                   any (`elem` num'classes) is, -- at least one of the classes must be standard numerical class
                   all (`elem` std'classes) is, -- all of them are standard classes
                   t' <- defaults cl'env]

@@ -34,7 +34,7 @@ import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.Pattern ( Pattern(..) )
 import Compiler.Syntax.Predicate ( Predicate )
 import Compiler.Syntax.Qualified ( Qualified(..) )
-import Compiler.Syntax.Type ( T'C(T'C), T'V(..), Type(..) )
+import Compiler.Syntax.Type ( T'C(T'C), T'V'(..), Type(..) )
 import Compiler.Syntax.Expression ( Expression(..) )
 
 import Compiler.Syntax.ToAST.ESYA ( ESYA(process) )
@@ -180,7 +180,7 @@ instance To'AST Term'Expr Expression where
 
     let assumptions :: [(Name, Kind)]
         assumptions = zip names kinds
-        t'vs = zipWith T'V names kinds
+        t'vs = zipWith T'V' names kinds
 
     expr  <- merge'into'k'env assumptions (to'ast t'expr)
     preds <- merge'into'k'env assumptions (to'ast t'preds)
@@ -544,7 +544,7 @@ instance To'AST Term'Type Type where
     
     case kinding'context Map.!? var of
       Nothing -> throwError $ Internal $ "Unexpected behaviour: While assigning a Kind to a type variable, I have approached a type variable `" ++ show var ++ "` which is not in the kind context."
-      Just kind -> return $ T'Var $ T'V var kind
+      Just kind -> return $ T'Var' $ T'V' var kind
 
   to'ast (Term'T'Id (Term'Id'Const con)) =  do
     kinding'context <- asks Trans'Env.kind'context
@@ -599,7 +599,7 @@ instance To'AST Term'Type Type where
     let names = map (\ (Term'Id'Var n) -> n) vars
         kinds = map K'Var fresh'names
         assumptions = zip names kinds
-        tv's = zipWith T'V names kinds
+        tv's = zipWith T'V' names kinds
     
     qual'type <- merge'into'k'env assumptions (to'ast t'qual'type)
     
@@ -778,7 +778,7 @@ instance To'AST Term'Decl Declaration where
 
     constr'decls <- merge'into'k'env assignments (to'ast t'constr'decls)
 
-    let k'params = map (uncurry T'V) assignments
+    let k'params = map (uncurry T'V') assignments
 
     return $ AST.Data'Decl $ Data (T'C name k) k'params constr'decls
 
@@ -842,7 +842,7 @@ instance To'AST Term'Decl Declaration where
     -- predicates/super classes of the current class must only refer to the `type parameter` (var'name) - so this is enough
     preds <- put'in'k'env triv'assmpt (to'ast t'preds)
 
-    return $ AST.Class'Decl (AST.Class cl'name (T'V var'name param'kind) preds decls)
+    return $ AST.Class'Decl (AST.Class cl'name (T'V' var'name param'kind) preds decls)
 
   to'ast (Term.Instance t'qual'pred t'decls) = do
     {-  NOTE: My current implementation doesn't allow nested/scoped instances

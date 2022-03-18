@@ -1,0 +1,142 @@
+module Main where
+{ 
+  class Num a
+
+; instance Num Int
+; instance Num Double
+
+; class Fractional a
+
+; instance Fractional Double
+
+
+; data Bool = True | False
+
+; data Maybe a = Nothing | Just a
+
+-- NOT BROKEN ANYMORE
+; int = 23
+; num :: Num a => a
+; num = 23
+
+; tru = True
+
+; lambda = \ a b c -> c
+
+; data Pair x y = Pair x y
+
+; aaa :: Bool -> Maybe Bool -> Char
+; aaa = \ b m'b -> 'Y'
+
+; rank' :: forall b c . (forall x . x -> x) -> b -> c -> Char
+; rank' = \ fn b c -> (aaa (fn True)) (fn (Just False))
+
+; data A = A
+; data B = B
+; data C = C
+
+; test = ((rank' (\ i -> i)) A) B
+
+
+; identity :: forall i . i -> i
+; identity = \ i -> i
+
+; data Value a = Val a
+
+; a = Val identity
+
+; data Pair a b = P a b
+
+-- THIS FAILS BECAUSE IMPREDICATIVE TYPES ARE NOT SUPPORTED
+-- ; foo'a :: Value (forall a . a -> a) -> Pair Bool Char
+-- ; foo'a = \ (Val fn) -> (P (fn True)) (fn 'c')
+
+
+-- ; test' :: Maybe a -> Maybe C
+; test' = let { loc :: C -> Maybe a -> Maybe C
+              ; loc = \ i ma -> Just i }
+          in loc C
+
+; test'' = test' Nothing
+
+
+; data Int' = Int'
+
+; t :: Int' -> forall a . Int' -> a -> a -> Int' -- THIS VERSION IS OK
+; t = \ i i' a a' -> i
+-- ; t = undefined
+-- ; t = t
+--
+
+-- WHAT ARE THOSE TWO?
+-- ; t :: Int' -> (forall a . Int' -> a -> a) -> Int'
+-- ; t = \ i fn -> i
+
+
+; e :: Int' -> Int' -> forall a . a -> a -> Int' -- THIS VERSION IS OK
+; e = (\ i i' a a' -> i)
+--
+
+-- WHAT ARE THOSE TWO?
+-- ; e :: Int' -> (Int' -> forall a . a -> a) -> Int'
+-- ; e = (\ i fn -> i)
+
+-- this shouldn't work with the versions NOT marked as OK
+
+; iif = if True then t else e
+
+
+; undefined = undefined
+
+; foo :: a -> a -> Int'
+; foo = let { fn :: m -> n -> Int'
+            ; fn = \ m n -> Int' }
+        in fn
+
+
+-- -- THIS SHOULD NOT WORK
+-- ; impre'maybe :: Maybe (forall a . a -> a)
+-- ; impre'maybe = impre'maybe -- this DOES NOT fail
+-- -- ; impre'maybe = undefined -- this fails
+-- -- ; impre'maybe = Just (\ i -> i) -- this fails
+-- 
+
+-- ; one :: Int -> (forall x . x -> x) -> Int
+-- ; one = one
+
+-- ; two :: Char -> (forall z . z -> z) -> Char
+-- ; two = two
+
+-- ; test = (one 23) two -- the type error for this expression doesn't even make sense
+-- Error: [Shape] Couldn't match type `t` :: * with `Char` :: *
+-- what is up with Char?
+-- I think it makes sense now
+
+
+-- this behaves correctly I think
+-- ; one :: Int -> a -> Int
+-- ; one = one
+-- 
+-- ; two :: Char -> (forall z . z -> z) -> Char
+-- ; two = two
+-- 
+-- ; test = (one 23) two
+
+
+---------------------------------------------
+-- this works fine
+-- ; one :: Int -> ((forall x . x -> x) -> Char) -> Int
+-- ; one = one
+-- ; two :: (forall z . z -> z) -> Char
+-- ; two = two
+-- ; test = (one 23) two
+
+
+--------------------------------------------
+-- simple wrong test
+-- ; simple'fn :: Char -> Bool
+-- ; simple'fn = \ c -> True
+-- ; bad'bad = simple'fn True
+
+
+}

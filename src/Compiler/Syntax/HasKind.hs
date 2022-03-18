@@ -2,16 +2,20 @@ module Compiler.Syntax.HasKind where
 
 
 import Compiler.Syntax.Kind ( Kind(..) )
-import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(..), T'V(..), Type(..) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'C(..), T'V'(..), Type(..), M'V(..) )
 
 
 class HasKind t where
   kind :: t -> Kind
-  -- NOTE: maybe make it return (Maybe Kind)
 
 
-instance HasKind T'V where
-  kind (T'V _ k) = k
+instance HasKind T'V' where
+  kind (T'V' _ k) = k
+
+
+instance HasKind M'V where
+  kind (Tau _ k) = k
+  kind (Sigma _ k) = k
 
 
 instance HasKind T'C where
@@ -20,7 +24,8 @@ instance HasKind T'C where
 
 {- following definition is only partial function, it is assumed that the types are always well formed -}
 instance HasKind Type where
-  kind (T'Var tv) = kind tv
+  kind (T'Var' tv) = kind tv
+  kind (T'Meta mv) = kind mv
   kind (T'Con tcon) = kind tcon
   kind (T'Tuple _) = K'Star -- assuming the type is well formed
   kind (T'App t _)

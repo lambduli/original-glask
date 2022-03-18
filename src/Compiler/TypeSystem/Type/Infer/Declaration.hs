@@ -13,9 +13,9 @@ import Compiler.Syntax.Declaration ( Declaration )
 import Compiler.Syntax.BindGroup ( Bind'Group(Bind'Group) )
 import Compiler.Syntax.Kind ( Kind )
 import Compiler.Syntax.Predicate ( Predicate )
-import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, Type, T'V )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, Type, T'V', M'V )
 
-import Compiler.TypeSystem.Infer ( Infer )
+import Compiler.TypeSystem.Infer ( Infer, Type'Check, get'constraints )
 import Compiler.TypeSystem.Constraint ( Constraint )
 import Compiler.TypeSystem.Assumption ( Assumption )
 import Compiler.TypeSystem.BindSection ( Bind'Section )
@@ -23,7 +23,7 @@ import Compiler.TypeSystem.Binding ( Explicit(Explicit), Implicit(Implicit) )
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env(..) )
 import Compiler.TypeSystem.Solver.Substitution ( Subst(..) )
 import Compiler.TypeSystem.Program ( Program(..) )
-import Compiler.TypeSystem.Kind.Infer.TypeSection ( infer'annotated )
+import Compiler.TypeSystem.Kind.Infer.TypeSection ( infer'annotated, kind'specify'annotated )
 
 import qualified Compiler.Analysis.Syntactic.Annotations as Annotations
 import qualified Compiler.Analysis.Syntactic.Bindings as Bindings
@@ -46,7 +46,7 @@ import Compiler.TypeSystem.Solver.Composable ( Composable(merge) )
           This function might be used just to utilize it.
  -}
 
-infer'decls :: [Declaration] -> Infer ([Predicate], [Assumption Sigma'Type], [Constraint Type])
+infer'decls :: [Declaration] -> Type'Check ([Predicate], [Assumption Sigma'Type])
 infer'decls decls = do
   let (explicits, implicits) = to'bind'section decls
 
@@ -55,7 +55,7 @@ infer'decls decls = do
   let {-  !!! Bude potreba substituovat kindy do tech explicitu abych jim plne specifikoval kinds. !!!  -}
       substituted'explicits = map (\ (Explicit sigma b'g) -> Explicit (apply kind'subst sigma) b'g) explicits
 
-  new'expls <- infer'annotated substituted'explicits
+  new'expls <- kind'specify'annotated substituted'explicits
 
   {- I am honestly not sure I understand it right - but it seems that it doesn't really matter if I fully generalize here,
     or later for the whole top level binding. Both versions seem to fail for the same not-well-formed programs.
@@ -118,17 +118,17 @@ to'bind'section decls = (explicits, implicits)
 
 
 -- TOP LEVEL function
-infer'section :: Bind'Section -> Infer ([Predicate], [Assumption Sigma'Type], [Constraint Type])
-infer'section b'section@(explicits, implicits) = do
-  kind'subst <- asks kind'substitution
+-- infer'section :: Bind'Section -> Type'Check ([Predicate], [Assumption Sigma'Type], [Constraint Type])
+-- infer'section b'section@(explicits, implicits) = do
+--   kind'subst <- asks kind'substitution
 
-  let {-  !!! Bude potreba substituovat kindy do tech explicitu abych jim plne specifikoval kinds. !!!  -}
-      substituted'explicits = map (\ (Explicit sigma b'g) -> Explicit (apply kind'subst sigma) b'g) explicits
+--   let {-  !!! Bude potreba substituovat kindy do tech explicitu abych jim plne specifikoval kinds. !!!  -}
+--       substituted'explicits = map (\ (Explicit sigma b'g) -> Explicit (apply kind'subst sigma) b'g) explicits
 
-  new'expls <- infer'annotated substituted'explicits
+--   new'expls <- infer'annotated substituted'explicits
 
-  infer'bind'section (new'expls, implicits)
-  -- infer'types b'section
+--   infer'bind'section (new'expls, implicits)
+--   -- infer'types b'section
 
 
 {-  So the question is - do I use this function? More specificaly - do I want to solve the constraints and reduce all the remaining
@@ -136,7 +136,7 @@ infer'section b'section@(explicits, implicits) = do
     If I do the context reduction, I probably can't have local bindings with types that "forget" some of the Constraints.
     That might be a good thing, it might be a bad thing - I am not entirely sure right now.
 -}
-infer'types :: Bind'Section -> Infer ([Predicate], [Assumption Sigma'Type], [Constraint Type])
+infer'types :: Bind'Section -> Type'Check ([Predicate], [Assumption Sigma'Type])
 infer'types bg = do
   (preds, assumptions, cs't) <- infer'bind'section bg
 
@@ -151,30 +151,33 @@ infer'types bg = do
   --            So do I need the retained predicates to figure out ambiguities?
   --            If there are no ambiguities, do I get an empty list in `preds`?
   -- TODO:  Investigate. I want to know if it's going to be empty, if I only write declarations which are not ambiguous.
-  case run'solve cs't :: Either Error (Subst T'V Type) of
+  
+  cs't <- get'constraints
+  case run'solve cs't :: Either Error (Subst M'V Type) of
     Left err -> throwError err
     Right subst -> do
       Infer'Env{ type'env = t'env, class'env = c'env } <- ask
-      let rs = runIdentity $ runExceptT $ reduce c'env (apply subst preds)
-      case rs of
-        Left err -> throwError err
-        Right rs' -> do
-          case runIdentity $ runExceptT $ default'subst c'env [] rs' of
-            Left err -> throwError err
-            Right s' -> do
-              case runIdentity $ runExceptT (s' `merge` subst) of
-                Left err -> throwError err
-                Right subst' -> do
-                  {-  QUESTION: Shouldn't I somehow check that the defaulting substitution effectivelly eliminates all the predicates?  -}
-                  {-            Or is it OK if there are some predicates which bubble-up to FROM the top level declarations?            -}
-                  {-  What I meant was - if they are not eliminated by the defaulting substitution, they are effectively unsolved right?
-                      But maybe the function default'subst fails if it can't eliminate all of them. I think that's the case and the reason
-                      why it's OK. -}
+      return (preds, apply subst assumptions)
+      -- let rs = runIdentity $ runExceptT $ reduce c'env (apply subst preds)
+      -- case rs of
+      --   Left err -> throwError err
+      --   Right rs' -> do
+      --     case runIdentity $ runExceptT $ default'subst c'env [] rs' of
+      --       Left err -> throwError err
+      --       Right s' -> do
+      --         case runIdentity $ runExceptT (s' `merge` subst) of
+      --           Left err -> throwError err
+      --           Right subst' -> do
+      --             {-  QUESTION: Shouldn't I somehow check that the defaulting substitution effectivelly eliminates all the predicates?  -}
+      --             {-            Or is it OK if there are some predicates which bubble-up to FROM the top level declarations?            -}
+      --             {-  What I meant was - if they are not eliminated by the defaulting substitution, they are effectively unsolved right?
+      --                 But maybe the function default'subst fails if it can't eliminate all of them. I think that's the case and the reason
+      --                 why it's OK. -}
 
-                  -- NOTE:  Just testing what happens if I apply the substitution to the method annotations
-                  --        It shoulnd't do any harm. It also shouldn't really have any effect.
-                  --        The type scheme given by the programmer should not change
-                  -- let ms = map (\ (n, q't) -> (n, close'over q't)) m'anns
-                  -- return (apply subst' $ Map.fromList $ assumptions ++ ms, cs'k ++ cs'k')
+      --             -- NOTE:  Just testing what happens if I apply the substitution to the method annotations
+      --             --        It shoulnd't do any harm. It also shouldn't really have any effect.
+      --             --        The type scheme given by the programmer should not change
+      --             -- let ms = map (\ (n, q't) -> (n, close'over q't)) m'anns
+      --             -- return (apply subst' $ Map.fromList $ assumptions ++ ms, cs'k ++ cs'k')
 
-                  return (preds, apply subst' assumptions, cs't)
+      --             return (preds, apply subst' assumptions, cs't)

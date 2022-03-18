@@ -11,7 +11,7 @@ import Control.Monad.Identity
 import Control.Monad.Except
 
 
-import Compiler.Parser (parse'expr)
+import Compiler.Parser ( parse'expr )
 
 import Compiler.Counter
 
@@ -61,7 +61,15 @@ import Compiler.TypeSystem.Type.Infer.Expression
 import Compiler.TypeSystem.Solver
 import Compiler.TypeSystem.Utils.Class
 import Compiler.TypeSystem.Solver.Composable
-import Compiler.TypeSystem.InferenceState (Infer'State)
+import Compiler.TypeSystem.InferenceState ( Infer'State(..) )
+import qualified Compiler.TypeSystem.InferenceState as I'State
+
+import Compiler.TypeSystem.Expected ( Expected(Infer) )
+import Compiler.TypeSystem.Actual ( Actual(Inferred) )
+import Compiler.Counter (State(get'counter))
+import Compiler.TypeSystem.Infer (get'constraints, Type'Check)
+import Compiler.Syntax (Expression, Predicate)
+import Compiler.TypeSystem.Constraint (Constraint)
 
 
 read'expr :: String -> Translate'Env -> Translate'State -> Either Semantic'Error (Expression, Translate'State)
@@ -92,12 +100,18 @@ read'expr input trans'env trans'state = do
 
 
 -- TODO: move this function into a TypeSystem module (and rename it probably)
-infer'type :: Expression -> Infer'Env -> Infer'State -> Either Error (Sigma'Type, Infer'State)
-infer'type expr i'env i'state = do
+infer'type :: Expression -> Infer'Env -> Counter -> Either Error (Sigma'Type, Counter)
+infer'type expr i'env counter = do
   -- ([Predicate], Type, [Constraint Type], [Constraint Kind])
-  ((preds, type', cs't), i'state') <- run'infer i'env (infer'expr expr) i'state
+  let t'i'state = Infer'State{ I'State.counter = counter, constraints = [] }
+  ((preds, actual, cs't), i'state') <- run'infer i'env (infer'expr' expr Infer) t'i'state
 
-  subst <- run'solve cs't  :: Either Error (Subst T'V Type)
+  -- TODO: refactor later (get rid of the pattern matching, possibly by calling function which actually returns type instead of Actual)
+  type' <- case actual of
+              Inferred t  -> Right t
+              _           -> Left $ Unexpected "Internal Error - infer'type in the REPL" 
+
+  subst <- run'solve cs't  :: Either Error (Subst M'V Type)
 
   let Infer'Env{ type'env = t'env, class'env = c'env } = i'env
   
@@ -113,4 +127,15 @@ infer'type expr i'env i'state = do
 
   let scheme = close'over $ apply subst' rs :=> apply subst' type'
 
-  return (scheme, i'state')
+  let counter' = get'counter i'state'
+
+  return (scheme, counter')
+
+
+infer'expr' :: Expression -> Expected Type -> Type'Check ([Predicate], Actual Type, [Constraint Type])
+infer'expr' expr expected = do
+  (preds, actual) <- infer'expr expr expected
+
+  constraints <- get'constraints
+
+  return (preds, actual, constraints)

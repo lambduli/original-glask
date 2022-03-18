@@ -50,8 +50,9 @@ module Main where
 -- ; malformed :: forall . Maybe -- this indeed fails to type check - the right side of the `.` has not a kind *
 -- ; malformed = malformed
 -- THIS FAILS BECAUSE (forall . Maybe) IS NOT UNIFIABLE WITH Maybe
--- ; fails :: (forall . Maybe) Int
--- ; fails = Just 23
+-- IT NO LONGER FAILS
+; fails :: (forall . Maybe) Int
+; fails = Just 23
 -- THIS SHOULD ALSO FAIL
 -- ; data Ex = Ex (forall . Maybe)
 
@@ -185,10 +186,11 @@ module Main where
 --     - 3) removing the Show m from fa
 --     - 4) removing the inner annotation altogether
 -- compare with GHC
-; foo'local :: Show a => a -> b -> String
-; foo'local = let { fa :: Show m => m -> m -> String
-                  ; fa = \ m n -> show m }
-              in  fa
+-- THIS IS BROKEN (ON PURPOSE)
+-- ; foo'local :: Show a => a -> b -> String
+-- ; foo'local = let { fa :: Show m => m -> m -> String
+--                   ; fa = \ m n -> show m }
+--               in  fa
 
 
 -- THIS MUST FAIL - BECAUSE WE ARE WIDENING THE POLY TYPE
@@ -204,5 +206,7 @@ module Main where
 --                 in  fa
 --
 
+
+; identifier = identifier
 
 }

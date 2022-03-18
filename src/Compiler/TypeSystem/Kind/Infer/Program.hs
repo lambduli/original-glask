@@ -9,7 +9,7 @@ import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.Kind ( Kind )
 import Compiler.Syntax ( Predicate(Is'In), Constr'Decl (Con'Decl, Con'Record'Decl) )
 
-import Compiler.TypeSystem.Infer ( Infer )
+import Compiler.TypeSystem.Infer ( Infer, Kind'Check, get'constraints )
 import Compiler.TypeSystem.Program ( Program(..) )
 import Compiler.TypeSystem.Constraint ( Constraint )
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env(constraint'env), Kind'Env, Constraint'Env )
@@ -71,7 +71,7 @@ import Compiler.TypeSystem.Error ( Error(..) )
   -- undefined
 
 
-infer'kinds :: Program -> Infer (Kind'Env, Constraint'Env, Subst Name Kind)
+infer'kinds :: Program -> Kind'Check (Kind'Env, Constraint'Env, Subst Name Kind)
 infer'kinds Program{ data'n'class'sections = type'sections } = do
   -- neni treba abych analyzoval method'annotations
   -- metody a jejich anotace jsou uz v classach uvnitr type'sections
@@ -80,7 +80,8 @@ infer'kinds Program{ data'n'class'sections = type'sections } = do
   -- bude v ramci typove anotace zjevne indikovat svuj presny kind a pokud ne - defaulting ji zprisni na *
   --
 
-  (kind'assumps, class'assumps, k'cs) <- infer'seq infer'type'section type'sections
+  (kind'assumps, class'assumps) <- infer'seq infer'type'section type'sections
+  k'cs <- get'constraints
 
   {-  NOTE: This is the TOP-LEVEL-SOLVE which takes all the constraints from all sections and solves them again.
             The goal is to obtain top-level substitution - that substitution will then be applied to parts of the Program. -}

@@ -9,7 +9,7 @@ import Compiler.Syntax.BindGroup ( Bind'Group )
 import Compiler.Syntax.Declaration ( Declaration, Data, Class )
 import Compiler.Syntax.HasKind ( HasKind(kind) )
 import Compiler.Syntax.Name ( Name )
-import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'V(..), Type(..) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'V'(..), Type(..), M'V (Tau) )
 
 import Compiler.TypeSystem.Program ( Program(..) )
 import Compiler.TypeSystem.Binding ( Explicit(Explicit), Implicit(Implicit), Method(..) )
@@ -30,7 +30,6 @@ import qualified Compiler.Analysis.Semantic.Dependency.Binding as Bindings
 import qualified Compiler.Analysis.Semantic.Dependency.Types as Types
 
 
-
 to'program :: [Declaration] -> Program
 to'program decls = Program{ bind'section = (explicits, implicits), methods = methods, method'annotations = m'anns, data'n'class'sections = type'sections {- data'declarations = data'decls -} }
   where
@@ -49,9 +48,9 @@ to'program decls = Program{ bind'section = (explicits, implicits), methods = met
         make'method :: (Name, Bind'Group, Type) -> Method
         make'method (method'name, bind'group, instance'type) =
           let Just (_, T'Forall tvs qualified'type, class'var'name) = find (\ (m'n, _, _) -> m'n == method'name) method'annotations -- NOTE: This should always find the result, so the pattern matching on Just (...) should always succeed
-              substitution :: Subst T'V Type
-              substitution = Sub (Map.singleton (T'V class'var'name (kind instance'type)) instance'type) -- NOTE: the Type Variable must have the same Kind as the Instance Type
-              scheme = T'Forall (filter (\ (T'V n _) -> n /= class'var'name) tvs ) $ apply substitution qualified'type -- now I have the Type Scheme
+              substitution :: Subst T'V' Type
+              substitution = Sub (Map.singleton (T'V' class'var'name (kind instance'type)) instance'type) -- NOTE: the Type Variable must have the same Kind as the Instance Type
+              scheme = T'Forall (filter (\ (T'V' n _) -> n /= class'var'name) tvs ) $ apply substitution qualified'type -- now I have the Type Scheme
           in Method scheme bind'group
 
  

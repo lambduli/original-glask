@@ -10,7 +10,7 @@ module Compiler.Syntax
   , Predicate(..)
   , Qualified(..)
   , Signature(..)
-  , T'V(..), T'C(..), Type(..), Sigma'Type, Rho'Type, Tau'Type, sh
+  , T'V'(..), T'C(..), Type(..), Sigma'Type, Rho'Type, Tau'Type, M'V(..)
   , Bind'Group(..)
   , Instance
   ) where

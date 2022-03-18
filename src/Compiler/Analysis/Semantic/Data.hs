@@ -22,7 +22,7 @@ extract declarations = concat $ mapMaybe collect declarations
 
 collect :: Declaration -> Maybe [(Name, Sigma'Type)]
 collect (Data'Decl (Data tc@(T'C n k) t'params constr'decls))
-  = let res'type = foldl T'App (T'Con tc) $ map T'Var t'params
+  = let res'type = foldl T'App (T'Con tc) $ map T'Var' t'params
 
         con'type :: Constr'Decl -> [(Name, Type)]
         con'type (Con'Decl c'name types)
