@@ -166,17 +166,17 @@ function fix_shunting_yard() {
       // put it into the application queue
       app_qu.push(tok)
 
-      // but also - there could be a sequence of postfix operators on the op_stack
-      // those would belong to something else
-      // example: a ! b ! c
-      // so when I am reading `b` - there's a `!` on the op_stack
-      if (o2 = op_stack[op_stack.length - 1], o2 && (fixities[o2].fixity === 'postfix')) {
-        // do the CUT
-        let top = undefined
-        while (op_stack.length && (top = op_stack[op_stack.length - 1], top) && fixities[top].fixity === 'postfix') {
-          output_qu.push(op_stack.pop())
-        }
-      }
+      // // but also - there could be a sequence of postfix operators on the op_stack
+      // // those would belong to something else
+      // // example: a ! b ! c
+      // // so when I am reading `b` - there's a `!` on the op_stack
+      // if (o2 = op_stack[op_stack.length - 1], o2 && (fixities[o2].fixity === 'postfix')) {
+      //   // do the CUT
+      //   let top = undefined
+      //   while (op_stack.length && (top = op_stack[op_stack.length - 1], top) && fixities[top].fixity === 'postfix') {
+      //     output_qu.push(op_stack.pop())
+      //   }
+      // }
     }
     
   
@@ -274,7 +274,7 @@ function fix_shunting_yard() {
           // so they might also need to go
           // this anly can stop, if there's a weak prefix - because that would mean, it should be applied to the whole function application only
           // this CANT be done - because prefixes bind to the right same as function application - and fn application has an advantage
-          while (op_stack.length && (top = op_stack[op_stack.length - 1], top) && fixities[top].fixity === 'postfix' || fixities[top].fixity === 'prefix') {
+          while (op_stack.length && (top = op_stack[op_stack.length - 1], top) && (fixities[top].fixity === 'postfix' || fixities[top].fixity === 'prefix')) {
           // while (op_stack.length) {
             output_qu.push(op_stack.pop())
           }
