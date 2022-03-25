@@ -7,7 +7,7 @@ module Compiler.TypeSystem.Utils.Infer where
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-import Data.List ( partition, (\\) )
+import Data.List ( partition, (\\), zipWith )
 import Data.Bifunctor ( Bifunctor(second) )
 
 import Control.Monad.Reader ( asks, MonadReader(local) )
@@ -41,6 +41,9 @@ import Compiler.TypeSystem.Expected ( Expected(..) )
 import Compiler.TypeSystem.Actual ( Actual(..) )
 import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Expression ( infer'expr )
 import Compiler.TypeSystem.Solver ( run'solve )
+
+
+import Debug.Trace
 
 
 quantify :: [M'V] -> Qualified Type -> Sigma'Type
@@ -149,6 +152,8 @@ instantiate (T'Forall vars qual'type) = do
   let params = map (\ (T'V' n _) -> n) vars
       kinds  = map (\ (T'V' _ k) -> k) vars
 
+      
+
       -- f (T'V' n k) = real'fresh params n >>= \ fresh -> return (fresh, k)
   fresh'strs <- mapM (real'fresh params) vars
 
@@ -168,6 +173,7 @@ instantiate (T'Forall vars qual'type) = do
   --        I don't think it is possible for the `a` to be anything else than `*` in any instantiation.
   --        So the assumptions seems safe and sound.
   let subst = Sub $ Map.fromList $ zip vars meta'vars
+
   return $ apply subst qual'type
 
 {-  NOTE: Making the function covering/total. Instantiating non forall type is just a lift into Qualified Type  -}
@@ -182,6 +188,13 @@ instantiate type' = return $ qualify type'
 -}
 close'over :: Qualified Type -> Sigma'Type
 close'over = normalize . generalize Map.empty
+
+
+close'over' :: Qualified Type -> Sigma'Type
+close'over' q'type =
+  let ftvs :: [T'V']
+      ftvs = Set.toList $ free'vars q'type
+  in T'Forall ftvs q'type
 
 
 {-  TODO: In the second stage of the "ExplicitForAll" adoption this function should take into account
@@ -258,13 +271,16 @@ normalize _ = error "Internal Error: 'normalize' was called with a non forall ty
 
 generalize :: Type'Env -> Qualified Type -> Sigma'Type
 generalize env qual'type
-  = T'Forall vars qual'type
+  = T'Forall vars qual'type'
     where
+      fvt :: Set.Set M'V
       fvt = free'vars qual'type
+      fve :: Set.Set M'V
       fve = free'vars env
-      vars = Set.toList $ fvt `Set.difference` fve
-
-
+      generalized = Set.toList $ fvt `Set.difference` fve
+      vars = map (\ (Tau n k) -> T'V' n k) generalized
+      sub = Sub $ Map.fromList $ zipWith (\ m tv -> (m, T'Var' tv)) generalized vars
+      qual'type' = apply sub qual'type
 
 
 {-  Utilities for working with Type Contexts  -}
@@ -387,14 +403,12 @@ inst'sigma sigma Infer = do
   return (preds, Inferred type')
 inst'sigma sigma (Check rho) = do
   preds <- subs'check'rho sigma rho
-  -- let oo = trace ("{{ tracing inst'sigma }}   constraints: " ++ show constraints ++ "   |  sigma: " ++ show sigma ++ "   |  rho: " ++ show rho) constraints
   return (preds, Checked)
 
 
 subs'check :: Sigma'Type -> Sigma'Type -> Type'Check [Predicate]
 subs'check sigma'l sigma'r = do
   (skolems, preds'r, rho'r) <- skolemise sigma'r
-  -- let aa = trace ("{{{{{  subs'check }}}}}     sigma'r: " ++ show sigma'r ++ " |  skolemised sigma'r - rho'r: " ++ show rho'r) skolems
   preds <- subs'check'rho sigma'l rho'r
 
   constraints <- get'constraints
@@ -418,21 +432,17 @@ subs'check'rho :: Sigma'Type -> Rho'Type -> Type'Check [Predicate]
 subs'check'rho sigma@(T'Forall _ _) rho = do                              --  SPEC
   preds :=> rho' <- instantiate sigma
   preds' <- subs'check'rho rho' rho
-  -- let bb = trace ("[[ tracing subs'check'rho SPEC ]]   sigma: " ++ show sigma ++ "   rho': " ++ show rho' ++ "   rho: " ++ show rho ++ "   constraints: " ++ show constraints) constraints
   return (preds ++ preds')
 
 subs'check'rho rho'l (arg'r `T'Fun` res'r) = do                           --  FUN1
   (arg'l, res'l) <- unify'fun rho'l
-  -- let oo = trace ("{{ tracing subs'check'rho FUN1 }}   arg'l : " ++ show arg'l ++ "   res'l: " ++ show res'l ++ "    | constraints: " ++ show constraints ++ "\n") constraints
   subs'check'fun arg'l res'l arg'r res'r
 
 subs'check'rho (arg'l `T'Fun` res'l) rho'r = do                           --  FUN2
   (arg'r, res'r) <- unify'fun rho'r
-  -- let oo = trace ("{{ tracing subs'check'rho FUN2 }}   arg'l : " ++ show arg'l ++ "   res'l: " ++ show res'l ++ "    | constraints: " ++ show constraints ++ "\n") constraints
   subs'check'fun arg'l res'l arg'r res'r
 
 subs'check'rho tau'l tau'r = do                                           --  MONO
-  -- let aa = trace ("{{ tracing subs'check'rho MONO }}   taul: " ++ show tau'l ++ "   taur: " ++ show tau'r ++ "\n") tau'l
   add'constraints [tau'l `Unify` tau'r]
   return []
 
@@ -441,9 +451,6 @@ subs'check'fun :: Sigma'Type -> Rho'Type -> Sigma'Type -> Rho'Type -> Type'Check
 subs'check'fun a1 r1 a2 r2 = do
   preds <- subs'check a2 a1
   preds' <- subs'check'rho r1 r2
-
-  -- let oo = trace ("{{ tracing subs'check'fun }}  a1: " ++ show a1 ++ "  r1: " ++ show r1 ++ "  a2: " ++ show a2 ++ "  r2: " ++ show r2) constraints
-  -- let ee = trace ("{{ tracing subs'check'fun }}  constraints: " ++ show constraints ++ "   constraints': " ++ show constraints' ++ "\n") oo
 
   return (preds ++ preds')
 

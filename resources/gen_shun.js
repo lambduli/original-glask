@@ -15,8 +15,24 @@
 
 // const input_str = "|> |] a ! + b * c"
 
-const input_str = "|> |] a" // "a ! b ! c ! + x y" // "a - - b" // "a ! ! |> b ! c ! + x y" // "a b c" // "|] a ! ? b ! c" // "a |> b |> c !" // "|> a ! b ! c"  // "z + x * |> a ! |> b |> c" // "x + |> (> a b ! ? - c" // "x + |> a b ! ? - |> c ! + z" // "|> a b + c" // "|> a b ! ?" // "x + |> a b ! ? + c"
-// x + (|> (((a b !) ?) + c)) // x (((a b ! ?) c +) |>) +
+// const input_str = "a ! |> b"
+// const input_str = "|> |] |> |] a"
+// const input_str = "a ! b ! c ! + x y"
+// const input_str = "a - - b"
+// const input_str = "a ! ! |> b ! c ! + x y"
+// const input_str = "a b c"
+// const input_str = "|] a ! ? b ! c"
+// const input_str = "a |> b |> c !"
+// const input_str = "|> a ! b ! c"
+// const input_str = "z + x * |> a ! |> b |> c"
+// const input_str = "x + |> (> a b ! ? - c"
+// const input_str = "x + |> a b ! ? - |> c ! + z"
+// const input_str = "|> a b + c"
+// const input_str = "|> a b ! ?"
+// const input_str = "x + |> a b ! ? + c"
+
+// x + (|> (((a b !) ?) + c))
+// x (((a b ! ?) c +) |>) +
 
 console.log(input_str)
 
@@ -143,6 +159,24 @@ function disambiguate_unary(input) {
   return output
 }
 
+/*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+*/
+
 // now the algorithm
 function fix_shunting_yard() {
   // prepare the input
@@ -161,6 +195,8 @@ function fix_shunting_yard() {
     let app_qu = []
 
   for (const tok of pre_processed) {
+    // console.log("    | current output: ", output_qu.join(' '), "   | current token: ", tok)
+
 
     if (token_type(tok) == "value") {
       // put it into the application queue
@@ -174,6 +210,7 @@ function fix_shunting_yard() {
       //   // do the CUT
       //   let top = undefined
       //   while (op_stack.length && (top = op_stack[op_stack.length - 1], top) && fixities[top].fixity === 'postfix') {
+      //     console.log("_____________ I AM DOING SOMETHING ________________")
       //     output_qu.push(op_stack.pop())
       //   }
       // }
@@ -191,7 +228,7 @@ function fix_shunting_yard() {
         // so the |> is on the top of the Operator Stack and |] is o1
 
         // >>> PREfix operator has an implicit advantage against all operators which are already on the Operator Stack
-        // >>> But it also has a responsibility to check if some PREfix operator at the end of the input has a higher precedence then itself
+        // >>> But it also has a responsibility to check if some PREfix operator at the end of the output has a higher precedence then itself
         // >>> if that would happen AND the operator stack and app queue are both empty -> error
         // >>> Check if the operator stack and app queue are both empty and the end of the output is the prefix operator with higher precedence
 
@@ -200,55 +237,65 @@ function fix_shunting_yard() {
         // DOES THAT    EVER    HAPPEN? IT SEEMS LIKE SOMETHING THAT DOESN'T REALLY HAPPEN.
         // how can it happen that there's nothing on the OP-STACK? But there's something on the OUTPUT?
         //
-        if (app_qu.length === 0 && op_stack.length === 0) {
-          // >>> check the end of the output
-          const end = output_qu[output_qu.length - 1]
-          if (end && token_type(end) === 'operator' && fixities[end].precedence > fixities[tok].precedence) {
-            // >>> report the error
-            // <<< Maybe I could do without this error and instead offer another implicit advantage to the cases like
-            // |> |] b + c
-            // where even thought |> is strongest and |] is the weakest, it is still understood like |> (|] (b + c))
-            // and it feels little bit unintuitive, but it can be like that just fine
-            console.error(`Conflict between prefix operator '${tok}' and operator '${end}' which has higher precedence.\nThe precedences should go from left to right like from weak to strong.`)
-            throw void 0
-            // >>> TODO: or later - just print warning but proceed
-          }
+        //
+        // I think this checks were created because I thought that it can happen that some operator might go directly on the output
+        // before I am even able to check if it should go there.
+        // Like the case with |> |] a + b
+        // if the |> would be on the output immediately (for some reason)
+        // that would be bad, because 
+        // if (app_qu.length === 0 && op_stack.length === 0) {
+        //   // >>> check the end of the output
+        //   const end = output_qu[output_qu.length - 1]
+        //   if (end && token_type(end) === 'operator' && fixities[end].precedence > fixities[tok].precedence) {
+        //     // >>> report the error
+        //     // <<< Maybe I could do without this error and instead offer another implicit advantage to the cases like
+        //     // |> |] b + c
+        //     // where even thought |> is strongest and |] is the weakest, it is still understood like |> (|] (b + c))
+        //     // and it feels little bit unintuitive, but it can be like that just fine
+        //     console.error(`Conflict between prefix operator '${tok}' and operator '${end}' which has higher precedence.\nThe precedences should go from left to right like from weak to strong.`)
+        //     throw void 0
+        //     // >>> TODO: or later - just print warning but proceed
+        //   }
 
-          // >>> if both operators are prefix (do I need to check that?) with the same precedence
-          // >>> they can be mixed (associativity is the same) but they have LEFT associativity
-          // >>> that yields a warning
-          // >>> example: |> |] a     the point is - because they are LEFT assoc - it would actually look like ( |> |] ) a
-          // >>> that wouldn't make sense - there can be an implicit disambiguation but it will produce a warning
-          else if (end && token_type(end) === 'operator' && fixities[end].precedence === fixities[tok].precedence && fixities[end].assoc === 'left' && fixities[tok].assoc === 'left') {
-            console.warn(`Clonflict between prefix operator '${tok}' and operator '${end}'. They both have LEFT associativy. Parsing will proceed after an implicit disambiguation.`)
+        //   // >>> if both operators are prefix (do I need to check that?) with the same precedence
+        //   // >>> they can be mixed (associativity is the same) but they have LEFT associativity
+        //   // >>> that yields a warning
+        //   // >>> example: |> |] a     the point is - because they are LEFT assoc - it would actually look like ( |> |] ) a
+        //   // >>> that wouldn't make sense - there can be an implicit disambiguation but it will produce a warning
+        //   else if (end && token_type(end) === 'operator' && fixities[end].precedence === fixities[tok].precedence && fixities[end].assoc === 'left' && fixities[tok].assoc === 'left') {
+        //     console.warn(`Clonflict between prefix operator '${tok}' and operator '${end}'. They both have LEFT associativy. Parsing will proceed after an implicit disambiguation.`)
 
 
-          }
+        //   }
 
-          // >>> Or if the end has the same precedence and is also prefix (do I need to check that it's prefix or?)
-          // >>> BUT they can't be mixed because of their associativity (not the same or )
-          else if (end && token_type(end) === 'operator' && fixities[end].precedence === fixities[tok].precedence) {
-            if (fixities[end].assoc !== fixities[tok].assoc || fixities[end].assoc === 'none' && fixities[tok].assoc === 'none') {
-              console.error(`Conflict between prefix operator '${tok}' and operator '${end}'. They can't be mixed together.`)
-              throw void 0
-            }
-          }
+        //   // >>> Or if the end has the same precedence and is also prefix (do I need to check that it's prefix or?)
+        //   // >>> BUT they can't be mixed because of their associativity (not the same or )
+        //   else if (end && token_type(end) === 'operator' && fixities[end].precedence === fixities[tok].precedence) {
+        //     if (fixities[end].assoc !== fixities[tok].assoc || fixities[end].assoc === 'none' && fixities[tok].assoc === 'none') {
+        //       console.error(`Conflict between prefix operator '${tok}' and operator '${end}'. They can't be mixed together.`)
+        //       throw void 0
+        //     }
+        //   }
 
-          // >>> the Operator Stack and App Queue are empty, BUT that's OK
-          // >>> this PREfix operator has the right of way
-          // >>> current Operator goes on the Operator Stack
-          // op_stack.push(tok) // >>> Not doing that here, common code after the IF and ELSE IF
-          // does that before the end of PREfix
-        }
+        //   // >>> the Operator Stack and App Queue are empty, BUT that's OK
+        //   // >>> this PREfix operator has the right of way
+        //   // >>> current Operator goes on the Operator Stack
+        //   // op_stack.push(tok) // >>> Not doing that here, common code after the IF and ELSE IF
+        //   // does that before the end of PREfix
+        // }
 
         // >>> the Operator Stack or App Queue are not empty
         // >>> If the App Queue is not empty I will need to flush it on the Output
-        else if (app_qu.length > 0) {
+        // else
+        if (app_qu.length > 0) {
           const app = `(${app_qu.join(' ')})` // >>> Create actual Expression Application structure representation
           app_qu = []
           output_qu.push(app)
         }
 
+        // I THINK THERE'S A FLAW IN THE FOLLOWING LOGIC - IT ASSUMES THAT THERE HAS BEEN SOME FLUSHING
+        // BUT THERE VERY MUCH MIGHT NOT HAVE BEEN
+        // 
         // if there's a prefix operator on the op_stack
         // it must belong to the thing I just flushed to the output
         // all parts of it create a function expression and they are applied to the argument - which is something I am just now starting to read
@@ -258,27 +305,28 @@ function fix_shunting_yard() {
         // I am reading the second |>
         // but there can also be a bit more complex expression on the left
         // example: x + |> a |> b    - meaning (x + |> a) (|> b)
-        // or not aprefix bust postfix
+        // or not a prefix but postfix
         // example: x + |> a ! |> b    - meaning (x + |> a !) (|> b)
         // 
-        if (o2 = op_stack[op_stack.length - 1], o2 && (fixities[o2].fixity === 'prefix' || fixities[o2].fixity === 'postfix')) {
-          // do the CUT
-          // op_stack.pop()
-          // output_qu.push(o2)
-          let top = undefined
-          // it should really be like: if what I am seeing on top of the op_stack is postfix - get rid of all postfixes
-          // later check this example: x ? + |> a ! |> b    -- I expect the ? to be already printed on the output once I start dropping the postfixes ^^^
-          //
-          // example: x + |> |> |] a |> b
-          // if what I am seeing on top of the op_stack is prefix - that prefix needs to go, but there could be multiple actually
-          // so they might also need to go
-          // this anly can stop, if there's a weak prefix - because that would mean, it should be applied to the whole function application only
-          // this CANT be done - because prefixes bind to the right same as function application - and fn application has an advantage
-          while (op_stack.length && (top = op_stack[op_stack.length - 1], top) && (fixities[top].fixity === 'postfix' || fixities[top].fixity === 'prefix')) {
-          // while (op_stack.length) {
-            output_qu.push(op_stack.pop())
-          }
-        }
+        // 
+        // if (o2 = op_stack[op_stack.length - 1], o2 && (fixities[o2].fixity === 'prefix' || fixities[o2].fixity === 'postfix')) {
+        //   // do the CUT
+        //   // op_stack.pop()
+        //   // output_qu.push(o2)
+        //   let top = undefined
+        //   // it should really be like: if what I am seeing on top of the op_stack is postfix - get rid of all postfixes
+        //   // later check this example: x ? + |> a ! |> b    -- I expect the ? to be already printed on the output once I start dropping the postfixes ^^^
+        //   //
+        //   // example: x + |> |> |] a |> b
+        //   // if what I am seeing on top of the op_stack is prefix - that prefix needs to go, but there could be multiple actually
+        //   // so they might also need to go
+        //   // this anly can stop, if there's a weak prefix - because that would mean, it should be applied to the whole function application only
+        //   // this CANT be done - because prefixes bind to the right same as function application - and fn application has an advantage
+        //   while (op_stack.length && (top = op_stack[op_stack.length - 1], top) && (fixities[top].fixity === 'postfix' || fixities[top].fixity === 'prefix')) {
+        //   // while (op_stack.length) {
+        //     output_qu.push(op_stack.pop())
+        //   }
+        // }
 
         // >>> Now I have a PREfix operator, but something might be on the Operator Stack
         // >>> in case of example |> |] a when current Operator is |]
@@ -314,6 +362,11 @@ function fix_shunting_yard() {
             op_stack.pop()
             output_qu.push(o2)
           }
+
+          //
+          // TODO: INSPECT LATER - it seems like interesting thing
+          //
+          //
 
           // example x + |> a b ! - c
           // so o1 is the -

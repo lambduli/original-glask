@@ -62,8 +62,6 @@ data Match
         {-, wheres :: [Declaration] -}
         {-, guards :: [Guard] -} }
   deriving (Eq, Show)
-{- TODO:  Consider adding guards for each pattern.
-          I am thinking guards :: [Guard] -}
 
 
 -- data Match'Context

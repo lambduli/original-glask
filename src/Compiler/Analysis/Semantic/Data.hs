@@ -9,7 +9,7 @@ import Compiler.Syntax.Declaration ( Constr'Decl(..), Declaration (Data'Decl), D
 import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.Type ( Sigma'Type, T'C(T'C), Type(..) )
 
-import Compiler.TypeSystem.Utils.Infer ( close'over, qualify )
+import Compiler.TypeSystem.Utils.Infer ( qualify, close'over' )
 import Compiler.TypeSystem.Type.Constants ( type'fn )
 
 
@@ -33,6 +33,7 @@ collect (Data'Decl (Data tc@(T'C n k) t'params constr'decls))
             in c'type : getter'types
 
         constr'types = concatMap con'type constr'decls
-    in Just $ map (second (close'over . qualify)) constr'types
+
+    in Just $ map (second (close'over' . qualify)) constr'types
 
 collect _ = Nothing

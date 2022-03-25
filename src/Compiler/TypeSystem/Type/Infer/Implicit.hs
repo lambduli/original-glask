@@ -35,8 +35,11 @@ import Compiler.TypeSystem.Expected ( Expected(Infer, Check) )
 import Compiler.TypeSystem.Actual ( Actual (Inferred) )
 
 
+import Debug.Trace
+
+
 {- Returning a [Constraint Type] might not be strictly necessary -}
-infer'impls :: [Implicit] -> Type'Check ([Predicate], [(Name, Sigma'Type)], [Constraint Type])
+infer'impls :: [Implicit] -> Type'Check ([Predicate], [(Name, Sigma'Type)])
 infer'impls implicits = do
   let is = map (\ (Implicit b'g) -> name b'g) implicits
   {-  get only the names of the implicit bindings in the same order -}
@@ -49,7 +52,6 @@ infer'impls implicits = do
   let scs = map to'scheme ts
   {-  qualify and quantify the fresh type variables - both empty -}
       assumptions = zip is scs -- NOTE: I will need to put this into the typing context later [1]
-      -- oo = trace ("{{ tracing infer'impls }}   assumptions " ++ show assumptions) assumptions
       
   {-  assign each name one type scheme -}
       many'matches = map (\ (Implicit b'g) -> alternatives b'g) implicits
@@ -68,7 +70,6 @@ infer'impls implicits = do
       zipWith is needed because infer'matches expects to be given a type which it unifies with the infered type of all the RHSs
   -}
   let preds = concat [ preds  | (preds, _) <- results ]
-      cs't  = concat [ cs't   | (_, _) <- results ]
       types = [ type'  | (_, Inferred type') <- results ]
 
       con'constraints = zipWith Unify types ts
@@ -109,10 +110,10 @@ infer'impls implicits = do
                 -- all the free variables in the type, but because of the monomorphism restriction
                 -- we must quantify over only some of them -- QUESTION: Which ones can we quantify over and which ones we can't?
                 -- TODO: inspect more later!
-            in return (deferred'preds ++ retained'preds, zip is scs', cs't ++ con'constraints)
+            in return (deferred'preds ++ retained'preds, zip is scs')
           else
-            let scs'  = map (quantify gs . (retained'preds :=> )) types -- qualify each substituted type with retained predicates
-            in return (deferred'preds, zip is scs', cs't ++ con'constraints)
+            let scs' = map (quantify gs . (retained'preds :=> )) types -- qualify each substituted type with retained predicates
+            in  return (deferred'preds, zip is scs')
             -- Question:  Why do I return the `cs't` even thought I already solved them?
             --            Callers of this function will solve them again and again, does it make sense?
 

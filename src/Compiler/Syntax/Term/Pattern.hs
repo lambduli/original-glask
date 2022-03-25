@@ -19,6 +19,8 @@ data Term'Pat
   | Term'P'List [Term'Pat] -- will be able to desugar - same way
   | Term'P'As Name Term'Pat -- named pattern
   | Term'P'Wild
+
+  | Term'P'Con Name [Term'Pat]
   deriving (Eq)
 
 

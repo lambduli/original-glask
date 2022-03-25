@@ -8,6 +8,8 @@ import Compiler.Syntax.Type ( Type )
 import Compiler.Syntax.Term.Expression ( Term'Expr )
 import Compiler.Syntax.Predicate ( Predicate )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
+import Compiler.Syntax.ToAST.GSYA.Token ( Token, Op )
+import Compiler.Syntax.Term (Term'Pat)
 
 
 data Semantic'Error
@@ -23,9 +25,24 @@ data Semantic'Error
   | Synonym'Cycle [(Name, Type)]
   | Many'Errors [Semantic'Error]
   | Ambiguous'Type [Predicate] Type
+  | GSYA GSYA'Error
+  | Illegal String
 
   | Internal String
 
+
+data GSYA'Error
+  = Mixing Op Op
+  | Unexpected'Expr'Token (Token Term'Expr)
+  | Unexpected'Pat'Token (Token Term'Pat)
+  | Missing'Operand String
+
+
+instance Show GSYA'Error where
+  show (Mixing op'l op'r) = "Semantic Error: Mixing two operators you shouldn't be mixing."
+  show (Unexpected'Expr'Token token) = "Semantic Error: unexpected token '" ++ show token ++ "'"
+  show (Unexpected'Pat'Token token) = "Semantic Error: unexpected token '" ++ show token ++ "'"
+  show (Missing'Operand message) = "Semantic Error: " ++ message
 
 
 -- TODO: actually implement proper Show
@@ -52,3 +69,7 @@ instance Show Semantic'Error where
     = "Semantic Error: Ambiguous type: `" ++ show (preds :=> type') ++ "'"
   show (Internal message)
     = "INTERNAL Semantic Error: " ++ message
+  show (GSYA g'err)
+    = show g'err
+  show (Illegal message)
+    = "Illegal - probably something that is not allowed: " ++ show message

@@ -20,29 +20,28 @@ import Compiler.TypeSystem.Utils.Infer ( merge'into't'env )
     this function is going to solve all the constraints it finds anyway,
     so what is the point in returning them and letting them be solved again (possibly many times) as part of a bigger solution?
 -}
-infer'bind'section :: Bind'Section -> Type'Check ([Predicate], [(Name, Sigma'Type)], [Constraint Type])
+infer'bind'section :: Bind'Section -> Type'Check ([Predicate], [(Name, Sigma'Type)])
 infer'bind'section (es, iss) = do
   let as' = [ (v, sc) | Explicit sc Bind'Group{ name = v } <- es ]
-  (ps, as'', cs't) <- merge'into't'env as' (infer'seq infer'impls iss)
+  (ps, as'') <- merge'into't'env as' (infer'seq infer'impls iss)
   results <- merge'into't'env (as' ++ as'') (mapM infer'expl es)
-  let preds'  = concat [ preds  | (preds, _   ) <- results ]
-      cs't'   = concat [ cs't   | (_    , cs't) <- results ]
-  return (ps ++ preds', as' ++ as'', cs't ++ cs't')
+  let preds'  = concat results
+  return (ps ++ preds', as' ++ as'')
 
 
-infer'seq :: (a -> Type'Check ([Predicate], [(Name, Sigma'Type)], [Constraint Type])) -> [a] -> Type'Check ([Predicate], [(Name, Sigma'Type)], [Constraint Type])
-infer'seq _ [] = return ([], [], [])
+infer'seq :: (a -> Type'Check ([Predicate], [(Name, Sigma'Type)])) -> [a] -> Type'Check ([Predicate], [(Name, Sigma'Type)])
+infer'seq _ [] = return ([], [])
 infer'seq ti (bs : bss) = do
-  (ps, as', cs't) <- ti bs
-  (qs, as'', cs't') <- merge'into't'env as' (infer'seq ti bss)
-  return (ps ++ qs, as' ++ as'', cs't ++ cs't')
+  (ps, as') <- ti bs
+  (qs, as'') <- merge'into't'env as' (infer'seq ti bss)
+  return (ps ++ qs, as' ++ as'')
 
 
 {-  TODO: Probably change the name and put the function some better place? -}
 -- Its purpose is for method type elaboration
-check'seq :: (a -> Type'Check ([Predicate], [Constraint Type])) -> [a] -> Type'Check ([Predicate], [Constraint Type])
-check'seq _ [] = return ([], [])
+check'seq :: (a -> Type'Check [Predicate]) -> [a] -> Type'Check [Predicate]
+check'seq _ [] = return []
 check'seq ti (bs : bss) = do
-  (ps, cs't) <- ti bs
-  (qs, cs't') <- check'seq ti bss
-  return (ps ++ qs, cs't ++ cs't')
+  ps <- ti bs
+  qs <- check'seq ti bss
+  return $ ps ++ qs

@@ -37,19 +37,23 @@ import Compiler.Syntax.Qualified ( Qualified(..) )
 import Compiler.Syntax.Type ( T'C(T'C), T'V'(..), Type(..) )
 import Compiler.Syntax.Expression ( Expression(..) )
 
-import Compiler.Syntax.ToAST.ESYA ( ESYA(process) )
+import Compiler.Syntax.ToAST.GSYA ( GSYA(process, to'token, make'app'explicit, disambiguate'minus) )
 import Compiler.Syntax.ToAST.Translate ( run'translate, Translate )
 import Compiler.Syntax.ToAST.TranslateState ( Translate'State )
 import qualified Compiler.Syntax.ToAST.TranslateEnv as Trans'Env
 
 import Compiler.TypeSystem.Type.Constants ( type'fn, type'list )
 import Compiler.TypeSystem.Solver.Substitutable ( Term(free'vars) )
-import Compiler.TypeSystem.Utils.Infer ( close'over )
+import Compiler.TypeSystem.Utils.Infer ( close'over, close'over' )
 
 import Compiler.Analysis.Syntactic.ConstrEnv ( Constr'Info(Record, Constr, fields) )
 import qualified Compiler.Analysis.Syntactic.ConstrEnv as CE
 
-import Compiler.Analysis.Semantic.SemanticError ( Semantic'Error(..) )
+import Compiler.Analysis.Semantic.SemanticError ( Semantic'Error(..), GSYA'Error (Missing'Operand) )
+import Compiler.Syntax.ToAST.GSYA.Token (Token (..))
+import Compiler.Syntax.Fixity ( Fixity(..) )
+
+import Debug.Trace
 
 
 -- NOTE and TODO:
@@ -133,9 +137,60 @@ instance To'AST Term'Expr Expression where
     right'ast <- to'ast right
     return $ App left'ast right'ast
 
-  to'ast (Term'E'App t'exprs) =
-    error "Not implemented: Expression Term Application with mutliple arguments --> AST"
-  -- TODO: implement! This will use my implementation of the Extended Shunting Yard algorithm.
+  to'ast (Term'E'App t'exprs) = do
+    -- first map the list of Term Expressions to the list of Tokens (GSYA Tokens)
+    tokens <- mapM to'token t'exprs
+
+    let -- make the function application explicit
+        explicit'fn'app = make'app'explicit tokens
+        -- disambiguate pre/in-fix minus
+        disambiguated   = disambiguate'minus explicit'fn'app
+
+    -- run the GSYA
+    in'postfix <- process disambiguated
+
+    -- from postfix to tree
+    to'tree in'postfix
+
+    where
+      to'tree :: [Token Term'Expr] -> Translate Expression
+      to'tree tokens = read' tokens (\expr empty -> return expr) -- NOTE: the empty is supposed to be an empty list [] of tokens
+
+      read' :: [Token Term'Expr] -> (Expression -> [Token Term'Expr] -> Translate Expression) -> Translate Expression
+      -- FN is something I am supposed to use to eat the rest of the tokens once I am done eating my part
+      read' (Term t : tokens) fn = do
+        -- I have found __a thing__ ; now I just translate it and consider my job here to be done
+        expr <- to'ast t
+        fn expr tokens
+
+      read' (Operator{ fixity = Infix, term = t } : tokens) fn = do
+        operator <- to'ast t
+        let make'app left right operator = case operator of
+                                            Op "@" -> App left right
+                                            Op _ -> Infix'App left operator right
+        -- I need to read two things and compose them into a single thing
+        let compose right tokens = read' tokens (\ left tokens -> fn (make'app left right operator) tokens )
+          -- I have read the RIGHT operand
+          -- I still need to read the left one
+          -- to do that I need to call read' and give it a function, which will accept the LEFT part and finally composes them
+          -- I know what to do, with the rest of the tokens after I read LEFT, I apply `fn` to it
+          -- and there are two questions: what do I give to the fn as its first argument and how do I return the currently created infix operation
+          -- and they are answers to each other respectively
+        
+        read' tokens compose
+
+      read' (Operator{ fixity = Prefix, term = t } : tokens) fn = do
+        operator <- to'ast t
+        -- I need to read just one __thing__ from the input and compose that and give up the "eating-spot"
+        read' tokens (\ operand tokens -> fn (App operator operand) tokens)
+
+      read' (Operator{ fixity = Postfix, term = t } : tokens) fn = do
+        operator <- to'ast t
+        read' tokens (\ operand tokens -> fn (App operator operand) tokens)
+
+      read' [] _ = do
+        throwError $ GSYA $ Missing'Operand "Missing Operand. I have tried to read stuff and there is no more stuff."
+
 
   to'ast (Term'E'Tuple t'exprs) = do
     exprs <- mapM to'ast t'exprs
@@ -421,9 +476,153 @@ instance To'AST Term'Pat Pattern where
       _ -> error "Not implemented: Pattern Application Term --> AST"
 
   to'ast (Term'P'App t'pats) = do
-    let in'postfix :: [Term'Pat]
-        in'postfix = process t'pats
-    -- TODO: now I need to translate the sequence in postfix of Term'Pat
+    -- first map the list of Term Expressions to the list of Tokens (GSYA Tokens) 
+    tokens <- mapM to'token t'pats
+
+    let
+        -- disambiguate pre/in-fix minus
+        disambiguated   = disambiguate'minus tokens
+
+    -- run the GSYA
+    in'postfix <- process disambiguated
+
+    -- from postfix to tree
+    to'tree in'postfix
+      where
+        to'tree :: [Token Term'Pat] -> Translate Pattern
+        to'tree tokens = read' tokens (\expr empty -> return expr) -- NOTE: the empty is supposed to be an empty list [] of tokens
+
+        read' :: [Token Term'Pat] -> (Pattern -> [Token Term'Pat] -> Translate Pattern) -> Translate Pattern
+        -- FN is something I am supposed to use to eat the rest of the tokens once I am done eating my part
+        read' (Term t : tokens) fn = do
+          -- I have found __a thing__ ; now I just translate it and consider my job here to be done
+          expr <- to'ast t
+          fn expr tokens
+
+        read' (Operator{ fixity = Infix, term = t } : tokens) fn = do
+          operator <- to'ast t
+          name <- case operator of
+                    P'Con con'name [] -> return con'name
+                    _ -> throwError $ Internal "operator was translated wrong for some reason"
+
+          let make'app left right operator = P'Con name [left, right]
+          -- I need to read two things and compose them into a single thing
+          let compose right tokens = read' tokens (\ left tokens -> fn (make'app left right operator) tokens )
+            -- I have read the RIGHT operand
+            -- I still need to read the left one
+            -- to do that I need to call read' and give it a function, which will accept the LEFT part and finally composes them
+            -- I know what to do, with the rest of the tokens after I read LEFT, I apply `fn` to it
+            -- and there are two questions: what do I give to the fn as its first argument and how do I return the currently created infix operation
+            -- and they are answers to each other respectively
+          
+          read' tokens compose
+
+        -- read' (Operator{ fixity = Prefix, term = t } : tokens) fn = do
+        --   operator <- to'ast t
+        --   -- I need to read just one __thing__ from the input and compose that and give up the "eating-spot"
+        --   read' tokens (\ operand tokens -> fn (App operator operand) tokens)
+
+        -- read' (Operator{ fixity = Postfix, term = t } : tokens) fn = do
+        --   operator <- to'ast t
+        --   read' tokens (\ operand tokens -> fn (App operator operand) tokens)
+
+        read' [] _ = do
+          throwError $ GSYA $ Missing'Operand "Missing Operand. I have tried to read stuff and there is no more stuff."
+
+        read' _ _ = do
+          throwError $ Illegal "it seems tha pattern contains something illegal - like PRE/POST-fix constructors or something"
+
+
+
+    -- I think there's some interesting distinction between expression application and pattern application
+    -- it is still true that it will be translated into a single pattern expression - so a single pattern application
+    -- maybe the biggest difference is the use-case
+    -- because what I expect to parse is stuff like:
+    -- left `fun` right
+    -- left `Con` right
+    -- (+) 
+
+    -- although there is one thing
+    -- there are some pattern applications which are illegal but would be legal expression applications
+    -- a + b - c
+    -- this is illegal for instance
+    -- I think there might be a simple rule for this
+    -- there must not be more than one ordinary operator when you define function
+    -- when you are doing case of expression, there must only be constructors - no ordinary operators
+    -- 
+    -- can I know beforehand which will be legal and not?
+    -- is there a simple way to only deal with it afterwards?
+    -- 
+    -- I think the point is - patterns should look much simplers in practice
+    -- my issue is - my GSYA inserts `@` as constructor applications
+    -- the transformation would then look like this
+    -- when there is an @ application
+    -- I need to deconstruct it from the tree like structure to the linear list
+    -- I start where I see @ and if the left operand is Constructor
+      -- I just return Con [right]
+      -- in the next step, since that level also got @, the left is going to be the above thing
+      -- and the right is going to be just some Pattern
+      -- so I return the left thing with the right-pattern appended to the list
+      -- this way it should work fine
+    
+    -- and what about those functon definitions?
+    -- since I don't have infix'application on the pattern level
+    -- I need to encode those somehow right?
+    -- for simplicity - I will assume all operators are constructors or whatever
+    -- then something like
+    -- left `fn` right
+    -- should produce Con `fn` [left, right]
+    -- and on this level I don't know what this thing is supposed to be
+    -- I will have to just return that
+    -- but what if I have something like this
+    -- left `foo` a : rest = rest
+    -- this is illegal in ghc - because `foo` by default is precedence = 9, that means it binds very strongly
+    -- for that reason it is actually parsed as (left `foo` a) : rest = rest
+    -- and that simply isn't a function definition right?
+    -- let's see if ghc handles something like
+    -- left `bar` a `foo` rest = rest
+    -- this also doesn't work
+    -- because there would be two functions, which doesn't make sense
+    -- ((left `bar` a) `foo` rest) = rest
+
+
+    -- so I am thinking about how to represent the patterns which will contain the operator or function name
+    -- normally that would be a function
+    -- right so maybe something like this
+    -- after I get the POST/PRE fix version of the term
+    -- I can just take the first operation, which should be something like
+    -- a 
+
+
+    -- so when it comes to patterns, what is considered term and what is operator?
+    -- operators are only operator constructors - that is a distinction I can make
+    -- but what about the function or operator being defined just now?
+    -- if its not operator but a term then what?
+    -- yeah that would probably by a problem
+    -- a `foo` b
+    -- if `foo` is value and not operator than this sequence will be understood totally different way
+    -- so standard rules apply
+    -- and the rules of precedence should make sure that the top level operation will be the correct one
+    -- a `foo` b
+    -- should be     a b `foo`
+    -- foo a b
+    -- should be     foo a @ b @
+    -- which also seem fine, because I will just have to realize that the first thing is not an non-constructor operator
+    -- and that will lead me to the assumption that I am dealing with normal (or operator prefix) declaration
+    -- and so I will build the AST
+    -- I guess I could just ignore the fact whether something is constructor or not, when applying it to pattern arguments
+    -- or I could handle this special case in "declaration" and only there ignore the top level or something
+    -- because it would be kinda nice to make the PREFIX->AST do the checking for me
+
+    -- so I could implement this in such a way that here I assume I will only deal with pure patterns
+    -- like those from case expressions
+    -- and then some place else handle those "declaration pattern expressions"
+
+
+
+    -- let in'postfix :: [Term'Pat]
+    --     in'postfix = process t'pats
+    -- -- TODO: now I need to translate the sequence in postfix of Term'Pat
     --      into a single Pattern value
     --      along the way I will use the information from the analysis about operators
     --      their fixities, associativity, and precedence (sometimes also arity? or does that mean, that POST and PRE will only be unary?)
@@ -434,7 +633,7 @@ instance To'AST Term'Pat Pattern where
     --      make it a P'Con
     --      then I can return this value, as will all the calls on the smaller parts
     --      which will produce a valid Pattern value and it will type check
-    error "Not implemented: Pattern Application Term --> AST"
+    -- error "Not implemented: Pattern Application Term --> AST"
 
   {-  Example: Constr'Name{ foo = <pattern> } -}
   --  TODO: Implement after you refactor the record stuff in Expression
@@ -460,6 +659,10 @@ instance To'AST Term'Pat Pattern where
 
   to'ast Term'P'Wild = do
     return P'Wild
+
+  to'ast (Term'P'Con name t'pats) = do
+    patterns <- mapM to'ast t'pats
+    return $ P'Con name patterns
 
 
 {-  NOTE: This instance implements the merging of the Bind'Groups together.
@@ -625,28 +828,38 @@ instance To'AST Term'Decl Declaration where
   -- t'pat must first be translated and then reconstructed - the top level node of the pattern will become a name of the Bind'Group
   -- the rest of it will become a part of the singleton [Match]
 
-  -- THERE IS A NOTE IN THE FORM OF A QUESTION IN THE MODULE FOR MATCH
-  -- PLEASE CONSULT IT FIRST, THINK ABOUT IT AND FIND A SATISFIABLE ANSWER
-  to'ast (Term.Binding t'pat t'expr) = do
+  to'ast (Term.Binding (Term'P'Id (Term'Id'Var name)) t'expr) = do
     expr <- to'ast t'expr
 
-    case t'pat of
-      Term'P'Op _ -> do
-        pat <- to'ast t'pat :: Translate Pattern
-        error "Not Implemented: Operator binding."
-
-      -- TODO:  I am going to implement just a simple variable binding for now.
-      --        That means that there are no arguments -> no patterns.
-      --        I will need to implement the rest later.
-      Term'P'Id (Term'Id'Var var'name) -> do
-        return $ AST.Binding $ Bind'Group{ AST.name = var'name, alternatives = [ Match{ patterns = [], rhs = expr } ] }
+    let match = Match { patterns = [], rhs = expr }
+    return $ Binding $ Bind'Group { name = name, alternatives = [match] }
 
 
-      Term'P'App t'pats -> do
-        -- TODO: now I use ESYA and translate the list of patterns and
-        error "Not Implemented: to'ast for Term Binding for non-variable (parametrized) bindings"
+  to'ast (Term.Binding t'pat@(Term'P'App ((Term'P'Id (Term'Id'Var name)) : t'pats)) t'expr) = do
+    expr <- to'ast t'expr
+    patterns <- mapM to'ast t'pats
 
-      _ -> error "Not Implemented: This is a Semantic Error - bad binding, it should never happen if my parser is correct, but also, it should be either made impossible by the type system or covered by some constructor of Semantic'Error (TODO: get on it)"
+    let match = Match { patterns = patterns, rhs = expr }
+    return $ Binding $ Bind'Group { name = name, alternatives = [match] }
+    
+    
+    -- case t'pat of
+    --   Term'P'Op _ -> do
+    --     pat <- to'ast t'pat :: Translate Pattern
+    --     error "Not Implemented: Operator binding."
+
+    --   -- TODO:  I am going to implement just a simple variable binding for now.
+    --   --        That means that there are no arguments -> no patterns.
+    --   --        I will need to implement the rest later.
+    --   Term'P'Id (Term'Id'Var var'name) -> do
+    --     return $ AST.Binding $ Bind'Group{ AST.name = var'name, alternatives = [ Match{ patterns = [], rhs = expr } ] }
+
+
+    --   Term'P'App t'pats -> do
+    --     -- TODO: now I use ESYA and translate the list of patterns and
+    --     error "Not Implemented: to'ast for Term Binding for non-variable (parametrized) bindings"
+
+    --   _ -> error "Not Implemented: This is a Semantic Error - bad binding, it should never happen if my parser is correct, but also, it should be either made impossible by the type system or covered by some constructor of Semantic'Error (TODO: get on it)"
       -- LATEST NOTE: I am handling it this way (differently for variable binding and function binding)
       -- because I haven't yet decided how am I going to implement ESYA for Patterns
       -- because normally Patterns would never really look like:
@@ -691,6 +904,17 @@ instance To'AST Term'Decl Declaration where
   --   qual'type <- merge'into'k'env assignments (to'ast t'qual'type)
   --   return $ AST.Signature $ AST.T'Signature name $ T'Forall tvs qual'type
 
+
+  {-  NOTE: This case handles any other pattern. That would mean, expressions like:
+      (a, b) = get'some'pair ...
+      True = False
+      _ = some'expression
+
+      I think I am just going to say I don't support those at this point. -}
+  to'ast (Term.Binding t'pat t'expr) = do
+    throwError $ Illegal "top level pattern bindings are not supported"
+
+
   {-  DESCRIPTION:  This case handles signatures with types like:
                     foo :: forall a . a -> Maybe a
                     baz :: forall a b . a -> b -> a
@@ -707,7 +931,10 @@ instance To'AST Term'Decl Declaration where
     {-  If it's just any other Type constructor --> I can assume that the outermost forall was redundant (no context and no free variables) and convert it to Sigma.  -}
     let sigma = case type' of
                   T'Forall _ _ -> type'
-                  ty -> close'over $ [] :=> ty
+                  ty ->
+                    let ftvs :: [T'V']
+                        ftvs = Set.toList $ free'vars ty
+                    in T'Forall ftvs $ [] :=> ty
 
     return $ AST.Signature $ AST.T'Signature name sigma
 
@@ -751,11 +978,17 @@ instance To'AST Term'Decl Declaration where
 
     let sigma = case type' of
                       (T'Forall tvs (ctxt :=> ty)) ->
+                        let q'type = (context `List.union` ctxt) :=> ty
+                        --     ftvs :: [T'V']
+                        --     ftvs = Set.toList $ free'vars q'type
                         -- the forall type must be collapsed - context must get merged
-                        close'over $ (context `List.union` ctxt) :=> ty
-                      ty ->
-                        -- just qualify it with the context and close over it
-                        close'over $ context :=> ty
+                        -- in T'Forall ftvs q'type
+                        in close'over' q'type
+                      ty -> close'over' $ context :=> ty
+                        -- let ftvs :: [T'V']
+                        --     ftvs = Set.toList $ free'vars ty
+                        -- -- just qualify it with the context and close over it
+                        -- in T'Forall ftvs $ context :=> ty
 
 
 
@@ -795,8 +1028,8 @@ instance To'AST Term'Decl Declaration where
 
     return $ AST.Type'Alias name params type'
 
-  to'ast (Term.Fixity fixity level name) = do
-    return $ AST.Fixity fixity level name
+  to'ast (Term.Fixity fixity assoc level name) = do
+    return $ AST.Fixity fixity assoc level name
 
   to'ast (Term.Class'Decl cl'name var'name t'preds t'decls) = do
     {-  NOTE: My current implementation doesn't allow nested/scoped classes

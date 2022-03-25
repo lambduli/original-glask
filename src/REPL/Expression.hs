@@ -72,6 +72,9 @@ import Compiler.Syntax (Expression, Predicate)
 import Compiler.TypeSystem.Constraint (Constraint)
 
 
+import Debug.Trace
+
+
 read'expr :: String -> Translate'Env -> Translate'State -> Either Semantic'Error (Expression, Translate'State)
 read'expr input trans'env trans'state = do
   let term'expr = parse'expr input
@@ -128,6 +131,18 @@ infer'type expr i'env counter = do
   let scheme = close'over $ apply subst' rs :=> apply subst' type'
 
   let counter' = get'counter i'state'
+
+  -- let message = "{{ tracing infer'type in REPL }}"
+  --               ++ "\n | scheme: " ++ show scheme
+  --               ++ "\n | before close'over: " ++ show (apply subst' rs :=> apply subst' type')
+  --               ++ "\n | rs: " ++ show rs
+  --               ++ "\n | preds: " ++ show preds
+  --               ++ "\n | preds substituted: " ++ show (apply subst preds)
+  --               ++ "\n | type': " ++ show type'
+  --               ++ "\n | constraints: " ++ show cs't
+  --               ++ "\n | subst': " ++ show subst'
+  --               ++ "\n | subst: " ++ show subst
+  --     oo = trace message scheme
 
   return (scheme, counter')
 

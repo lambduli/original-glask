@@ -10,6 +10,7 @@ import Compiler.Syntax.Signature ( Signature(..) )
 import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.BindGroup ( Bind'Group )
 import Compiler.Syntax.Fixity ( Fixity )
+import Compiler.Syntax.Associativity ( Associativity )
 
 
 data Declaration
@@ -22,7 +23,7 @@ data Declaration
   | Signature Signature -- Name (Qualified Type)           -- id :: a -> a
   | Data'Decl Data
   | Type'Alias Name [Name] Type               -- type String = List Char
-  | Fixity Fixity Int Name                    -- infix 5 +
+  | Fixity Fixity Associativity Int Name      -- infix 5 +
   | Class'Decl Class -- Name T'V [Predicate] [Declaration] -- class (Super1 a, ... , SuperN a) ==> Name a where { list of Signatures }
   --    cname parname supers     signatures
   | Instance Instance [Declaration]           -- instance ... where { list of Bindings }
@@ -44,8 +45,8 @@ instance Show Declaration where
     = show data'
   show (Type'Alias name params type')
     = "type " ++ name ++ " = " ++ show type'
-  show (Fixity fix prec name)
-    = show fix ++ " " ++ show prec ++ " " ++ name
+  show (Fixity fix assoc prec name)
+    = show fix ++ " " ++ show assoc ++ " " ++ show prec ++ " " ++ name
   show (Class'Decl class')
     = show class'
   show (Instance qual'pred decls)

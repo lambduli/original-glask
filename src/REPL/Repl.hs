@@ -29,7 +29,6 @@ import Compiler.TypeSystem.Solver.Substitutable
 import Compiler.TypeSystem.Solver.Substitution
 import Compiler.TypeSystem.Utils.Class
 import Compiler.TypeSystem.Solver.Composable
-import Compiler.TypeSystem.Utils.Infer (close'over)
 import Compiler.Syntax.ToAST.TranslateState (Translate'State)
 
 

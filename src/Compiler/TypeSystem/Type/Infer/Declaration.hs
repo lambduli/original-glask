@@ -13,7 +13,7 @@ import Compiler.Syntax.Declaration ( Declaration )
 import Compiler.Syntax.BindGroup ( Bind'Group(Bind'Group) )
 import Compiler.Syntax.Kind ( Kind )
 import Compiler.Syntax.Predicate ( Predicate )
-import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, Type, T'V', M'V )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, Type (T'Forall, T'Var'), T'V' (T'V'), M'V (Tau) )
 
 import Compiler.TypeSystem.Infer ( Infer, Type'Check, get'constraints )
 import Compiler.TypeSystem.Constraint ( Constraint )
@@ -138,7 +138,16 @@ to'bind'section decls = (explicits, implicits)
 -}
 infer'types :: Bind'Section -> Type'Check ([Predicate], [Assumption Sigma'Type])
 infer'types bg = do
-  (preds, assumptions, cs't) <- infer'bind'section bg
+  (preds, assumptions) <- infer'bind'section bg
+
+  let properly'close :: (Name, Sigma'Type) -> (Name, Sigma'Type)
+      properly'close (name, sigma@(T'Forall tvs qual'type)) =
+        let mapping = map (\ (T'V' name kind) -> (Tau name kind, T'Var' (T'V' name kind)) ) tvs
+            sub = Sub $ Map.fromList mapping
+            sigma' = apply sub sigma
+        in (name, sigma')
+      properly'close _ = error "unexpected: assumption from local declaration is not forall"
+
 
   -- Question:  So all of the constraints were already solved in smaller groups of them.
   --            Do I expect some different result from solving them all?
@@ -157,7 +166,20 @@ infer'types bg = do
     Left err -> throwError err
     Right subst -> do
       Infer'Env{ type'env = t'env, class'env = c'env } <- ask
-      return (preds, apply subst assumptions)
+      return (preds, map properly'close $ apply subst assumptions)
+      -- TODO: NOTE
+      --
+      --  Tady je takova otazka - v modulu Program ve funkci infer'types
+      --  musim provest jeste transformaci tech assumptions, protoze po provedeni substituce uz by sice mely bejt kompletni, ale muze to byt tak,
+      --  ze uvnitr jejich sigma typu se bude vyskytovat nejaka promenna jako "meta" ale v tenhle moment uz je kvantifikovana pomoci forall
+      --  takze by mela bejt prevedena na T'Var
+      --  proto to pak jeste pro jistotu projedu a opatrne zmenim meta promenne na normalni vazane promenne
+      --  ale jenom ty, ktere jsou uz kvantifikovane, proto vychazim ze seznamu tvs ve forall
+      --  zadne dalsi free meta promenne se ani nedotknu
+      --
+
+
+
       -- let rs = runIdentity $ runExceptT $ reduce c'env (apply subst preds)
       -- case rs of
       --   Left err -> throwError err

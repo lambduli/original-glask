@@ -18,7 +18,7 @@ import Compiler.TypeSystem.Error ( Error(..) )
 import Compiler.TypeSystem.Infer ( Infer, Type'Check, get'constraints )
 import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
 import Compiler.TypeSystem.Binding ( Explicit(..) )
-import Compiler.TypeSystem.Utils.Infer ( close'over, instantiate, split, skolemise )
+import Compiler.TypeSystem.Utils.Infer ( instantiate, split, skolemise, close'over' )
 import Compiler.TypeSystem.Utils.Class ( entail )
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env(Infer'Env, type'env, class'env) )
 import Compiler.TypeSystem.Solver ( run'solve )
@@ -43,7 +43,7 @@ import Debug.Trace
 
 -}
 {- Returning a [Constraint Type] might not be strictly necessary -}
-infer'expl :: Explicit -> Type'Check ([Predicate], [Constraint Type])
+infer'expl :: Explicit -> Type'Check [Predicate]
 infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }) = do
   scheme' <- kind'specify scheme -- this is only needed when infer'expl is invoked on local declarations
   
@@ -71,7 +71,7 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
       Infer'Env{ type'env = t'env, class'env = c'env } <- ask
       let fs = Set.toList $ free'vars $ apply subst t'env
           gs = Set.toList (free'vars t') \\ fs
-      let sc' = close'over (qs' :=> t')
+      let sc' = close'over' (qs' :=> t')
           not'entail pred = do
             -- not <$> entail c'env qs' pred -- this should be the same thing, but more succinctly written
             entailed <- entail c'env qs' pred
@@ -91,7 +91,7 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
               then throwError $ Signature'Too'General scheme' sc'
               else  if not (null retained'preds)
                     then throwError Context'Too'Weak
-                    else return (deferred'preds, cs't {- , (k `Unify` K'Star) : cs'k ++ cs'k' -}) -- NOTE *1
+                    else return (deferred'preds {-, cs't -} {- , (k `Unify` K'Star) : cs'k ++ cs'k' -}) -- NOTE *1
               -- TODO:  FIX - here the `kind` function is not used safely
               --        the problem is that kind function expects for Type Applications - that the Kind of the Left part will be Kind Arrow
               --        but that's never going the happen for types given from the user (annotations)

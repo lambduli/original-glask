@@ -9,7 +9,7 @@ import qualified Data.Set as Set
 import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.Literal ( Literal )
 import Compiler.Syntax.Term.Declaration ( Term'Decl )
-import Compiler.Syntax.Term.Identifier ( Term'Id )
+import Compiler.Syntax.Term.Identifier ( Term'Id (Term'Id'Var, Term'Id'Const) )
 import {-# SOURCE #-} Compiler.Syntax.Term.Type ( Term'Type )
 import Compiler.Syntax.Term.Pattern ( Term'Pat )
 import Compiler.Syntax.Term.Predicate ( Term'Pred )
@@ -39,6 +39,10 @@ data Term'Expr
 
 instance Show Term'Expr where
   show (Term'E'Lit lit) = show lit
+  show (Term'E'Op (Term'Id'Const name)) = name
+  show (Term'E'Op (Term'Id'Var name)) = name
+  show (Term'E'Id (Term'Id'Const name)) = name
+  show (Term'E'Id (Term'Id'Var name)) = name
 
   show _ = "Not Implemented: Show for Term'Expr"
 
@@ -89,3 +93,5 @@ instance Term Term'Id Term'Expr where
   free'vars (Term'E'Labeled'Constr con'name t'fields) = undefined
   
   free'vars (Term'E'Labeled'Update t'expr t'fields) = undefined
+
+  free'vars (Term'E'Hole _) = undefined

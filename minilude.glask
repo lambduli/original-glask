@@ -1,6 +1,11 @@
 module Main where
-{ 
-  class Num a
+{ infixr 0 $
+; infixl 5 +
+; infixl 6 *
+
+; class Num a where
+  { (+) :: a -> a -> a
+  ; (*) :: a -> a -> a }
 
 ; instance Num Int
 -- ; instance Num Double
@@ -16,10 +21,12 @@ module Main where
 --   { show :: a -> String }
 
 
--- ; data Bool = True | False
+; data Bool = True | False
+
+; data Maybe a = Nothing | Just a
 
 -- ; number :: Int
-; number = 23
+-- ; number = 23
 
 -- ; fnum :: Num a => a -> a
 -- ; fnum = \ a -> a
@@ -27,6 +34,31 @@ module Main where
 -- ; gnum :: Num a => a -> a -> a
 -- ; gnum = \ x y -> fnum x
 
+; cool'num 23 = True
+; cool'num 42 = True
+; cool'num _ = False
 
+-- ; inter True 23 = 'a'
+-- ; inter False 42 = 'a'
+-- ; inter _ _ = 'z'
+
+-- ; foo fn True = fn True
+
+-- ; bar :: (x -> b) -> x -> b
+-- ; bar fn a = fn a
+
+
+; ($) :: (a -> b) -> a -> b
+-- -- ; ($) = \ fn a -> fn a
+; ($) fn a = fn a
+-- 
+; tttest = cool'num $ 23 + 42
+
+
+; loc :: Maybe a -> Maybe Int
+; loc (Just a) = Just 23
+
+
+-- ; undefined = undefined
 
 }

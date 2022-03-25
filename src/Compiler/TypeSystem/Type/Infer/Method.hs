@@ -19,7 +19,7 @@ import Compiler.TypeSystem.Error ( Error(..) )
 import Compiler.TypeSystem.Infer ( Infer, Type'Check, get'constraints )
 import Compiler.TypeSystem.Constraint ( Constraint )
 import Compiler.TypeSystem.Binding ( Method(..) )
-import Compiler.TypeSystem.Utils.Infer ( close'over, instantiate, split, skolemise )
+import Compiler.TypeSystem.Utils.Infer ( instantiate, split, skolemise, close'over' )
 import Compiler.TypeSystem.Utils.Class ( entail )
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env(Infer'Env, type'env, class'env) )
 import Compiler.TypeSystem.Solver ( run'solve )
@@ -41,7 +41,7 @@ import Compiler.TypeSystem.Expected ( Expected(Check) )
 
 -}
 {- Returning a [Constraint Type] might not be strictly necessary -}
-infer'method :: Method -> Type'Check ([Predicate], [Constraint Type])
+infer'method :: Method -> Type'Check [Predicate]
 infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }) = do
   -- scheme' <- kind'infer'sigma scheme -- this is no longer necessary - it's been done before-hand
   
@@ -62,7 +62,7 @@ infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }
       Infer'Env{ type'env = t'env, class'env = c'env } <- ask
       let fs = Set.toList $ free'vars $ apply subst t'env
           gs = Set.toList (free'vars t') \\ fs
-      let sc' = close'over (qs' :=> t')
+      let sc' = close'over' (qs' :=> t')
           not'entail pred = do
             -- not <$> entail c'env qs' pred -- this should be the same thing, but more succinctly written
             entailed <- entail c'env qs' pred
@@ -81,4 +81,4 @@ infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }
               then throwError $ Signature'Too'General scheme sc'
               else  if not (null retained'preds)
                     then throwError Context'Too'Weak
-                    else return (deferred'preds, cs't)
+                    else return deferred'preds

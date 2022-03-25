@@ -36,7 +36,7 @@ instance Show Expression where
   show (Lit lit) = show lit
   show (Abs pattern'param body) = "(\\ " ++ show pattern'param ++ " -> " ++ show body ++ ")"
   show (App left right) = "(" ++ show left ++ " " ++ show right ++ ")"
-  show (Infix'App left op right ) = ""
+  show (Infix'App left op right ) = "(" ++ show left ++ " " ++ show op ++ " " ++ show right ++ ")"
   show (Tuple exprs) = "(" ++ intercalate ", " (map show exprs) ++ ")"
   show (If cond' then' else') = "if " ++ show cond' ++ " then " ++ show then' ++ " else " ++ show else'
   show (Let decls body) = "let " ++ intercalate "\n" (map show decls) ++ " in " ++ show body

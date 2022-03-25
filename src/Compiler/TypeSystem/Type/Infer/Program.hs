@@ -1,6 +1,9 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Compiler.TypeSystem.Type.Infer.Program where
 
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import Control.Monad.Except ( runExceptT, MonadError(throwError) )
 import Control.Monad.Reader ( MonadReader(ask) )
 import Data.Functor.Identity ( Identity(runIdentity) )
@@ -14,7 +17,7 @@ import Compiler.Syntax.Declaration ( Constr'Decl(..), Data(..) )
 import Compiler.Syntax.Kind ( Kind(K'Star) )
 import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
-import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'C(T'C), T'V', Type(..), M'V )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'C(T'C), T'V' (T'V'), Type(..), M'V (Tau) )
 
 
 import Compiler.TypeSystem.Error ( Error )
@@ -30,8 +33,8 @@ import Compiler.TypeSystem.Type.Infer.BindSection ( check'seq, infer'bind'sectio
 import Compiler.TypeSystem.Type.Infer.Method ( infer'method )
 import Compiler.TypeSystem.Kind.Infer.Type (infer'type)
 import Compiler.TypeSystem.Solver ( run'solve )
-import Compiler.TypeSystem.Solver.Substitution ( Subst )
-import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply) )
+import Compiler.TypeSystem.Solver.Substitution ( Subst (Sub) )
+import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term (free'vars) )
 import Compiler.TypeSystem.Solver.Composable ( Composable(merge) )
 import Compiler.TypeSystem.Utils.Infer ( default'subst )
 import Compiler.TypeSystem.Utils.Class ( reduce )
@@ -40,12 +43,15 @@ import Compiler.TypeSystem.Kind.Infer.Program ( infer'kinds )
 import Compiler.TypeSystem.Kind.Infer.TypeSection ( infer'annotated, infer'methods )
 
 
+import Debug.Trace
+
+
 infer'whole'program :: Program -> Infer'Env -> Counter -> Either Error (Type'Env, Kind'Env, Constraint'Env, Counter)
 infer'whole'program program infer'env counter = do
   let k'infer'state = Infer'State{ I'State.counter = counter, constraints = [] }
 
   ((k'env, class'env, kind'subst), k'infer'state') <- run'infer infer'env (infer'kinds program) k'infer'state
-  
+
   let base't'env  = type'env infer'env
       base'k'env  = kind'env infer'env
       base'cl'env = constraint'env infer'env
@@ -74,7 +80,7 @@ infer'whole'program program infer'env counter = do
   (new'expls, k'infer'state'') <- run'infer infer'env' (infer'annotated substituted'explicits) k'infer'state'
 
   (new'methods, k'infer'state''') <- run'infer infer'env' (infer'methods substituted'methods) k'infer'state''
-      
+
   let program' = program{ bind'section = (new'expls, implicits'list), methods = new'methods }
 
 
@@ -100,14 +106,19 @@ infer'whole'program program infer'env counter = do
 infer'types :: Program -> Type'Check Type'Env
 infer'types Program{ bind'section = bg, methods = methods } = do
   -- ([Predicate], [(Name, Scheme)], [Constraint Type], [Constraint Kind])
-  (preds, assumptions, cs't) <- infer'bind'section bg
+  (preds, assumptions) <- infer'bind'section bg
+
+  -- let message = "{{ tracing infer'types }} "
+  --             ++ "\n|  preds: " ++ show preds
+  --             ++ "\n|  assumptions: " ++ show assumptions
+  --     a = trace message preds
 
   {-  TODO: Maybe it's not a best idea to put the `infer'method` itself right here.
             Maybe it's mixing the abstractions.
             I could write a helper functions for both lines - two functions which would just take `bgs` and `methods`
             and would produce a tuples. Maybe I shoudl do that. So that functions like `infer'program` read more like a description and contain less implementation details.
   -}
-  (preds', cs't') <- check'seq infer'method methods
+  preds' <- check'seq infer'method methods
   -- QUESTION: hele nemel bych ty assumptions z infer'bind'section mergnout a pak teprve type checkovat methods?
 
   -- Question:  So all of the constraints were already solved in smaller groups of them.
@@ -148,19 +159,35 @@ infer'types Program{ bind'section = bg, methods = methods } = do
               case runIdentity $ runExceptT (s' `merge` subst) of
                 Left err -> throwError err
                 Right subst' -> do
-                  -- let sub = subst'
-                  --     message = "<<< tracing >>>   "
-                  --       ++ "\n|  sub " ++ show sub
-                  --       ++ "\n|  assumptions: " ++ show assumptions
-                  --       ++ "\n|  apply subst assumptions: " ++ show (apply sub assumptions)
-                  --       ++ "\n|  result: " ++ show (apply subst' $ Map.fromList assumptions)
-                  --       ++ "\n|"
-                  --     ss = trace message sub
+                  let sub = subst'
+                  let properly'close :: (Name, Sigma'Type) -> (Name, Sigma'Type)
+                      properly'close (name, sigma@(T'Forall tvs qual'type)) =
+                        let mapping = map (\ (T'V' name kind) -> (Tau name kind, T'Var' (T'V' name kind)) ) tvs
+                            sub = Sub $ Map.fromList mapping
+                            sigma' = apply sub sigma
+                        in (name, sigma')
+                      properly'close _ = error "unexpected: assumption from local declaration is not forall"
+                      {-  IMPORTANT NOTE: The idea behind properly close is interesting and important one.
+                                          I have a sigma type - meaning it has already been decided which variables it should quantify over.
+                                          I can't change that here.
+                                          But what is also happening is after the substitution there is going to be some meta variables which need to become normal bound variables.
+                                          Because - as I said above - it has already been decided (inside Implicit I think).
+                                          So I carefully create substitution which only changes those quantified variables from meta to bound. That's all.  -}
+
+                      assum'applied = apply sub assumptions
+                      assum'closed = map properly'close assum'applied
+                      -- message = "<<< tracing >>>   "
+                      --   ++ "\n|  sub " ++ show sub
+                      --   ++ "\n|  assumptions: " ++ show assumptions
+                      --   ++ "\n|  apply subst assumptions: " ++ show assum'applied
+                      --   ++ "\n|  properly close assumptions: " ++ show assum'closed
+                      --   ++ "\n|  result: " ++ show (apply sub $ Map.fromList assumptions)
+                      --   ++ "\n|"
+                      -- ss = trace message assum'closed
                   {-  QUESTION: Shouldn't I somehow check that the defaulting substitution effectivelly eliminates all the predicates?  -}
                   {-            Or is it OK if there are some predicates which bubble-up to FROM the top level declarations?            -}
-                  {-  What I meant was - if they are not eliminated by the defaulting substitution, they are effectively unsolved right?
-                      But maybe the function default'subst fails if it can't eliminate all of them. I think that's the case and the reason
-                      why it's OK. -}
+                  {-            If they are not eliminated by the defaulting substitution, they are effectively unsolved right?  -}
+                  {-  ANSWER:   That's what `default'subst` does - it fails if it can not get rid of them.  -}
 
                   -- NOTE:  Just testing what happens if I apply the substitution to the method annotations
                   --        It shoulnd't do any harm. It also shouldn't really have any effect.
@@ -168,4 +195,4 @@ infer'types Program{ bind'section = bg, methods = methods } = do
                   -- let ms = map (\ (n, q't) -> (n, close'over q't)) m'anns
                   -- return (apply subst' $ Map.fromList $ assumptions ++ ms, cs'k ++ cs'k')
 
-                  return $ apply subst' $ Map.fromList assumptions
+                  return $ Map.fromList assum'closed

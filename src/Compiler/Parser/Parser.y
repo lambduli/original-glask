@@ -1,6 +1,8 @@
 {
 module Compiler.Parser.Parser (parse'module, parse'decls, parse'expr, parse'type) where
 
+import Prelude hiding (Left, Right)
+
 import Control.Monad (unless, fail)
 import Control.Monad.State
 import Data.List (concat)
@@ -15,6 +17,7 @@ import Compiler.Parser.Utils
 import Compiler.Syntax.Name
 import Compiler.Syntax.Literal
 import Compiler.Syntax.Fixity
+import Compiler.Syntax.Associativity
 
 import Compiler.Syntax.Term
 }
@@ -196,13 +199,13 @@ OpInfix_        ::  { String }
 -- {- Fixity Signature -}
 FixitySigns     ::  { [Term'Decl] }
                 :   Fixity integer OneOrManySeparated(OpInfix_)
-                                                                    { map (Fixity $1 $2) $3 }
+                                                                    { let { (f, a) = $1 } in map (Fixity f a $2) $3 }
 
 
-Fixity          ::  { Fixity }
-                :   infixl                                          { Infixl }
-                |   infix                                           { Infix }
-                |   infixr                                          { Infixr }
+Fixity          ::  { (Fixity, Associativity) }
+                :   infixl                                          { (Infix, Left) }
+                |   infix                                           { (Infix, None) }
+                |   infixr                                          { (Infix, Right) }
 
 
 {- Type Annotation Signature -}
@@ -303,7 +306,7 @@ BPat            ::  { Term'Pat }
 
 
 APat            ::  { Term'Pat }
-                :   varid MaybeAsPat                                { case $2 of
+                :   LowIdent MaybeAsPat                             { case $2 of
                                                                       { Nothing -> Term'P'Id $ Term'Id'Var $1
                                                                       ; Just pat -> Term'P'As $1 pat } }
                 |   '(' ')'                                         { Term'P'Id $ Term'Id'Const "()" }

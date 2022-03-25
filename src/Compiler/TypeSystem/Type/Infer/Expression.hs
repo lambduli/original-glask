@@ -32,54 +32,34 @@ import Compiler.TypeSystem.Error ( Error(Unexpected, Typed'Hole) )
 import Compiler.Syntax.TFun ( pattern T'Fun )
 
 
--- infer'expr :: Expression -> Infer ([Predicate], Type, [Constraint Type])
 infer'expr :: Expression -> Expected Rho'Type -> Type'Check ([Predicate], Actual Rho'Type)
--- PTIART
 infer'expr (Var var'name) expected = do
   sigma <- lookup't'env var'name expected
   inst'sigma sigma expected
-  -- preds :=> type' <- lookup't'env var'name
-  -- return (preds, type', [])
 
--- PTIART
 infer'expr (Const const'name) expected = do
   sigma <- lookup't'env const'name expected
   inst'sigma sigma expected
-  -- preds :=> type' <- lookup't'env const'name
-  -- return (preds, type', [])
 
--- PTIART
 infer'expr (Op op'name) expected = do
   sigma <- lookup't'env op'name expected
   inst'sigma sigma expected
-  -- preds :=> type' <- lookup't'env op'name
-  -- return (preds, type', [])
 
--- PTIART
 infer'expr (Lit lit) expected = do
   infer'lit lit expected
-  -- (preds, type') <- infer'lit lit
-  -- return (preds, type', [])
 
--- PTIART
 infer'expr (Abs pattern' body) Infer = do
   (preds, arg'type, assumptions) <- infer'pattern pattern'
   (preds', rho) <- merge'into't'env assumptions (infer'rho body)
 
   return (preds ++ preds', Inferred (arg'type `T'Fun` rho))
 
--- PTIART
 infer'expr (Abs pattern' body) (Check rho) = do
   (arg'type, res'type) <- unify'fun rho
   (preds, assumptions) <- check'pattern pattern' arg'type
   preds' <- merge'into't'env assumptions (check'rho body res'type)
   return (preds ++ preds', Checked)
-  -- (preds'param, type'param, assumptions'param) <- infer'pat pattern'param
-  -- (preds'body, type'body, t'constrs) <- merge'into't'env assumptions'param (infer'expr body)
-  -- return (preds'param ++ preds'body, type'param `type'fn` type'body, t'constrs)
 
--- TODO: check if it's really valid
--- PTIART
 infer'expr (App fun arg) expected = do
   (preds, fun'type) <- infer'rho fun
   (arg'type, res'type) <- unify'fun fun'type
@@ -87,13 +67,8 @@ infer'expr (App fun arg) expected = do
   (preds'', actual'') <- inst'sigma res'type expected
   return (preds ++ preds' ++ preds'', actual'')
 
--- TODO: check if it's really valid
 infer'expr (Infix'App left op right) expected = do
-  undefined
-  -- (preds'l, t'l, t'cs'l) <- infer'expr left
-  -- (preds'op, t'op, t'cs'op) <- infer'expr op
-  -- (preds'r, t'r, t'cs'r) <- infer'expr right
-
+  infer'expr (App (App op left) right) expected
   {-
     The type of the operator should be (at least) a binary function.
     Where the type of the first argument should be the type of the left.
@@ -101,23 +76,13 @@ infer'expr (Infix'App left op right) expected = do
     The type of the result will then be a type of the whole expression.
   -}
 
-  -- fresh'name <- fresh
-  -- let t'res = T'Var (T'V fresh'name K'Star)
-
-  -- let t'whole = t'l `type'fn` (t'r `type'fn` t'res)
-
-  -- let t'c = t'whole `Unify` t'op
-
-  -- return  (preds'l ++ preds'op ++ preds'r
-  --         , t'res
-  --         , t'c : t'cs'l ++ t'cs'op ++ t'cs'r)
-
--- TODO: check if it's really valid
+-- TODO: IMPLEMENT
 infer'expr (Tuple [expr'a, expr'b]) expected = do
   (preds'a, actual'a) <- infer'expr expr'a expected
 
   undefined
 
+-- TODO: IMPLEMENT
 infer'expr (Tuple exprs) expected = do
   undefined
   -- (preds, types, cs) <- foldM infer' ([], [], []) exprs
@@ -127,8 +92,6 @@ infer'expr (Tuple exprs) expected = do
   --       (preds, t, cs) <- infer'expr expr
   --       return (preds, t : types, cs ++ constrs)
 
--- TODO: check if it's really valid
--- PTIART
 infer'expr (If condition then' else') Infer = do
   preds <- check'rho condition t'Bool
 
@@ -140,24 +103,8 @@ infer'expr (If condition then' else') Infer = do
   
   (skolems, context, rho) <- skolemise rho'then
   
-  -- ctxt :=> rho' <- instantiate $ T'Forall skolems $ context :=> rho
-
-  -- let result = Inferred $ T'Forall skolems $ context :=> rho
-
-  -- let oo = trace ("{{ tracing IF infer }}   rho': " ++ show rho') rho'
-
   return (preds ++ preds'then ++ preds'else ++ preds' ++ preds'' {- ++ ctxt -} ++ context, Inferred rho {- Inferred oo -})
 
-  -- (preds'cond, t1, t'c1) <- infer'expr condition
-  -- (preds'tr, t2, t'c2) <- infer'expr then'
-  -- (preds'fl, t3, t'c3) <- infer'expr else'
-  -- let t'c = t1 `Unify` t'Bool
-  -- let t'b = t2 `Unify` t3
-  -- return  (preds'cond ++ preds'tr ++ preds'fl
-  --         , t2
-  --         , t'c : t'b : t'c1 ++ t'c2 ++ t'c3)
-
--- PTIART
 infer'expr (If condition then' else') (Check rho) = do
   preds'cond <- check'rho condition t'Bool
   preds'then <- check'rho then' rho
@@ -172,9 +119,6 @@ infer'expr (Let decls body) expected = do
   (preds'body, t'body) <- merge'into't'env assumptions'decls (infer'expr body expected)
   return (preds'decls ++ preds'body, t'body)
 
--- | TODO: I need to read a section about type checking explicitly annotated bindings
--- |        from that I think I should be able to derive the plan for this specific case.
--- PTIART
 infer'expr (Ann expr sigma) expected = do
   preds <- check'sigma expr sigma
   (preds', actual') <- inst'sigma sigma expected
@@ -281,6 +225,7 @@ infer'expr (Ann expr sigma) expected = do
 
   -}
 
+-- TODO: IMPLEMENT
 infer'expr (Case expr matches) expected = do
   undefined
   -- {- Infer the type of the expr. -}

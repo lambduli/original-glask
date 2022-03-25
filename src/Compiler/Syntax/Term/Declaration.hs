@@ -14,6 +14,7 @@ import Compiler.Syntax.Term.Identifier ( Term'Id )
 
 import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.Fixity ( Fixity )
+import Compiler.Syntax.Associativity ( Associativity )
 
 import Compiler.TypeSystem.Solver.Substitutable ( Term(..) )
 
@@ -25,7 +26,7 @@ data Term'Decl
   | Signature Name ([Term'Pred], Term'Type)   -- id :: a -> a
   | Data'Decl Name [Name] [Term'Constr'Decl]  -- Data type declaration -- name type'params list'of'consturctors'with'params
   | Type'Alias Name [Name] Term'Type          -- type String = List Char
-  | Fixity Fixity Int Name                    -- infix 5 +
+  | Fixity Fixity Associativity Int Name      -- infix 5 +
   | Class'Decl Name Name [Term'Pred] [Term'Decl]   -- class (Super1 a, ... , SuperN a) ==> Name a where { list of Signatures }
   --    cname parname supers     signatures
   | Instance ([Term'Pred], Term'Pred) [Term'Decl]             -- instance ... where { list of Bindings }

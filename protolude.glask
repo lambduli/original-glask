@@ -1,6 +1,11 @@
 module Main where
-{ 
-  class Num a
+{ infixl 5 +
+; infixl 6 *
+; infixr 0 $
+
+; class Num a where
+  { (+) :: a -> a -> a
+  ; (*) :: a -> a -> a }
 
 ; instance Num Int
 ; instance Num Double
@@ -9,6 +14,11 @@ module Main where
 
 ; instance Fractional Double
 
+
+; a = 23
+; b = 42
+; c = 13
+; infix'test = \ a b c -> a + b * c
 
 ; data Bool = True | False
 
@@ -19,13 +29,21 @@ module Main where
 ; num :: Num a => a
 ; num = 23
 
+; lam'test = \ a -> a + a
 
+; cool'num 23 = True
+; cool'num 42 = True
+; cool'num _ = False
+
+; ($) :: (a -> b) -> a -> b
+; ($) fn a = fn a
+-- ; ($) = \ fn a -> fn a
+
+; tttest = cool'num $ 23 + 42
 
 -- NOW I WANT TO TEST FINDING A VARIABLE NOT IN SCOPE
-; not'in :: a -> b -> Int
-; not'in = \ _ y -> _
-
-
+-- ; not'in :: a -> b -> Int
+-- ; not'in = \ _ y -> _
 
 ; tru = True
 
@@ -85,6 +103,10 @@ module Main where
 ; e = (\ i i' a a' -> i)
 --
 
+-- what if I float out the forall completely?
+; g :: Int' -> Int' -> a -> a -> Int'
+; g = \ i i' a a' -> i
+
 -- WHAT ARE THOSE TWO?
 -- ; e :: Int' -> (Int' -> forall a . a -> a) -> Int'
 -- ; e = (\ i fn -> i)
@@ -92,6 +114,8 @@ module Main where
 -- this shouldn't work with the versions NOT marked as OK
 
 ; iif = if True then t else e
+; iif' = if True then t else if False then e else g
+
 
 
 ; undefined = undefined

@@ -37,7 +37,7 @@ data T'V'  = T'V' Name Kind
 
 
 instance Show T'V' where
-  show (T'V' name kind) = "(τ=" ++ name ++ " :: " ++ show kind ++ ")"
+  show (T'V' name kind) = "(" ++ name ++ " :: " ++ show kind ++ ")"
 
 
 {- NOTE: this is SOLELY because Map T'V _ and it's `Map.findWithDefault` operation -}
@@ -64,8 +64,8 @@ instance Ord M'V where
 
 
 instance Show M'V where
-  show (Tau name kind) = "(" ++ name ++ " :: " ++ show kind ++ ")"
-  show (Sigma name kind) = "(" ++ name ++ " :: " ++ show kind ++ ")"
+  show (Tau name kind) = name -- "(" ++ name ++ " :: " ++ show kind ++ ")"
+  show (Sigma name kind) = name -- "(" ++ name ++ " :: " ++ show kind ++ ")"
 
 
 data T'C = T'C Name Kind
