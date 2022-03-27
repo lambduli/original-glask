@@ -664,6 +664,28 @@ instance To'AST Term'Pat Pattern where
     patterns <- mapM to'ast t'pats
     return $ P'Con name patterns
 
+  {-  INVARIANT:  At this point I don't support scoped type variables.
+                  So the types in patterns must be closed (and are assumed to be).
+                  That means that it is not legal to write type like (A a, B b) => _
+                  No matter what 
+   -}
+  to'ast (Term'P'Ann t'pattern ([], term'type)) = do -- no predicate, so it must either be explicitly quantified or not contain any type variables
+    type' <- to'ast term'type
+    pattern' <- to'ast t'pattern
+
+    sigma <- case type' of
+              T'Forall _ _ -> return type'
+              _ -> do
+                let ftvs = free'vars type' :: Set.Set T'V'
+                if not $ null ftvs
+                  then throwError $ Illegal "type annotations for patterns must be closed 1"
+                  else return type'
+
+    return $ P'Ann pattern' sigma
+
+  to'ast (Term'P'Ann t'pattern _) = do
+    throwError $ Illegal "type annotations for patterns must be closed 2"
+
 
 {-  NOTE: This instance implements the merging of the Bind'Groups together.
           When there are two or more Bindings with the same name - they should get merged into a single Binding.

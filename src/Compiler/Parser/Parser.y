@@ -53,6 +53,12 @@ import Compiler.Syntax.Term
   infixl        { Tok'Infixl _ }
   infix         { Tok'Infix _ }
   infixr        { Tok'Infixr _ }
+  prefixl       { Tok'Prefixl _ }
+  prefix        { Tok'Prefix _ }
+  prefixr       { Tok'Prefixr _ }
+  postfixl      { Tok'Postfixl _ }
+  postfix       { Tok'Postfix _ }
+  postfixr      { Tok'Postfixr _ }
   forall        { Tok'Forall _ }
 
 
@@ -203,9 +209,15 @@ FixitySigns     ::  { [Term'Decl] }
 
 
 Fixity          ::  { (Fixity, Associativity) }
-                :   infixl                                          { (Infix, Left) }
-                |   infix                                           { (Infix, None) }
-                |   infixr                                          { (Infix, Right) }
+                :   infixl                                          { (Infix, Left)    }
+                |   infix                                           { (Infix, None)    }
+                |   infixr                                          { (Infix, Right)   }
+                |   prefixl                                         { (Prefix, Left)   }
+                |   prefix                                          { (Prefix, None)   }
+                |   prefixr                                         { (Prefix, Right)  }
+                |   postfixl                                        { (Postfix, Left)  }
+                |   postfix                                         { (Postfix, None)  }
+                |   postfixr                                        { (Postfix, Right) }
 
 
 {- Type Annotation Signature -}
@@ -324,6 +336,7 @@ APat            ::  { Term'Pat }
                 |   '(' Pattern ',' OneOrManySeparated(Pattern) ')' { Term'P'Tuple ($2 : $4) }
                 |   '[' OneOrManySeparated(Pattern) ']'             { Term'P'List $2 }
                 {-  TODO: I can transform last two of them into pattern applications. -}
+                |   '(' Pattern '::' QualType ')'                   { Term'P'Ann $2 $4 }
 
 
 MaybeAsPat      ::  { Maybe Term'Pat }

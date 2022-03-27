@@ -3,9 +3,13 @@ module Compiler.Syntax.Term.Pattern where
 import Data.List.Extra (intercalate)
 
 
-import Compiler.Syntax.Name
-import Compiler.Syntax.Literal
-import Compiler.Syntax.Term.Identifier
+import Compiler.Syntax.Name ( Name )
+import Compiler.Syntax.Literal ( Literal )
+
+import Compiler.Syntax.Term.Identifier ( Term'Id )
+import Compiler.Syntax.Term.Predicate ( Term'Pred )
+import Compiler.Syntax.Term.Type ( Term'Type )
+
 
 
 data Term'Pat
@@ -19,6 +23,7 @@ data Term'Pat
   | Term'P'List [Term'Pat] -- will be able to desugar - same way
   | Term'P'As Name Term'Pat -- named pattern
   | Term'P'Wild
+  | Term'P'Ann Term'Pat ([Term'Pred], Term'Type)
 
   | Term'P'Con Name [Term'Pat]
   deriving (Eq)
@@ -52,3 +57,10 @@ instance Show Term'Pat where
 
   show Term'P'Wild =
     "_"
+
+  show (Term'P'Ann pattern q'term'type) =
+    "<not implemented>"
+
+
+  show (Term'P'Con con'name t'pats) =
+    "<not implemented>"

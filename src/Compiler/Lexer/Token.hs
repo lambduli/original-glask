@@ -24,9 +24,17 @@ data Token
   | Tok'Where Position      -- where
   | Tok'Module Position     -- module
   | Tok'Has'Type Position   -- ::
+  
   | Tok'Infixl Position     -- infixl
   | Tok'Infix Position      -- infix
   | Tok'Infixr Position     -- infixr
+  | Tok'Prefixl Position    -- prefixl
+  | Tok'Prefix Position     -- prefix
+  | Tok'Prefixr Position    -- prefixr
+  | Tok'Postfixl Position   -- postfixl
+  | Tok'Postfix Position    -- postfix
+  | Tok'Postfixr Position   -- postfixr
+
   | Tok'Forall Position     -- forall
 
   -- forms of identifiers
@@ -77,6 +85,12 @@ instance Located Token where
   at (Tok'Infixl position) = position
   at (Tok'Infix position) = position
   at (Tok'Infixr position) = position
+  at (Tok'Prefixl position) = position
+  at (Tok'Prefix position) = position
+  at (Tok'Prefixr position) = position
+  at (Tok'Postfixl position) = position
+  at (Tok'Postfix position) = position
+  at (Tok'Postfixr position) = position
   at (Tok'Forall position) = position
 
   at (Tok'Ident'Var _ position) = position
@@ -127,6 +141,12 @@ infix 4 ~~
 (Tok'Infixl _) ~~ (Tok'Infixl _) = True
 (Tok'Infix _) ~~ (Tok'Infix _) = True
 (Tok'Infixr _) ~~ (Tok'Infixr _) = True
+(Tok'Prefixl _) ~~ (Tok'Prefixl _)  = True
+(Tok'Prefix _) ~~ (Tok'Prefix _) = True
+(Tok'Prefixr _) ~~ (Tok'Prefixr _)  = True
+(Tok'Postfixl _) ~~ (Tok'Postfixl _) = True
+(Tok'Postfix _) ~~ (Tok'Postfix _)  = True
+(Tok'Postfixr _) ~~ (Tok'Postfixr _) = True
 (Tok'Forall _) ~~ (Tok'Forall _) = True
 (Tok'Ident'Var _ _) ~~ (Tok'Ident'Var _ _) = True
 (Tok'Ident'Const _ _) ~~ (Tok'Ident'Const _ _) = True

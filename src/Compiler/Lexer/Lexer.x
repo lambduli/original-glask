@@ -22,7 +22,7 @@ $hexit                = [a-f A-F $digit]
 $lower                = [a-z]
 $upper                = [A-Z]
 
-$symbol               = [ \! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \: ]
+$symbol               = [ \! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \: \] \[ \} \{ ]
 $opstart              = [ \! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ ]
 
 $idchar               = [$lower $upper $digit $symbol \']
@@ -67,6 +67,12 @@ token :-
 <0>         infixl                      { plain'tok $ Tok'Infixl }
 <0>         infix                       { plain'tok $ Tok'Infix }
 <0>         infixr                      { plain'tok $ Tok'Infixr }
+<0>         prefixl                     { plain'tok $ Tok'Prefixl }
+<0>         prefix                      { plain'tok $ Tok'Prefix }
+<0>         prefixr                     { plain'tok $ Tok'Prefixr }
+<0>         postfixl                    { plain'tok $ Tok'Postfixl }
+<0>         postfix                     { plain'tok $ Tok'Postfix }
+<0>         postfixr                    { plain'tok $ Tok'Postfixr }
 <0>         forall                      { plain'tok $ Tok'Forall }
 
 

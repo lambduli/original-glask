@@ -2,6 +2,11 @@ module Main where
 { infixl 5 +
 ; infixl 6 *
 ; infixr 0 $
+; postfix 9 !
+; prefix 3 |]
+; prefix 9 |>
+; postfix 0 `terminate`
+; prefixr 0 `print`
 
 ; class Num a where
   { (+) :: a -> a -> a
@@ -14,10 +19,27 @@ module Main where
 
 ; instance Fractional Double
 
+; a' = 23
+; b' = 42
+; c' = 13
 
-; a = 23
-; b = 42
-; c = 13
+; data String = String
+; print :: a -> String
+; print a = String
+; terminate :: a -> String
+; terminate a = String
+; interesting = `print` a' + b'
+; fn' a = a
+; even'more = `print` fn' a'
+; post' = a' + b' `terminate`
+; (|]) a = a
+; (|>) a = a
+; eee = |> |] a' + b'
+
+
+; pat'test (a :: Int) = a
+
+
 ; infix'test = \ a b c -> a + b * c
 
 ; data Bool = True | False

@@ -80,6 +80,13 @@ infer'pat P'Wild Infer = do
 infer'pat P'Wild (Check _) = do
   return ([], Checked, [])
 
+-- PTIART
+infer'pat (P'Ann pattern' sigma) expected = do
+  -- TODO: fully specify kinds within types in the `sigma`
+  (preds, assumptions) <- check'pattern pattern' sigma
+  (preds', actual) <- inst'pat'sigma sigma expected
+  return (preds ++ preds', actual, assumptions)
+
 
 infer'pats :: [Pattern] -> Expected Type -> Type'Check ([Predicate], [Actual Type], [Assumption Sigma'Type])
 infer'pats pats expected = do

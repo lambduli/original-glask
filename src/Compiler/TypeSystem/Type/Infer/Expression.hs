@@ -120,6 +120,7 @@ infer'expr (Let decls body) expected = do
   return (preds'decls ++ preds'body, t'body)
 
 infer'expr (Ann expr sigma) expected = do
+  -- TODO: fully specify kinds within types in the `sigma`
   preds <- check'sigma expr sigma
   (preds', actual') <- inst'sigma sigma expected
   return (preds ++ preds', actual')
