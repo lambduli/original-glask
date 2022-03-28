@@ -15,9 +15,36 @@ module Main where
 ; instance Num Int
 ; instance Num Double
 
-; class Fractional a
+; class Fractional a where
+  { (/) :: a -> a -> a }
 
 ; instance Fractional Double
+
+-- following definition has a wrongly shaped context
+-- ; weird' :: Num (Maybe a) => a -> a -> a
+-- ; weird' = weird'
+
+
+; data Phantom a = Ph Int
+
+; omega :: Num a => Int -> Phantom a
+; omega i = Ph i
+
+; fn'om :: Num a => b -> a
+; fn'om x = 23
+
+; arg = arg
+; n     = fn'om arg
+-- TODO: this break without the parens
+-- either I have a bug in the type checker or I have an bug in the To'AST (GSYA)
+; twice _ = fn'om arg + fn'om arg
+
+; test'om arg
+  = let { n     = fn'om arg
+        ; twice = n + n }
+    in  arg
+
+
 
 ; a' = 23
 ; b' = 42

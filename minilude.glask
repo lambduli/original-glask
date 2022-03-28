@@ -34,9 +34,9 @@ module Main where
 -- ; gnum :: Num a => a -> a -> a
 -- ; gnum = \ x y -> fnum x
 
-; cool'num 23 = True
-; cool'num 42 = True
-; cool'num _ = False
+-- ; cool'num 23 = True
+-- ; cool'num 42 = True
+-- ; cool'num _ = False
 
 -- ; inter True 23 = 'a'
 -- ; inter False 42 = 'a'
@@ -52,13 +52,23 @@ module Main where
 -- -- ; ($) = \ fn a -> fn a
 ; ($) fn a = fn a
 -- 
-; tttest = cool'num $ 23 + 42
+-- ; tttest = cool'num $ 23 + 42
 
 
-; loc :: Maybe a -> Maybe Int
-; loc (Just a) = Just 23
+-- ; loc :: Maybe a -> Maybe Int
+-- ; loc (Just a) = Just 23
 
 
 -- ; undefined = undefined
+
+
+; fn'om :: Num a => b -> a
+; fn'om x = 23
+
+; arg = arg
+; n     = fn'om arg
+-- TODO: this break without the parens
+-- either I have a bug in the type checker or I have an bug in the To'AST (GSYA)
+; twice _ = fn'om arg + fn'om arg
 
 }

@@ -1,9 +1,9 @@
 module Compiler.Parser.Utils where
 
 
-import Compiler.Syntax.Term.Type
-import Compiler.Syntax.Term.Predicate
-import Compiler.Syntax.Term.Identifier
+import Compiler.Syntax.Term.Type ( Term'Type(..) )
+import Compiler.Syntax.Term.Predicate ( Term'Pred(..) )
+import Compiler.Syntax.Term.Identifier ( Term'Id(..) )
 
 
 -- |  4.1.3  Syntax of Class Assertions and Contexts

@@ -104,7 +104,7 @@ class GSYA a where
 
   to'token :: a -> Translate (Token a)
 
-  implicit'app :: Token a
+  explicit'app :: Token a
 
   make'app'explicit :: [Token a] -> [Token a]
 
@@ -129,8 +129,9 @@ instance GSYA Term'Expr where
     = return $ Term term
 
   
-  implicit'app = Operator{ fixity = Infix, associativity = Left, precedence = 10, term = Term'E'Op (Term'Id'Var "@") }
+  explicit'app = Operator{ fixity = Infix, associativity = Left, precedence = 10, term = Term'E'Op (Term'Id'Var "@") }
 
+  -- [ fn'om, arg, +, fn'om, arg ]
 
   make'app'explicit [] = []
 
@@ -142,8 +143,12 @@ instance GSYA Term'Expr where
     = t1 : make'app'explicit (o2 : rest)
 
   make'app'explicit (t1@Operator{ fixity = Postfix } : t2 : rest)
-    = t1 : implicit'app : make'app'explicit (t2 : rest)
+    = t1 : explicit'app : make'app'explicit (t2 : rest)
 
+  make'app'explicit (t1@(Term _) : t2@(Term _) : rest)
+    = t1 : explicit'app : make'app'explicit (t2 : rest)
+
+  -- TODO:  I am not quite sure this case is correct, so check it later ideally.
   make'app'explicit (t1 : rest)
     = t1 : make'app'explicit rest
 
