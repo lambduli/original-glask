@@ -71,7 +71,7 @@ spec = do
       "type" |=> Tok'Type
 
     it "reads '_'" $ do
-      "_" |=> Tok'Underscore
+      "_" |=> Tok'Named'Hole "_"
 
     it "reads '\\'" $ do
       "\\" |=> Tok'Lambda
