@@ -8,17 +8,48 @@ module Main where
   ; (*) :: a -> a -> a }
 
 ; instance Num Int
--- ; instance Num Double
+; instance Num Double
+
+; class Num a => Fractional a
+
+; instance Fractional Double
 
 
--- ; class Fractional a
 
--- ; instance Fractional Double
+
+-- THIS BREAKS WITHOUT THE EXPLICIT ANNOTATION FOR `def`
+-- ; data Unit = Unit
+-- ; class Cals a where
+--   { call :: a -> a -> a }
+-- ; def :: Int
+-- ; def = 23
+-- ; instance Cals Int where
+--   { call a b = a }
+-- ; typed :: Unit -> Unit
+-- ; typed _ = let { x = call def def } in Unit
+
+
+
+
+
 
 -- ; data String = String [Char]
 
 -- ; class Show a where
 --   { show :: a -> String }
+
+-- THIS IS SUPPOSED TO FAIL BUT DOES NOT!!!
+; fail :: Num a => a -> a -> a
+; fail a b = a + b
+-- ; xxx = fail 'a' 'b' -- Char is not an instance of Num
+-- ; yyy _ = fail True False -- Bool is not an instance of Num
+; zzz = fail 23 42
+
+-- -- Some of it is wrong too!!!
+-- ; data Carry = C (forall a . Num a => a -> a -> a)
+-- -- ; fail' (C fn) = fn 'c' 'a' -- this correctly fails
+-- ; fail'' :: Carry -> a -> a -> a -- context is too weak so it correctly fails
+-- ; fail'' (C fn) x y = fn x y -- without annotation if correctly infers Num
 
 
 ; data Bool = True | False
@@ -48,11 +79,11 @@ module Main where
 -- ; bar fn a = fn a
 
 
-; ($) :: (a -> b) -> a -> b
--- -- ; ($) = \ fn a -> fn a
-; ($) fn a = fn a
--- 
--- ; tttest = cool'num $ 23 + 42
+-- ; ($) :: (a -> b) -> a -> b
+-- -- -- ; ($) = \ fn a -> fn a
+-- ; ($) fn a = fn a
+-- -- 
+-- -- ; tttest = cool'num $ 23 + 42
 
 
 -- ; loc :: Maybe a -> Maybe Int
@@ -62,13 +93,17 @@ module Main where
 -- ; undefined = undefined
 
 
-; fn'om :: Num a => b -> a
-; fn'om x = 23
+-- ; fn'om :: Num a => b -> a
+-- ; fn'om x = 23
 
-; arg = arg
-; n     = fn'om arg
+-- ; arg = arg
+-- ; n     = fn'om arg
 -- TODO: this break without the parens
 -- either I have a bug in the type checker or I have an bug in the To'AST (GSYA)
-; twice _ = fn'om arg + fn'om arg
+-- ; twice _ = fn'om arg + fn'om arg
+
+
+
+
 
 }

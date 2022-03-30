@@ -48,9 +48,12 @@ to'program decls = Program{ bind'section = (explicits, implicits), methods = met
         make'method :: (Name, Bind'Group, Type) -> Method
         make'method (method'name, bind'group, instance'type) =
           let Just (_, T'Forall tvs qualified'type, class'var'name) = find (\ (m'n, _, _) -> m'n == method'name) method'annotations -- NOTE: This should always find the result, so the pattern matching on Just (...) should always succeed
+              Just cl'param'tv = find (\ (T'V' n _) -> n == class'var'name) tvs  -- (T'V' class'var'name (kind instance'type))
+              
               substitution :: Subst T'V' Type
-              substitution = Sub (Map.singleton (T'V' class'var'name (kind instance'type)) instance'type) -- NOTE: the Type Variable must have the same Kind as the Instance Type
+              substitution = Sub (Map.singleton cl'param'tv instance'type) -- NOTE: the Type Variable must have the same Kind as the Instance Type
               scheme = T'Forall (filter (\ (T'V' n _) -> n /= class'var'name) tvs ) $ apply substitution qualified'type -- now I have the Type Scheme
+
           in Method scheme bind'group
 
  

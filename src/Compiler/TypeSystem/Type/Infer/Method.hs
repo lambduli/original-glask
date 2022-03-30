@@ -19,7 +19,7 @@ import Compiler.TypeSystem.Error ( Error(..) )
 import Compiler.TypeSystem.Infer ( Infer, Type'Check, get'constraints )
 import Compiler.TypeSystem.Constraint ( Constraint )
 import Compiler.TypeSystem.Binding ( Method(..) )
-import Compiler.TypeSystem.Utils.Infer ( instantiate, split, skolemise, close'over' )
+import Compiler.TypeSystem.Utils.Infer ( instantiate, split', skolemise, close'over' )
 import Compiler.TypeSystem.Utils.Class ( entail )
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env(Infer'Env, type'env, class'env) )
 import Compiler.TypeSystem.Solver ( run'solve )
@@ -71,7 +71,7 @@ infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }
       case ps' of
         Left err -> throwError err
         Right preds' -> do
-          case runIdentity $ runExceptT $ split c'env fs gs preds' of
+          case runIdentity $ runExceptT $ split' c'env fs skolems gs preds' of
             Left err -> throwError err
             Right (deferred'preds, retained'preds) -> do
               -- b <- scheme `sh` sc'

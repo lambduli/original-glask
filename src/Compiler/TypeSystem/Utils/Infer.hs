@@ -300,6 +300,26 @@ split cl'env fixed'vars gs preds = do
   retained'preds' <- defaulted'preds cl'env (fixed'vars ++ gs) retained'preds
   return (deffered'preds, retained'preds \\ retained'preds')
 
+{-  NOTE: This version of split is for Explicit and Method.
+          The reason is - when I type check Explicit, I get some predicates, but because the type checking was done with skolem variable
+          and not with a fresh meta type variable, this leads to those predicates containing skolem type variables and not meta variables
+          for that reason when I cann free'vars on the pred it will ignore the unquantified skolem variables.
+          And because the way `all` works, if it's given an empty list, it will say all members passed the predicate check.
+          For that reason I also check that there is no free skolem variables and if yes, then it can not pass.
+          That should always work, because I was given a list of meta variables so any skolem is definitely not going to be able to pass
+          (to be a member of a list of meta variables)
+          one interesting thing occured to me now - 
+          maybe I could change this split' to take one more argument - a list of skolems (I get those from call to `skolemise`)
+          and it will check against that list explicitly -}
+split' :: Class'Env -> [M'V] -> [T'V'] -> [M'V] -> [Predicate] -> Solve ([Predicate], [Predicate])
+split' cl'env fixed'vars skolems gs preds = do
+  preds' <- reduce cl'env preds
+  let (deffered'preds, retained'preds) = partition part' preds'
+      part' pred = (all (`elem` fixed'vars) . free'vars $ pred) && null (free'vars pred :: Set.Set T'V')
+      fr'p = map free'vars preds' :: [Set.Set M'V]
+  retained'preds' <- defaulted'preds cl'env (fixed'vars ++ gs) retained'preds
+  return (deffered'preds, retained'preds \\ retained'preds')
+
 
 with'defaults :: ([Ambiguity] -> [Type] -> a) -> Class'Env -> [M'V] -> [Predicate] -> Solve a
 with'defaults fn cl'env vars preds = do

@@ -43,7 +43,7 @@ infer'impls :: [Implicit] -> Type'Check ([Predicate], [(Name, Sigma'Type)])
 infer'impls implicits = do
   let is = map (\ (Implicit b'g) -> name b'g) implicits
   {-  get only the names of the implicit bindings in the same order -}
-      
+
       -- BIG TODO: Tohle je takovej pokus - pokud to funguje, tak to je super, jinak musim prijit na to PROC to nejde?
       make'fresh'tv = fmap (\ t'name -> T'Meta (Tau t'name K'Star)) fresh
   {-  gives a fresh type variable -}
@@ -52,11 +52,11 @@ infer'impls implicits = do
   let scs = map to'scheme ts
   {-  qualify and quantify the fresh type variables - both empty -}
       assumptions = zip is scs -- NOTE: I will need to put this into the typing context later [1]
-      
+
   {-  assign each name one type scheme -}
       many'matches = map (\ (Implicit b'g) -> alternatives b'g) implicits
   {-  pick only [Match] from each implicit binding -}
-  
+
   -- [1] now I am going to merge them into the typing context
   -- explanation of the zipWithM part: I need to infer list of matches and I also need to
   -- make sure that once inference for every match is done, constraint unifying the resulting type
@@ -73,7 +73,7 @@ infer'impls implicits = do
       types = [ type'  | (_, Inferred type') <- results ]
 
       con'constraints = zipWith Unify types ts
-  
+
   add'constraints con'constraints
   -- now I can solve the type constraints
   cs't <- get'constraints
@@ -110,12 +110,29 @@ infer'impls implicits = do
                 -- all the free variables in the type, but because of the monomorphism restriction
                 -- we must quantify over only some of them -- QUESTION: Which ones can we quantify over and which ones we can't?
                 -- TODO: inspect more later!
-            in return (deferred'preds ++ retained'preds, zip is scs')
+                r = return (deferred'preds ++ retained'preds, zip is scs')
+                -- message = "{{ infer'impl restricted }} "
+                --         ++ "\n|  gs': " ++ show gs'
+                --         ++ "\n|  gs: " ++ show gs
+                --         ++ "\n|  scs': " ++ show scs'
+                --         ++ "\n|  zip is scs': " ++ show (zip is scs')
+                --         ++ "\n|  (free'vars retained'preds): " ++ show (free'vars retained'preds :: Set.Set M'V)
+                -- rr = trace message r
+            in r
           else
-            let scs' = map (quantify gs . (retained'preds :=> )) types -- qualify each substituted type with retained predicates
-            in  return (deferred'preds, zip is scs')
-            -- Question:  Why do I return the `cs't` even thought I already solved them?
-            --            Callers of this function will solve them again and again, does it make sense?
+            let scs' = map (quantify gs . (retained'preds :=> )) (apply subst types)-- types -- qualify each substituted type with retained predicates
+                result = return (deferred'preds, zip is scs')
+                -- message = "{{ infer'impl }} "
+                --           ++ "\n|  scs' = " ++ show scs'
+                --           ++ "\n|  deffered'preds = " ++ show deferred'preds
+                --           ++ "\n|  ts = " ++ show ts
+                --           ++ "\n|  ts' = " ++ show ts'
+                --           ++ "\n|  types = " ++ show types
+                --           ++ "\n|  constraints = " ++ show cs't
+                --           ++ "\n|  apply sub types = " ++ show (apply subst types)
+                --           ++ "\n|  "
+                -- rr = trace message result
+            in  result
 
 
 restricted :: [Implicit] -> Bool

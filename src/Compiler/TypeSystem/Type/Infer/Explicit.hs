@@ -18,7 +18,7 @@ import Compiler.TypeSystem.Error ( Error(..) )
 import Compiler.TypeSystem.Infer ( Infer, Type'Check, get'constraints )
 import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
 import Compiler.TypeSystem.Binding ( Explicit(..) )
-import Compiler.TypeSystem.Utils.Infer ( instantiate, split, skolemise, close'over' )
+import Compiler.TypeSystem.Utils.Infer ( instantiate, split', skolemise, close'over' )
 import Compiler.TypeSystem.Utils.Class ( entail )
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env(Infer'Env, type'env, class'env) )
 import Compiler.TypeSystem.Solver ( run'solve )
@@ -70,6 +70,12 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
           -- because that is how it's done in the THIH paper
       Infer'Env{ type'env = t'env, class'env = c'env } <- ask
       let fs = Set.toList $ free'vars $ apply subst t'env
+      {-  NOTE: fs are free type variables within the whole typing context, those might be variables which are types of restricted declarations and will be defaulted
+                before they are defaulted though, they can easily be used by other declarations - like this one explicitly typed
+                that is the reason why this one must not quantify over it, - simply put - it is not yours to quantify over (and it might even cease to be a type variable later - defaulting)
+                one thing I am thinking about - could it happen that some implicit restricted thing would be inferred as Num (for example) from its own definition
+                but then someone else uses it in such a way that it implies other type class(es) so then it might not be able to be defaulted?
+       -}
           gs = Set.toList (free'vars t') \\ fs
       let sc' = close'over' (qs' :=> t')
           not'entail pred = do
@@ -80,7 +86,7 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
       case ps' of
         Left err -> throwError err
         Right preds' -> do
-          case runIdentity $ runExceptT $ split c'env fs gs preds' of
+          case runIdentity $ runExceptT $ split' c'env fs skolems gs preds' of
             Left err -> throwError err
             Right (deferred'preds, retained'preds) -> do
               -- NOTE: I need to comment this out - this can not happen right here *1
@@ -91,7 +97,24 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
               then throwError $ Signature'Too'General scheme' sc'
               else  if not (null retained'preds)
                     then throwError Context'Too'Weak
-                    else return (deferred'preds {-, cs't -} {- , (k `Unify` K'Star) : cs'k ++ cs'k' -}) -- NOTE *1
+                    else
+                      let r = return (deferred'preds {-, cs't -} {- , (k `Unify` K'Star) : cs'k ++ cs'k' -}) -- NOTE *1
+                          -- message = "{{ infer'expl }}"
+                          --         ++ "\n |  deferred'preds: " ++ show deferred'preds
+                          --         ++ "\n |  retained'preds: " ++ show retained'preds
+                          --         ++ "\n |  preds': " ++ show preds'
+                          --         ++ "\n |  apply subst preds: " ++ show (apply subst preds)
+                          --         ++ "\n |  sc': " ++ show sc'
+                          --         ++ "\n |  fs: " ++ show fs
+                          --         ++ "\n |  gs: " ++ show gs
+                          --         ++ "\n |  subst: " ++ show subst
+                          --         ++ "\n |  skolems: " ++ show skolems
+                          --         ++ "\n |  qs: " ++ show qs
+                          --         ++ "\n |  t: " ++ show t
+                          --         ++ "\n |  t'env: " ++ show t'env
+                          --         ++ "\n |  apply subst t'env: " ++ show (apply subst t'env)
+                          -- rr = trace message r
+                      in r
               -- TODO:  FIX - here the `kind` function is not used safely
               --        the problem is that kind function expects for Type Applications - that the Kind of the Left part will be Kind Arrow
               --        but that's never going the happen for types given from the user (annotations)
