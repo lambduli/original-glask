@@ -15,8 +15,13 @@
 
 // const input_str = "|> |] a ! + b * c"
 
-const input_str = "|> |] a" // "a ! b ! c ! + x y" // "a - - b" // "a ! ! |> b ! c ! + x y" // "a b c" // "|] a ! ? b ! c" // "a |> b |> c !" // "|> a ! b ! c"  // "z + x * |> a ! |> b |> c" // "x + |> (> a b ! ? - c" // "x + |> a b ! ? - |> c ! + z" // "|> a b + c" // "|> a b ! ?" // "x + |> a b ! ? + c"
+// const input_str = "x + |> a b !? - |> c ! + z"
+const input_str = "x + |> y ? - z"
+
+
+// const input_str = "|> |] a" // "a ! b ! c ! + x y" // "a - - b" // "a ! ! |> b ! c ! + x y" // "a b c" // "|] a ! ? b ! c" // "a |> b |> c !" // "|> a ! b ! c"  // "z + x * |> a ! |> b |> c" // "x + |> (> a b ! ? - c" // "x + |> a b ! ? - |> c ! + z" // "|> a b + c" // "|> a b ! ?" // "x + |> a b ! ? + c"
 // x + (|> (((a b !) ?) + c)) // x (((a b ! ?) c +) |>) +
+
 
 console.log(input_str)
 
@@ -32,7 +37,7 @@ const fixities = {
 
   '+'  :   { assoc : 'left'  , precedence : 5 , fixity : 'infix'    },
   '-'  :   { assoc : 'left'  , precedence : 5 , fixity : 'infix'    },
-  '|>'  :   { assoc : 'right'  , precedence : 8  , fixity : 'prefix'   },
+  // '|>'  :   { assoc : 'right'  , precedence : 8  , fixity : 'prefix'   },
   '!'   :   { assoc : 'right' , precedence : 7  , fixity : 'postfix'  },
   // '?'   :   { assoc : 'right' , precedence : 5  , fixity : 'postfix'  },
   '(>'  :   { assoc : 'none' , precedence : 6  , fixity : 'postfix'  },
@@ -44,7 +49,7 @@ const fixities = {
 
   // '+'  :   { assoc : 'right'  , precedence : 8 , fixity : 'infix'    },
   // '-'  :   { assoc : 'right'  , precedence : 8 , fixity : 'infix'    },
-  // '|>'  :   { assoc : 'left'  , precedence : 5  , fixity : 'prefix'   },
+  '|>'  :   { assoc : 'right'  , precedence : 1  , fixity : 'prefix'   },
   // // '|]'  :   { assoc : 'right' , precedence : 8  , fixity : 'prefix'   },
   // '!'   :   { assoc : 'left' , precedence : 5  , fixity : 'postfix'  },
   // '?'   :   { assoc : 'left' , precedence : 5  , fixity : 'postfix'  },
@@ -52,7 +57,7 @@ const fixities = {
 
   // '|]'  :   { assoc : 'right' , precedence : 8  , fixity : 'prefix'   },
   // '!'   :   { assoc : 'right' , precedence : 7  , fixity : 'postfix'  },
-  // '?'   :   { assoc : 'right' , precedence : 15  , fixity : 'postfix'  },
+  '?'   :   { assoc : 'right' , precedence : 1  , fixity : 'postfix'  },
 }
 
 function both_fix(tok) {

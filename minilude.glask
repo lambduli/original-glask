@@ -2,6 +2,9 @@ module Main where
 { infixr 0 $
 ; infixl 5 +
 ; infixl 6 *
+; prefix 1 |>
+; postfixl 5 ?
+
 
 ; class Num a where
   { (+) :: a -> a -> a
@@ -13,6 +16,23 @@ module Main where
 ; class Num a => Fractional a
 
 ; instance Fractional Double
+
+-- ; (|>) :: a -> Bool
+-- ; (|>) _ = True
+; (|>) i = i
+
+-- ; (?) :: Bool -> Bool
+; (?) a = a
+
+-- ; f'' = |> 23 ?
+; f''' = 23 + |> 42
+-- ; f'''' = |> 23 + 42
+
+; fn :: a -> b -> c
+; fn a b = if False then fn a b else gn a b
+
+; gn :: x -> y -> z
+; gn x y = fn 'a' y
 
 
 
