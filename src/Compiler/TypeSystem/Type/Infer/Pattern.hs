@@ -21,6 +21,7 @@ import Compiler.TypeSystem.Utils.Infer ( to'scheme, fresh'meta, subs'check, look
 import Compiler.TypeSystem.Expected ( Expected(Infer, Check) )
 import Compiler.TypeSystem.Actual ( Actual(Checked, Inferred) )
 import Compiler.TypeSystem.Constraint ( Constraint )
+import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'specify )
 
 
 infer'pat :: Pattern -> Expected Sigma'Type -> Type'Check ([Predicate], Actual Type, [Assumption Sigma'Type])
@@ -83,8 +84,9 @@ infer'pat P'Wild (Check _) = do
 -- PTIART
 infer'pat (P'Ann pattern' sigma) expected = do
   -- TODO: fully specify kinds within types in the `sigma`
-  (preds, assumptions) <- check'pattern pattern' sigma
-  (preds', actual) <- inst'pat'sigma sigma expected
+  sigma' <- kind'specify sigma
+  (preds, assumptions) <- check'pattern pattern' sigma'
+  (preds', actual) <- inst'pat'sigma sigma' expected
   return (preds ++ preds', actual, assumptions)
 
 

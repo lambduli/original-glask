@@ -2,8 +2,13 @@ module REPL.Program where
 
 
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import Data.Foldable ( find )
+import Data.List ( deleteBy )
+import Control.Monad.State
 
+
+import Compiler.Counter ( real'fresh, Counter(..) )
 
 import Compiler.Syntax.BindGroup ( Bind'Group )
 import Compiler.Syntax.Declaration ( Declaration, Data, Class )
@@ -16,7 +21,7 @@ import Compiler.TypeSystem.Binding ( Explicit(Explicit), Implicit(Implicit), Met
 import Compiler.TypeSystem.TypeSection ( Type'Section )
 
 import Compiler.TypeSystem.Solver.Substitution ( Subst(..) )
-import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply) )
+import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term (free'vars) )
 
 
 import qualified Compiler.Analysis.Syntactic.MethodAnnotations as Method'Annotations
@@ -25,6 +30,7 @@ import qualified Compiler.Analysis.Syntactic.Annotations as Annotations
 import qualified Compiler.Analysis.Syntactic.Bindings as Bindings
 import qualified Compiler.Analysis.Syntactic.Data as Data
 import qualified Compiler.Analysis.Syntactic.Class as Classes
+import qualified Compiler.Analysis.Syntactic.Instance as Instances
 
 import qualified Compiler.Analysis.Semantic.Dependency.Binding as Bindings
 import qualified Compiler.Analysis.Semantic.Dependency.Types as Types
@@ -49,10 +55,31 @@ to'program decls = Program{ bind'section = (explicits, implicits), methods = met
         make'method (method'name, bind'group, instance'type) =
           let Just (_, T'Forall tvs qualified'type, class'var'name) = find (\ (m'n, _, _) -> m'n == method'name) method'annotations -- NOTE: This should always find the result, so the pattern matching on Just (...) should always succeed
               Just cl'param'tv = find (\ (T'V' n _) -> n == class'var'name) tvs  -- (T'V' class'var'name (kind instance'type))
+
+              free'in'inst'type = Set.toList $ free'vars instance'type :: [T'V'] -- I want free rigid type variables
+              taken'names       = map (\ (T'V' n _) -> n) tvs
+              (unique'names, _) = runState (mapM (real'fresh taken'names) free'in'inst'type) (Counter{ counter = 0})
+              -- NOTE/TODO: I know this is ugly, but I am just trying to quick-fix it
+              -- TODO: find a better solution please
+              -- This is about quanlified instances and instance method impls in general
+              mapping           = map (\ (name, T'V' n k) -> (T'V' n k, T'Var' $ T'V' name k)) $ zip unique'names free'in'inst'type
+              uniq'subst        = Sub (Map.fromList mapping)
+              instance'type'    = apply uniq'subst instance'type
+              tvs'              = map (\ (name, T'V' n k) -> T'V' name k) $ zip unique'names free'in'inst'type
+
               
               substitution :: Subst T'V' Type
-              substitution = Sub (Map.singleton cl'param'tv instance'type) -- NOTE: the Type Variable must have the same Kind as the Instance Type
-              scheme = T'Forall (filter (\ (T'V' n _) -> n /= class'var'name) tvs ) $ apply substitution qualified'type -- now I have the Type Scheme
+              substitution = Sub (Map.singleton cl'param'tv instance'type') -- NOTE: the Type Variable must have the same Kind as the Instance Type
+              scheme = T'Forall ((deleteBy (\ (T'V' n _) (T'V' n' _) -> n == n') (T'V' class'var'name undefined) tvs) ++ tvs') $ apply substitution qualified'type -- now I have the Type Scheme
+              -- ^^^ I know the use of undefined is not a good idea, BUT I really wanted to emphasise that I only want to delete single type variable from the generic variables
+              -- (filter (\ (T'V' n _) -> n /= class'var'name) tvs ) 
+
+              -- I actually need to consider that the `instance'type` might contain some type variables too
+              -- so first I need to give them unique name in regards to the rest of the names in the `tvs`
+              -- then I alpha rename them in the instance'type
+              -- after that I finally have a correct type which can be substituted for the `cl'param'tv`
+              -- and then when the `scheme` is being created I can simply add those free type variables which I have just alpha renamed to unique names
+              -- into the forall, after I remove 
 
           in Method scheme bind'group
 
@@ -81,8 +108,10 @@ to'program decls = Program{ bind'section = (explicits, implicits), methods = met
     class'decls   :: [Class]
     class'decls   = Classes.extract decls
 
-    d'n'c'secs   :: [[Either Data Class]]
-    d'n'c'secs   = Types.sort (map Left data'decls ++ map Right class'decls)
+    is            = Instances.extract decls
+
+    d'n'c'secs    :: [[Either Data Class]]
+    d'n'c'secs    = Types.sort (map Left data'decls ++ map Right class'decls)
 
     type'sections = map to'type'section d'n'c'secs
 
@@ -90,4 +119,4 @@ to'program decls = Program{ bind'section = (explicits, implicits), methods = met
     to'type'section eithers =
       let ds = [ d | Left d <- eithers ]
           cs = [ c | Right c <- eithers ]
-      in  (ds, cs)
+      in  (ds, cs, is)

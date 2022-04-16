@@ -49,7 +49,8 @@ import Compiler.TypeSystem.Type.Infer.Program
 import Compiler.TypeSystem.Binding
 import Compiler.TypeSystem.Utils.Infer
 import Compiler.TypeSystem.Infer
-import Compiler.TypeSystem.InferenceEnv ( Infer'Env(..), Class'Env, init't'env )
+import Compiler.TypeSystem.InferenceEnv ( Infer'Env(..), init't'env )
+import Compiler.TypeSystem.ClassEnv ( Class'Env )
 
 import Compiler.TypeSystem.Solver.Substitution ( Subst(Sub) )
 import Compiler.TypeSystem.Solver.Substitutable
@@ -88,7 +89,7 @@ load file'name counter = do
       case process'declarations decls trans'env counter' of
         Left err -> do
           putStrLn $ "Error: " ++ show err
-        Right (program, infer'env, class'env, trans'env, counter'') -> do
+        Right (program, infer'env, trans'env, counter'') -> do
           putStrLn "Successfully loaded the prelude."
           putStrLn ""
           -- let Program{ bind'sections = bs, methods = ms, method'annotations = m'ans, data'declarations = ds } = program
@@ -109,7 +110,7 @@ load file'name counter = do
           -- putStrLn "All Declarations:"
           -- putStrLn $ intercalate "\n" $ map show declarations
 
-          repl (program, infer'env, class'env, trans'env{ kind'context = k'e `Map.union` (kind'context trans'env)}, counter'')
+          repl (program, infer'env, trans'env{ kind'context = k'e `Map.union` (kind'context trans'env)}, counter'')
 
 
 load'declarations :: String -> Counter -> Either Semantic'Error ([Declaration], TE.Translate'Env, Counter)
@@ -148,7 +149,7 @@ make'program declarations trans'env counter =
   in program
 
 
-process'declarations :: [Declaration] -> TE.Translate'Env -> Counter -> Either Error (Program, Infer'Env, Class'Env, TE.Translate'Env, Counter)
+process'declarations :: [Declaration] -> TE.Translate'Env -> Counter -> Either Error (Program, Infer'Env, TE.Translate'Env, Counter)
 process'declarations declarations trans'env counter = do
   -- TODO: now when I have the list of Declarations in AST form
   -- I need to call inference
@@ -181,7 +182,7 @@ process'declarations declarations trans'env counter = do
   -- (Type'Env, [Constraint Kind])
   -- (t'env, k'constr) <- run'infer infer'env (infer'program program)
 
-  (t'env', k'env', c'env, cnt) <- infer'whole'program program infer'env counter
+  (t'env', k'env', c'env, cnt, cl'env) <- infer'whole'program program infer'env counter
 
 
   -- TODO: I also need to do the Kind inference, probably even before type inference
@@ -195,4 +196,4 @@ process'declarations declarations trans'env counter = do
   --        I no longer need to do this. I made the `infer'whole'program` apply the kind substitution to the both "base type environment" and the "inferred env from the assumptions"
   --        and union them and return it
 
-  return (program, infer'env{ type'env = t'env', kind'env = k'env', constraint'env = c'env }, class'env, trans'env, cnt)
+  return (program, infer'env{ type'env = t'env', kind'env = k'env', constraint'env = c'env, class'env = cl'env }, trans'env, cnt)

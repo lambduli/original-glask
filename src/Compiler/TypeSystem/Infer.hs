@@ -8,6 +8,7 @@ import Control.Monad.State ( MonadState(get, put), gets, evalStateT, StateT )
 import Control.Monad.Except ( Except, runExcept )
 
 
+import {-# SOURCE #-} Compiler.Syntax.Expression ( Expression )
 import {-# SOURCE #-} Compiler.Syntax.Type ( Type )
 import Compiler.Syntax.Kind ( Kind )
 
@@ -15,7 +16,7 @@ import Compiler.TypeSystem.Error ( Error )
 
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env )
 import Compiler.TypeSystem.InferenceState ( Infer'State (constraints, Infer'State) )
-import Compiler.TypeSystem.Constraint (Constraint)
+import Compiler.TypeSystem.Constraint ( Constraint )
 
 
 -- | Inference Monad

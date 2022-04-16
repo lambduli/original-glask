@@ -18,6 +18,7 @@ import Compiler.Syntax.Predicate ( Predicate(..) )
 import Compiler.TypeSystem.InferenceEnv ( Kind'Env, Type'Env )
 import Compiler.TypeSystem.Constraint ( Constraint(..) )
 import Compiler.TypeSystem.Solver.Substitution ( Subst(..) )
+import Compiler.TypeSystem.ClassEnv ( Class'Env(..) )
 
 
 --
@@ -360,3 +361,13 @@ instance Substitutable Name Type Kind where
 instance Substitutable Name Predicate Kind where
   apply subst (Is'In name t)
     = Is'In name (apply subst t)
+
+
+--
+--
+-- kind substitution for Class'Env - to fully specify all the kinds within the Class'Environment
+instance Substitutable Name Class'Env Kind where
+  apply subst Class'Env{ classes = classes, defaults = defaults }
+    = Class'Env{ classes = applied'classes, defaults = apply subst defaults }
+      where
+        applied'classes = Map.map (\ (supers, instances) -> (supers, apply subst instances)) classes

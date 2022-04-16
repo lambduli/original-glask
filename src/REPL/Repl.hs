@@ -21,6 +21,7 @@ import Compiler.Syntax
 import Compiler.TypeSystem.Infer
 import Compiler.TypeSystem.Program
 import Compiler.TypeSystem.InferenceEnv
+import Compiler.TypeSystem.ClassEnv ( Class'Env(..) )
 import Compiler.TypeSystem.Type.Infer.Expression
 
 import Compiler.TypeSystem.Error
@@ -62,8 +63,8 @@ read'cmd'or'expr = do
             return $ line ++ ['\n'] ++ next'line
 
 
-repl :: (Program, Infer'Env, Class'Env, Translate'Env, Counter) -> IO ()
-repl (program, i'env@Infer'Env{ kind'env = k'env, type'env = type'env, class'env =  class'env }, cl'env, trans'env, counter) = do
+repl :: (Program, Infer'Env, Translate'Env, Counter) -> IO ()
+repl (program, i'env@Infer'Env{ kind'env = k'env, type'env = type'env, class'env =  class'env }, trans'env, counter) = do
   -- read
   line <- read'cmd'or'expr
 
@@ -73,7 +74,7 @@ repl (program, i'env@Infer'Env{ kind'env = k'env, type'env = type'env, class'env
       putStrLn ""
 
       -- loop
-      repl (program, i'env, cl'env, trans'env, counter)
+      repl (program, i'env, trans'env, counter)
     ":exit" -> do
       putStrLn "Bye!"
       return ()
@@ -95,7 +96,7 @@ repl (program, i'env@Infer'Env{ kind'env = k'env, type'env = type'env, class'env
           putStrLn "Incorrect Format! The :t command must be followed by an expression."
 
           -- loop
-          repl (program, i'env, cl'env, trans'env, counter)
+          repl (program, i'env, trans'env, counter)
         Right (expression, counter') -> do
           let error'or'scheme = infer'type expression i'env counter'
           -- print
@@ -104,12 +105,12 @@ repl (program, i'env@Infer'Env{ kind'env = k'env, type'env = type'env, class'env
               putStrLn $ "Type Error: " ++ show err
 
               -- loop
-              repl (program, i'env, cl'env, trans'env, counter)
+              repl (program, i'env, trans'env, counter)
             Right (scheme, counter'') -> do
               putStrLn $ "          " ++ trim line ++ " :: " ++ show scheme
 
               -- loop
-              repl (program, i'env, cl'env, trans'env, counter'')
+              repl (program, i'env, trans'env, counter'')
 
     -- COMMAND :k(ind)
     ':' : 'k' : line -> do
@@ -119,7 +120,7 @@ repl (program, i'env@Infer'Env{ kind'env = k'env, type'env = type'env, class'env
           -- putStrLn "Incorrent Format! The :k command must be followed by an type exression."
 
           -- loop
-          repl (program, i'env, cl'env, trans'env, counter)
+          repl (program, i'env, trans'env, counter)
         
         Right (type', counter') -> do
           let error'or'kind = infer'kind type' i'env counter'
@@ -129,13 +130,13 @@ repl (program, i'env@Infer'Env{ kind'env = k'env, type'env = type'env, class'env
               putStrLn $ "Kind Error: " ++ show err
 
               -- loop
-              repl (program, i'env, cl'env, trans'env, counter')
+              repl (program, i'env, trans'env, counter')
 
             Right (kind, counter'') -> do
               putStrLn $ "          " ++ trim line ++ " :: " ++ show kind
 
               -- loop
-              repl (program, i'env, cl'env, trans'env, counter'')
+              repl (program, i'env, trans'env, counter'')
 
 
     _ -> do

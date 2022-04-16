@@ -11,6 +11,7 @@ import Compiler.Syntax.Qualified ( Qualified((:=>)) )
 
 import Compiler.TypeSystem.Type.Constants ( t'Bool, t'Char, t'Double, t'Int, type'fn )
 import Compiler.TypeSystem.Class ( Class )
+import Compiler.TypeSystem.ClassEnv ( Class'Env )
 import Compiler.TypeSystem.Solver.Substitution ( Subst )
 
 
@@ -62,8 +63,3 @@ init't'env = Map.fromList
   , ("#debug",  T'Forall [T'V' "a" K'Star]                   $ [] :=> (T'Var' (T'V' "a" K'Star) `type'fn` T'Var' (T'V' "a" K'Star)))
   ]
 -- TODO: revise the list in the future
-
-
-data Class'Env = Class'Env  { classes :: Map.Map Name Class
-                            , defaults :: [Type] }
-                  deriving (Show)

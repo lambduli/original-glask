@@ -23,10 +23,6 @@ import Compiler.Syntax.Term.Declaration ( Term'Decl(Type'Alias, Data'Decl, Class
 
 type Fresh a = State Counter a
 
-instance Cntr.State Cntr.Counter where
-  get'counter = id
-  update'counter counter _ = counter
-
 
 {-  TODO: Implement the Extract type class for [a], Term'Decl and for Term'Expr.
           I think each time it's going to accept a tuple containing the Counter too.  -}

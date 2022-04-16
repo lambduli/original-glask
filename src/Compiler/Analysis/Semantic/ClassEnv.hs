@@ -11,7 +11,7 @@ import Compiler.Syntax.Qualified ( Qualified((:=>)) )
 import Compiler.Syntax.Declaration ( Declaration(..) )
 
 import Compiler.TypeSystem.Class ( Class, Supers )
-import Compiler.TypeSystem.InferenceEnv ( Class'Env(..) )
+import Compiler.TypeSystem.ClassEnv ( Class'Env(..) )
 import Compiler.TypeSystem.Type.Constants ( t'Int, t'Double )
 
 

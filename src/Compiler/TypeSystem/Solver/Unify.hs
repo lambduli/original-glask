@@ -79,6 +79,9 @@ instance Unify Type M'V Type where
   match t1 t2 | t1 == t2
     = return empty'subst
 
+  match (T'Meta var) t | kind var == kind t
+    = var `bind` t
+
   -- match (T'Var var) t
   --   = throwError $ Unexpected "I wanted this to break. Find me and let the comments and notes guide you." -- I want it to explode when this case is triggered
   {-  NOTE: I commented the one below at some point and created the one above.
@@ -87,25 +90,32 @@ instance Unify Type M'V Type where
 
             I am not really sure why I chose to make just this one explode and not others. But that is what I think I had in mind.
    -}
-  match (T'Var' var) t | kind var == kind t
-    = undefined -- var `bind` t
+  -- TODO: Maybe the restricion on variables matching only on themselves can be lifter, because matching is only used in contexts and it would be nice if I could easily match
+  -- List a with List b where both a and b are rigid type variables (for instance, one from instance declaration and the other one from the type annotation)
+  -- in such cases it would make sense to let them match and bind
+  -- BUT - since the substitution is from M'V to Type, such matching would not be able to produce correct substitution, so...
+  match (T'Var' var'l) (T'Var' var'r) | var'l == var'r
+    = return empty'subst
 
   match (T'App l r) (T'App l' r') = do
     sub'l <- l `match` l'
     sub'r <- r `match` r'
     sub'l `merge` sub'r
 
-  match (T'Con con'l) (T'Con con'r) | con'l == con'r
-    = return empty'subst
+  -- match (T'Con con'l) (T'Con con'r) | con'l == con'r
+  --   = return empty'subst
+  match l@(T'Con t'con'l) r@(T'Con t'con'r)
+    | t'con'l == t'con'r = return empty'subst
+    | otherwise = throwError $ Type'Unif'Mismatch l r
 
   -- TODO: there's T'Tuple missing - I guess I expected I will make it into a user-defined Type so probably not need to handle it here then...
 
   -- TODO: can forall unify with anything? we will know after I read the rest of the PIART
   --        it may even be impossible but I don't know right now
   match (T'Forall _ _) _ = do
-    undefined
+    throwError $ Unexpected "Matching on forall"
   match _ (T'Forall _ _) = do
-    undefined
+    throwError $ Unexpected "Matching on forall"
 
   match t1 t2
     = throwError $ Type'Shape'Mismatch t1 t2

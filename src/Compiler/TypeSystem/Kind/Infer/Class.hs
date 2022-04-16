@@ -26,6 +26,10 @@ infer'class :: Class -> Kind'Check ([(Name, Kind)], [(Name, Kind)])
 infer'class (Class cl'name (T'V' par'name par'kind) supers decls) = do
   let m'anns = mapMaybe only'annotation decls
 
+  {-  QUESTION: Does the merge have any affect? Because if I understand it correctly. The method annotations are closed types, so the class parameter type variable
+                is actually generalized by their foralls isn't it? That means, that the type-class-type-parameter variable gets overwritten immediately by each method foraal anyway.
+                It's probably not a problem as long as the TO'AST was correct and assigned the same kind-variable to all type variables.
+     -}
   merge'into'k'env [(par'name, par'kind)] (mapM_ infer'method m'anns)
 
   merge'into'k'env [(par'name, par'kind)] (infer'context supers)

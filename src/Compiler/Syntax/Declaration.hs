@@ -81,4 +81,4 @@ data Class = Class { class'name :: Name, class'param :: T'V', class'supers :: [P
 
 instance Show Class where
   show (Class name (T'V' param kind) supers type'decls)
-    = "class " ++ show supers ++ " => " ++ name ++ " " ++ param ++ " where " ++ show type'decls
+    = "class " ++ show supers ++ " => " ++ name ++ " (" ++ param ++ " :: " ++ show kind ++ ") where " ++ show type'decls

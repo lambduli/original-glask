@@ -10,7 +10,7 @@ import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.Predicate ( Predicate(..) )
 import {-# SOURCE #-} Compiler.Syntax.Type ( Type(T'Meta), M'V )
 
-import Compiler.TypeSystem.InferenceEnv ( Class'Env(defaults) )
+import Compiler.TypeSystem.ClassEnv ( Class'Env(defaults) )
 import Compiler.TypeSystem.Solver.Substitutable ( Term(free'vars) )
 import Compiler.TypeSystem.Solver.Solve ( Solve )
 import Compiler.TypeSystem.Utils.Class ( entail )

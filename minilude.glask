@@ -4,11 +4,27 @@ module Main where
 ; infixl 6 *
 ; prefix 1 |>
 ; postfixl 5 ?
+; infix 4 ==
 
+; undefined = undefined
 
 ; class Num a where
   { (+) :: a -> a -> a
   ; (*) :: a -> a -> a }
+
+; class Eq a where
+  { (==) :: a -> a -> Bool }
+
+; data List a = Nil | Cons a (List a)
+
+; instance Eq a => Eq (List a) where
+  { (==) _ _ = False }
+
+-- ; instance Eq Bool where
+--   { (==) True True = True
+--   ; (==) True False = False
+--   ; (==) False False = True
+--   ; (==) False True = False }
 
 ; instance Num Int
 ; instance Num Double
@@ -19,21 +35,60 @@ module Main where
 
 -- ; (|>) :: a -> Bool
 -- ; (|>) _ = True
-; (|>) i = i
+-- ; (|>) i = i
 
 -- ; (?) :: Bool -> Bool
-; (?) a = a
+-- ; (?) a = a
 
 -- ; f'' = |> 23 ?
-; f''' = 23 + |> 42
+-- ; f''' = 23 + |> 42
 -- ; f'''' = |> 23 + 42
 
-; fn :: a -> b -> c
-; fn a b = if False then fn a b else gn a b
+-- FOLLOWING IS ILLEGAL, AND MUST FAIL
+-- ; data Triple a b c = T a b c
+-- ; first' ((T x y) z) = z
 
-; gn :: x -> y -> z
-; gn x y = fn 'a' y
 
+--
+-- SEEMS TO BE WORKING FINALLY
+--
+; broken :: Eq a => a -> Bool
+; broken a = Cons a Nil == Cons a Nil -- its type is missing the (Eq a) part, I don't know why!
+-- ; ambiguous = (Cons undefined Nil) == (Cons undefined Nil) -- this should never work, there is ambiguous type variable because of undefined
+-- ; next'a _ = (Cons undefined Nil) == (Cons undefined Nil) -- this also should not work
+-- what is wrong with this expression?, :t says its not an expression
+-- (\ a -> (==) (Cons a Nil) (Cons a Nil))
+--
+
+-- ; fn :: a -> b -> c
+-- ; fn a b = if False then fn a b else gn a b
+-- ; gn :: x -> y -> z
+-- ; gn x y = fn 'a' y
+
+
+-- ; fire'in'the :: forall a b . a -> b -> b -> a
+-- ; fire'in'the x y y' = _
+
+-- this is supposed to work just fine
+; fn'hi :: forall b . (forall x y . x -> y -> x) -> b -> b
+; fn'hi g b =  let { x = g b 23
+                ; y = g b 'a' }
+            in  if True then x else y
+
+; x = fn'hi (\ i _ -> i) 23
+
+-- so I __think__ that in GHC it works because of ScopedTypeVariable extension
+-- I did not implement it, so I think what happens it similar to what happens in the one below
+-- skolems just escape their scope
+-- I guess, scoped type variable maybe changes the scope of those variables?
+-- I am not sure yet, I will need to find some paper on scoped type variable implementation
+-- ; fn (g :: forall x y . x -> y -> x) b
+--   = let { x = g b 23
+--         ; y = g b 'a' }
+--     in  if True then x else y
+
+-- THIS DOES NOT WORK, SKOLEMS WOULD ESCAPE THEIR SCOPE AND THAT IS ILLEGAL, breaks in GHC too
+-- ; fn g x = if True then (g :: forall x y . x -> y -> x) 'a' else (g :: forall x y . x -> y -> x) 42
 
 
 

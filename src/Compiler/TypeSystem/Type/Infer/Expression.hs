@@ -15,6 +15,7 @@ import Compiler.Syntax.Predicate ( Predicate )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
 import Compiler.Syntax.Expression ( Expression(..) )
 import {-# SOURCE #-} Compiler.Syntax.Type ( Type(T'Tuple, T'Forall), Rho'Type, Sigma'Type )
+import Compiler.Syntax.TFun ( pattern T'Fun )
 
 import Compiler.TypeSystem.Infer ( Infer, Type'Check )
 import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
@@ -28,8 +29,8 @@ import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Declaration ( infer'decls )
 import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env, inst'sigma, unify'fun, check'sigma, infer'rho, check'rho, subs'check, skolemise, generalize, quantify, qualify, instantiate )
 import Compiler.TypeSystem.Expected ( Expected (Infer, Check) )
 import Compiler.TypeSystem.Actual ( Actual (Checked, Inferred) )
+import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'specify )
 import Compiler.TypeSystem.Error ( Error(Unexpected, Typed'Hole) )
-import Compiler.Syntax.TFun ( pattern T'Fun )
 
 
 infer'expr :: Expression -> Expected Rho'Type -> Type'Check ([Predicate], Actual Rho'Type)
@@ -121,8 +122,9 @@ infer'expr (Let decls body) expected = do
 
 infer'expr (Ann expr sigma) expected = do
   -- TODO: fully specify kinds within types in the `sigma`
-  preds <- check'sigma expr sigma
-  (preds', actual') <- inst'sigma sigma expected
+  sigma' <- kind'specify sigma
+  preds <- check'sigma expr sigma'
+  (preds', actual') <- inst'sigma sigma' expected
   return (preds ++ preds', actual')
   -- so according the paper this is what should happen:
   {-  Freshly instantiate the implicit type scheme given by the user.

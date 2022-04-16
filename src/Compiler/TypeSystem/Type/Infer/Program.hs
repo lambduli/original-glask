@@ -38,6 +38,7 @@ import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term (fr
 import Compiler.TypeSystem.Solver.Composable ( Composable(merge) )
 import Compiler.TypeSystem.Utils.Infer ( default'subst )
 import Compiler.TypeSystem.Utils.Class ( reduce )
+import Compiler.TypeSystem.ClassEnv ( Class'Env )
 
 import Compiler.TypeSystem.Kind.Infer.Program ( infer'kinds )
 import Compiler.TypeSystem.Kind.Infer.TypeSection ( infer'annotated, infer'methods )
@@ -46,30 +47,37 @@ import Compiler.TypeSystem.Kind.Infer.TypeSection ( infer'annotated, infer'metho
 import Debug.Trace
 
 
-infer'whole'program :: Program -> Infer'Env -> Counter -> Either Error (Type'Env, Kind'Env, Constraint'Env, Counter)
+infer'whole'program :: Program -> Infer'Env -> Counter -> Either Error (Type'Env, Kind'Env, Constraint'Env, Counter, Class'Env)
 infer'whole'program program infer'env counter = do
   let k'infer'state = Infer'State{ I'State.counter = counter, constraints = [] }
 
-  ((k'env, class'env, kind'subst), k'infer'state') <- run'infer infer'env (infer'kinds program) k'infer'state
+  ((k'env, class'env', kind'subst), k'infer'state') <- run'infer infer'env (infer'kinds program ) k'infer'state
 
   let base't'env  = type'env infer'env
       base'k'env  = kind'env infer'env
       base'cl'env = constraint'env infer'env
 
   let new'k'env         = k'env `Map.union` base'k'env
-      new'class'env     = class'env `Map.union` base'cl'env
+      new'class'env     = class'env' `Map.union` base'cl'env
       substituted't'env = apply kind'subst (type'env infer'env)
+      
+      cl'env              = class'env infer'env
+      substituted'cl'env  = apply kind'subst cl'env
+
+      ooo = trace ("{{ whole program }}\n  cl'env: " ++ show cl'env ++ "\n\n  ||  substed'cl'env: " ++ show substituted'cl'env ++ "\n\n ||  data and shit: " ++ show (data'n'class'sections program)) substituted'cl'env
 
   let Program{ bind'section = (explicits, implicits'list), methods = methods } = program
       infer'env' = infer'env{ kind'env = new'k'env
                             , type'env = substituted't'env
                             , constraint'env = new'class'env
-                            , kind'substitution = kind'subst }
+                            , kind'substitution = kind'subst
+                            , class'env = ooo {- substituted'cl'env -} }
                             -- NOTE: I need to put the kind substitution into the typing environment
                             --        when I later encounter any typing annotation (in the declaration or inline)
                             --        I first need to apply this substitution to it to fully specify the Kinds in it.
+      oo = trace ("methods: " ++ show methods) explicits
 
-      substituted'explicits = map (\ (Explicit sigma b'g) -> Explicit (apply kind'subst sigma) b'g) explicits
+      substituted'explicits = map (\ (Explicit sigma b'g) -> Explicit (apply kind'subst sigma) b'g) oo -- explicits
       substituted'methods   = map (\ (Method sigma b'g) -> Method (apply kind'subst sigma) b'g) methods
 
   {-  NOTES:  It's OK for me to use the same `infer'env'` - the idea is - the isolated kind inference and substitution
@@ -100,7 +108,7 @@ infer'whole'program program infer'env counter = do
 
       Same works for class'env.
   -}
-  return (new't'env, new'k'env, new'class'env, counter'')
+  return (new't'env, new'k'env, new'class'env, counter'', substituted'cl'env)
 
 
 infer'types :: Program -> Type'Check Type'Env
@@ -135,13 +143,12 @@ infer'types Program{ bind'section = bg, methods = methods } = do
   
   cs't <- get'constraints
   case run'solve cs't {- (cs't ++ cs't') -} :: Either Error (Subst M'V Type) of
-    Left err -> throwError err
+    Left err -> trace "here 1" throwError err
     Right subst -> do
       Infer'Env{ type'env = t'env, class'env = c'env } <- ask
       -- return (apply subst $ Map.fromList assumptions)
 
-      
-      -- TODO: turning off Predicates for now
+
       let rs = runIdentity $ runExceptT $ reduce c'env (apply subst (preds ++ preds'))
       case rs of
         Left err -> do

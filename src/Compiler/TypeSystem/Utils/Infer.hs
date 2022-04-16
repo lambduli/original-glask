@@ -26,7 +26,8 @@ import Compiler.Syntax.TFun ( pattern T'Fun )
 
 import Compiler.TypeSystem.Error ( Error(Unexpected, Unbound'Var, Unbound'Type'Var) )
 import Compiler.TypeSystem.Infer ( Infer, run'infer, Type'Check, Kind'Check, add'constraints, get'constraints )
-import Compiler.TypeSystem.InferenceEnv ( Class'Env, Infer'Env(Infer'Env, type'env, kind'env, constraint'env), Type'Env )
+import Compiler.TypeSystem.InferenceEnv ( Infer'Env(Infer'Env, type'env, kind'env, constraint'env), Type'Env )
+import Compiler.TypeSystem.ClassEnv ( Class'Env )
 import Compiler.TypeSystem.Ambiguity ( ambiguities, candidates, Ambiguity )
 import Compiler.TypeSystem.Solver.Solve ( Solve )
 import Compiler.TypeSystem.Solver.Substitution ( Subst(..) )
@@ -296,7 +297,8 @@ preds - predicates to split
 split :: Class'Env -> [M'V] -> [M'V] -> [Predicate] -> Solve ([Predicate], [Predicate])
 split cl'env fixed'vars gs preds = do
   preds' <- reduce cl'env preds
-  let (deffered'preds, retained'preds) = partition (all (`elem` fixed'vars) . free'vars) preds'
+  let oo = trace ("{ split }\npreds: " ++ show preds ++ "\npreds': " ++ show preds') preds'
+  let (deffered'preds, retained'preds) = partition (all (`elem` fixed'vars) . free'vars) oo -- preds'
   retained'preds' <- defaulted'preds cl'env (fixed'vars ++ gs) retained'preds
   return (deffered'preds, retained'preds \\ retained'preds')
 
@@ -530,7 +532,7 @@ check'sigma expr sigma = do
 
       if not $ null bad'vars
       then
-        throwError $ Unexpected "Type is not polymorphic enough!"
+        throwError $ Unexpected "Type is not polymorphic enough!" -- \n| sigma: " ++ show sigma ++ " \n| sigma': " ++ show sigma' ++ "  \n| skolems: " ++ show skolems ++ " \n| free'all: " ++ show free'all ++ "\n| free'sigma: " ++ show free'sigma ++ "\n| skolemized: " ++ show rho
       else do
         return (preds ++ preds')
 
