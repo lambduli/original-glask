@@ -13,19 +13,20 @@ import Data.List ( (\\), intersect, union )
 
 import Compiler.Counter ( fresh )
 
-import Compiler.Syntax.BindGroup ( Bind'Group(name, alternatives) )
+import Compiler.Syntax.BindGroup ( Bind'Group(name, alternatives, Bind'Group) )
 import Compiler.Syntax.Kind ( Kind(K'Star) )
 import Compiler.Syntax.Match ( Match(patterns) )
 import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.Predicate ( Predicate )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
 import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'V'(..), Type(..), M'V(..) )
+import Compiler.Syntax.Overloaded ( Overloaded(Recursive) )
 
 import Compiler.TypeSystem.Error ( Error )
 import Compiler.TypeSystem.Infer ( Infer, Type'Check, add'constraints, get'constraints )
 import Compiler.TypeSystem.Constraint ( Constraint (Unify) )
 import Compiler.TypeSystem.Binding ( Implicit(..) )
-import Compiler.TypeSystem.Utils.Infer ( merge'into't'env, quantify, split, to'scheme )
+import Compiler.TypeSystem.Utils.Infer ( merge'into't'env, quantify, split, to'scheme, overload )
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env(Infer'Env, type'env, class'env) )
 import Compiler.TypeSystem.Solver ( run'solve )
 import Compiler.TypeSystem.Solver.Substitution ( Subst )
@@ -39,7 +40,7 @@ import Debug.Trace
 
 
 {- Returning a [Constraint Type] might not be strictly necessary -}
-infer'impls :: [Implicit] -> Type'Check ([Predicate], [(Name, Sigma'Type)])
+infer'impls :: [Implicit] -> Type'Check ([Implicit], [Predicate], [(Name, Sigma'Type)])
 infer'impls implicits = do
   let is = map (\ (Implicit b'g) -> name b'g) implicits
   {-  get only the names of the implicit bindings in the same order -}
@@ -52,10 +53,15 @@ infer'impls implicits = do
   let scs = map to'scheme ts
   {-  qualify and quantify the fresh type variables - both empty -}
       assumptions = zip is scs -- NOTE: I will need to put this into the typing context later [1]
-
   {-  assign each name one type scheme -}
+
+  -- TODO: I need to register all the assumptions as Recrusive in the overloaded env
+  let recursives = map (\ (n, _) -> (n, Recursive)) assumptions
+
       many'matches = map (\ (Implicit b'g) -> alternatives b'g) implicits
   {-  pick only [Match] from each implicit binding -}
+  
+      many'names = map (\ (Implicit b'g) -> name b'g) implicits
 
   -- [1] now I am going to merge them into the typing context
   -- explanation of the zipWithM part: I need to infer list of matches and I also need to
@@ -65,14 +71,18 @@ infer'impls implicits = do
   let infer'ts = map (const Infer) ts
   -- let infer'ts = map Check ts
 
-  results <- merge'into't'env assumptions $ zipWithM infer'matches many'matches infer'ts
+  -- NOTE: the overload registers all mutually recursive implicits as recursive, because of placeholders
+  results <- overload recursives $ merge'into't'env assumptions $ zipWithM infer'matches many'matches infer'ts
   {-  infering each [Match] inside the typing context containing all the assumptions about the types of the implicits
       zipWith is needed because infer'matches expects to be given a type which it unifies with the infered type of all the RHSs
   -}
-  let preds = concat [ preds  | (preds, _) <- results ]
-      types = [ type'  | (_, Inferred type') <- results ]
+  let matches' = [ match | (match, _, _) <- results ]
+      preds = concat [ preds  | (_, preds, _) <- results ]
+      types = [ type'  | (_, _, Inferred type') <- results ]
 
       con'constraints = zipWith Unify types ts
+
+  let implicits' = zipWith (\ n m -> Implicit (Bind'Group{ name = n, alternatives = m })) many'names matches'
 
   add'constraints con'constraints
   -- now I can solve the type constraints
@@ -110,7 +120,7 @@ infer'impls implicits = do
                 -- all the free variables in the type, but because of the monomorphism restriction
                 -- we must quantify over only some of them -- QUESTION: Which ones can we quantify over and which ones we can't?
                 -- TODO: inspect more later!
-                r = return (deferred'preds ++ retained'preds, zip is scs')
+                r = return (implicits', deferred'preds ++ retained'preds, zip is scs')
                 -- message = "{{ infer'impl restricted }} "
                 --         ++ "\n|  gs': " ++ show gs'
                 --         ++ "\n|  gs: " ++ show gs
@@ -121,7 +131,7 @@ infer'impls implicits = do
             in r
           else
             let scs' = map (quantify gs . (retained'preds :=> )) (apply subst types)-- types -- qualify each substituted type with retained predicates
-                result = return (deferred'preds, zip is scs')
+                result = return (implicits', deferred'preds, zip is scs')
                 -- message = "{{ infer'impl }} "
                 --           ++ "\n|  scs' = " ++ show scs'
                 --           ++ "\n|  deffered'preds = " ++ show deferred'preds

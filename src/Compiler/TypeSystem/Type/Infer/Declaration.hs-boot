@@ -12,4 +12,4 @@ import Compiler.TypeSystem.Assumption ( Assumption )
 import Compiler.Syntax.Type ( Sigma'Type )
 
 
-infer'decls :: [Declaration] -> Type'Check ([Predicate], [Assumption Sigma'Type])
+infer'decls :: [Declaration] -> Type'Check ([Declaration], [Predicate], [Assumption Sigma'Type])

@@ -9,6 +9,7 @@ import Compiler.Syntax.Type ( Sigma'Type )
 import Compiler.Syntax.Declaration ( Declaration )
 import Compiler.Syntax.Match ( Match )
 import Compiler.Syntax.Pattern ( Pattern )
+import Compiler.Syntax.Placeholder ( Placeholder )
 
 
 data Expression
@@ -22,9 +23,10 @@ data Expression
   | Tuple [Expression]
   | If Expression Expression Expression
   | Let [Declaration] Expression
-  | Ann Expression Sigma'Type -- (Qualified Type) -- TODO: higher-rank -- should it be qualified type or should it be just Type with the invariant that it's Forall?
+  | Ann Expression Sigma'Type
   | Case Expression [Match]
   | Hole Name
+  | Placeholder Placeholder
   -- | Intro Name [Expression]
   deriving (Eq)
 
@@ -43,4 +45,5 @@ instance Show Expression where
   show (Ann type' expr) = show expr ++ " :: " ++ show type'
   show (Case expr options) = "case " ++ show expr ++ " of \n { " ++ "TODO: show options" ++ " }"
   show (Hole name) = name
+  show (Placeholder pl'h) = "<" ++ show pl'h ++ ">"
   -- show (Intro name exprs) = "(" ++ name ++ " " ++ unwords (map show exprs) ++ ")"

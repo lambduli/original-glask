@@ -11,5 +11,5 @@ import Compiler.TypeSystem.Expected ( Expected )
 import Compiler.TypeSystem.Actual ( Actual )
 
 
-infer'expr :: Expression -> Expected Rho'Type -> Type'Check ([Predicate], Actual Rho'Type)
+infer'expr :: Expression -> Expected Rho'Type -> Type'Check (Expression, [Predicate], Actual Rho'Type)
 

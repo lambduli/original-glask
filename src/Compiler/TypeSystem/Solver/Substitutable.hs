@@ -21,6 +21,7 @@ import Compiler.TypeSystem.Solver.Substitution ( Subst(..) )
 import Compiler.TypeSystem.ClassEnv ( Class'Env(..) )
 
 
+
 --
 -- TODO:  Consider renaming it to Substitute?
 --        Also consider changing the order of type parameters to (Substitutable k v t)

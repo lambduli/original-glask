@@ -26,6 +26,15 @@ module Main where
 --   ; (==) False False = True
 --   ; (==) False True = False }
 
+; id :: forall a . a -> a
+; id x = x
+
+; class Test a where
+  { meth :: a -> a }
+; instance Test Bool where
+  { meth a = id a }
+
+
 ; instance Num Int
 ; instance Num Double
 
@@ -52,8 +61,8 @@ module Main where
 --
 -- SEEMS TO BE WORKING FINALLY
 --
-; broken :: Eq a => a -> Bool
-; broken a = Cons a Nil == Cons a Nil -- its type is missing the (Eq a) part, I don't know why!
+; not'broken :: Eq a => a -> Bool
+; not'broken a = Cons a Nil == Cons a Nil -- it's no longer broken
 -- ; ambiguous = (Cons undefined Nil) == (Cons undefined Nil) -- this should never work, there is ambiguous type variable because of undefined
 -- ; next'a _ = (Cons undefined Nil) == (Cons undefined Nil) -- this also should not work
 -- what is wrong with this expression?, :t says its not an expression

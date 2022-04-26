@@ -15,6 +15,8 @@ import Compiler.Syntax.Declaration ( Declaration, Data, Class )
 import Compiler.Syntax.HasKind ( HasKind(kind) )
 import Compiler.Syntax.Name ( Name )
 import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'V'(..), Type(..), M'V (Tau) )
+import Compiler.Syntax.Qualified ( Qualified((:=>)) )
+import Compiler.Syntax.Predicate ( Predicate(Is'In) )
 
 import Compiler.TypeSystem.Program ( Program(..) )
 import Compiler.TypeSystem.Binding ( Explicit(Explicit), Implicit(Implicit), Method(..) )
@@ -39,21 +41,21 @@ import qualified Compiler.Analysis.Semantic.Dependency.Types as Types
 to'program :: [Declaration] -> Program
 to'program decls = Program{ bind'section = (explicits, implicits), methods = methods, method'annotations = m'anns, data'n'class'sections = type'sections {- data'declarations = data'decls -} }
   where
-    method'annotations :: [(Name, Sigma'Type, Name)]
+    method'annotations :: [(Name, Sigma'Type, Name, Name)]
     method'annotations = Method'Annotations.extract decls
 
-    m'anns = map (\ (method'n, s't, _) -> (method'n, s't)) method'annotations
+    m'anns = map (\ (method'n, s't, _, cl'name) -> (method'n, s't, cl'name)) method'annotations
 
-    method'bindings :: [(Name, Bind'Group, Type)]
+    method'bindings :: [(Name, Bind'Group, Type, Name)] -- method name, bg, instance type, class name
     method'bindings = Method'Bindings.extract decls
 
     {-  NOTE:  -}
     methods :: [Method]
     methods = map make'method method'bindings
       where
-        make'method :: (Name, Bind'Group, Type) -> Method
-        make'method (method'name, bind'group, instance'type) =
-          let Just (_, T'Forall tvs qualified'type, class'var'name) = find (\ (m'n, _, _) -> m'n == method'name) method'annotations -- NOTE: This should always find the result, so the pattern matching on Just (...) should always succeed
+        make'method :: (Name, Bind'Group, Type, Name) -> Method
+        make'method x@(method'name, bind'group, instance'type, class'name) =
+          let Just (_, T'Forall tvs qualified'type, class'var'name, cl'name) = find (\ (m'n, _, _, _) -> m'n == method'name) method'annotations -- NOTE: This should always find the result, so the pattern matching on Just (...) should always succeed
               Just cl'param'tv = find (\ (T'V' n _) -> n == class'var'name) tvs  -- (T'V' class'var'name (kind instance'type))
 
               free'in'inst'type = Set.toList $ free'vars instance'type :: [T'V'] -- I want free rigid type variables
@@ -70,7 +72,17 @@ to'program decls = Program{ bind'section = (explicits, implicits), methods = met
               
               substitution :: Subst T'V' Type
               substitution = Sub (Map.singleton cl'param'tv instance'type') -- NOTE: the Type Variable must have the same Kind as the Instance Type
-              scheme = T'Forall ((deleteBy (\ (T'V' n _) (T'V' n' _) -> n == n') (T'V' class'var'name undefined) tvs) ++ tvs') $ apply substitution qualified'type -- now I have the Type Scheme
+              (orig'ctxt :=> orig'type) = qualified'type
+              striped = (filter (\ (Is'In c'n t) -> c'n /= class'name) orig'ctxt) :=> orig'type -- TODO: This is super dirty trick, I should be able to do it, because method annotations will
+              -- only have one predicate with the name of the class like foo :: Foo a , ... => ...
+              -- because such predicate is not legal to be written by the user, it will be the one I have put here
+              -- so I can now remove it
+              -- later I should just not put it here, so I don't have to remove it
+              q't = striped
+              (apl'ctxt :=> apl't) = apply substitution q't
+              q'ty = (apl'ctxt :=> apl't)
+              -- q'ty = (filter (\ (Is'In c'name t) -> ) apl'ctxt) :=> apl't
+              scheme = T'Forall ((deleteBy (\ (T'V' n _) (T'V' n' _) -> n == n') (T'V' class'var'name undefined) tvs) ++ tvs') q'ty -- now I have the Type Scheme
               -- ^^^ I know the use of undefined is not a good idea, BUT I really wanted to emphasise that I only want to delete single type variable from the generic variables
               -- (filter (\ (T'V' n _) -> n /= class'var'name) tvs ) 
 
@@ -79,11 +91,11 @@ to'program decls = Program{ bind'section = (explicits, implicits), methods = met
               -- then I alpha rename them in the instance'type
               -- after that I finally have a correct type which can be substituted for the `cl'param'tv`
               -- and then when the `scheme` is being created I can simply add those free type variables which I have just alpha renamed to unique names
-              -- into the forall, after I remove 
+              -- into the forall, after I remove
 
-          in Method scheme bind'group
+              method = Method scheme bind'group class'name
 
- 
+          in method
 
     annotations   :: Map.Map Name Sigma'Type
     annotations   = Annotations.extract decls

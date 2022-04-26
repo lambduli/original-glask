@@ -19,7 +19,7 @@ import Compiler.TypeSystem.Error ( Error(..) )
 import Compiler.TypeSystem.Infer ( Infer, Type'Check, get'constraints )
 import Compiler.TypeSystem.Constraint ( Constraint )
 import Compiler.TypeSystem.Binding ( Method(..) )
-import Compiler.TypeSystem.Utils.Infer ( instantiate, split', skolemise, close'over' )
+import Compiler.TypeSystem.Utils.Infer ( instantiate, split', skolemise, close'over', phs'matches )
 import Compiler.TypeSystem.Utils.Class ( entail )
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env(Infer'Env, type'env, class'env) )
 import Compiler.TypeSystem.Solver ( run'solve )
@@ -41,15 +41,15 @@ import Compiler.TypeSystem.Expected ( Expected(Check) )
 
 -}
 {- Returning a [Constraint Type] might not be strictly necessary -}
-infer'method :: Method -> Type'Check [Predicate]
-infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }) = do
+infer'method :: Method -> Type'Check (Method, [Predicate])
+infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches } cl'name) = do
   -- scheme' <- kind'infer'sigma scheme -- this is no longer necessary - it's been done before-hand
   
   -- (qs :=> t) <- instantiate scheme
   (skolems, qs, t) <- skolemise scheme
   -- STEJNEJ DUVOD JAKO U EXPLICIT - HLEDEJ KOMENTAR A VYSVETLENI TAM
 
-  (preds, _) <- infer'matches matches $ Check t
+  (matches', preds, _) <- infer'matches matches $ Check t
   -- now solve it
   cs't <- get'constraints
   case run'solve cs't :: Either Error (Subst M'V Type) of
@@ -81,4 +81,7 @@ infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }
               then throwError $ Signature'Too'General scheme sc'
               else  if not (null retained'preds)
                     then throwError Context'Too'Weak
-                    else return deferred'preds
+                    else do
+                      let matches'' = map (phs'matches subst) matches'
+                      let method' = Method scheme bg{ alternatives = matches'' } cl'name
+                      return (method', deferred'preds)

@@ -1,0 +1,27 @@
+module Main where
+{ infix 4 ==
+; infixl 5 +
+; infixl 6 *
+
+; class Num a where
+  { (+) :: a -> a -> a
+  ; (*) :: a -> a -> a }
+
+; instance Num Int where
+  { (+) x y = x + y
+  ; (*) x y = x * y }
+
+; instance Num Double
+
+; data Bool = True | False
+
+; class Eq a where
+  { (==) :: a -> a -> Bool }
+
+; func :: Eq a => a -> a -> Bool
+; fun x y = x == y
+
+; gn a b = a + b
+
+
+}

@@ -8,6 +8,8 @@ import Compiler.Syntax.Name ( Name )
 import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'C(T'C), T'V'(T'V'), Type(..) )
 import Compiler.Syntax.Kind ( Kind(K'Star, K'Arr) )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
+import Compiler.Syntax.Overloaded ( Overloaded )
+import Compiler.Syntax.Predicate ( Predicate )
 
 import Compiler.TypeSystem.Type.Constants ( t'Bool, t'Char, t'Double, t'Int, type'fn )
 import Compiler.TypeSystem.Class ( Class )
@@ -19,7 +21,10 @@ data Infer'Env = Infer'Env  { kind'env :: Kind'Env
                             , type'env :: Type'Env
                             , class'env :: Class'Env
                             , constraint'env :: Constraint'Env
-                            , kind'substitution :: Subst Name Kind }
+                            , kind'substitution :: Subst Name Kind
+                            , instance'env :: [((Name, Type), Name)] -- (Name, Type) is the kind of information in the placeholder, like Num Int, or Eq []
+                            , overloaded :: [(Name, Overloaded)]
+                            , instances :: [((Name, Type), (Name, [Predicate], Predicate))] }
   deriving (Show)
 
 
