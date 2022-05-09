@@ -141,7 +141,7 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
   let overloads' = mapMaybe (\ (n, T'Forall _ (ctxt :=> _)) -> if null ctxt then Nothing else Just (n, Overloaded.Overloaded)) assumptions
   (methods', preds') <- overload (overloads ++ overloads') $ merge'into't'env assumptions $ check'seq infer'method methods
 
-  let ee = trace ("\n\n { overloads methods }  overloads: " ++ show overloads ++ "  | methods: " ++ show methods) methods'
+  let ee = trace ("\n\n { overloads methods }  overloads: " ++ show overloads ++ "\n   | methods: " ++ show methods ++ "\n   |  methods with placeholders?: " ++ show methods') methods'
 
   -- Question:  So all of the constraints were already solved in smaller groups of them.
   --            Do I expect some different result from solving them all?
@@ -200,13 +200,15 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
                       rr = trace (">>> substs: " ++ show substs ++ "   |||  sub: " ++ show sub) substs
                       composed'substs = foldl compose sub rr -- substs -- I think this should work, compose does not require all of them to agree
                       -- more importantly, it has to compose with the original substitution, I was missing that, and it didn't work
-
+                  let xx = trace ("\n\n OOOOOO || methods to eliminate: " ++ show methods' ++ "\n  assum'closed " ++ show assum'closed ++ "\n  composed'substs " ++ show composed'substs ) ee
                       
                   -- TODO: I need to call eliminate in the bind group too, give it the correct substitution and assumptions
                   bg'' <- eliminate composed'substs assum'closed oo -- bg'
 
+                  let zz = trace ("\n\n ELIMINATED BINDINGS: " ++ show bg'' ++ "\n COMPOSED'SUBSTS: " ++ show composed'substs) bg''
+
                   -- AND METHODS NEED THAT TOO!!!
-                  methods'' <- eliminate'methods composed'substs assum'closed ee -- methods'
+                  methods'' <- eliminate'methods composed'substs assum'closed xx -- methods'
 
 
                       -- message = "<<< tracing >>>   "
@@ -228,4 +230,4 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
                   -- let ms = map (\ (n, q't) -> (n, close'over q't)) m'anns
                   -- return (apply subst' $ Map.fromList $ assumptions ++ ms, cs'k ++ cs'k')
 
-                  return (Map.fromList assum'closed, prg{ bind'section = bg'', methods = methods'' })
+                  return (Map.fromList assum'closed, prg{ bind'section = zz, methods = methods'' })

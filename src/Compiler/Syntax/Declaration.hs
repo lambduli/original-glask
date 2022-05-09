@@ -35,7 +35,7 @@ data Declaration
 
 instance Show Declaration where
   show (Binding bind'group)
-    = "TODO: show bind'group"
+    = show bind'group -- "TODO: show bind'group"
     -- = name ++ " = " ++ show expr
   -- show (Annotated name type' expr)
     -- = name ++ " :: " ++ show type' ++ "\n" ++ name ++ " = " ++ show expr

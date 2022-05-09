@@ -11,6 +11,8 @@ import Compiler.Lexer.Position
 import Compiler.Lexer.Located
 import Compiler.Lexer.Utils
 
+import Debug.Trace
+
 
 infix 5 |=>
 
@@ -28,7 +30,8 @@ infix 5 ~:
 place'toks ~: source = equivalent
   where
     parsed'tokens = use'parser read'token source
-    equivalent = and $ zipWith (~~) parsed'tokens (map ($ None) place'toks)
+    tt = trace ("\n\n tracing tokens: parse'tokens: " ++ show parsed'tokens) parsed'tokens
+    equivalent = and $ zipWith (~~) tt (map ($ None) place'toks)
 
 -- (~:) :: [Position -> Token] -> String -> Bool
 -- place'toks ~: source = equaivalent

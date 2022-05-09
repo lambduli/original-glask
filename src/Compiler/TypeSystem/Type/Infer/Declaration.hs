@@ -214,8 +214,10 @@ infer'types bg = do
       -- probably
       -- so I need a fully substituted typing context/assumptions about all the bindings now
       let assumptions' = apply subst assumptions
-      eliminated <- eliminate subst assumptions' bg'
-      return (eliminated, preds, map properly'close assumptions')
+          oo = trace ("{ \n... declarations with placeholders: " ++ show bg' ++ "\n and assumptions so far: " ++ show assumptions') assumptions'
+      eliminated <- eliminate subst oo bg'
+      let aa = trace ("\n ---- and after elimination: " ++ show eliminated) eliminated
+      return (aa, preds, map properly'close assumptions')
       -- TODO: NOTE
       --
       --  Tady je takova otazka - v modulu Program ve funkci infer'types
@@ -643,7 +645,15 @@ get'ty'const ty
 
 eliminate'methods :: Subst M'V Type -> [(Name, Sigma'Type)] -> [Method] -> Type'Check [Method]
 eliminate'methods subst assumptions methods = do
-  mapM (elim'method subst assumptions) methods
+  let text = "\n+++++++ assumptions: " ++ show assumptions
+          ++ "\n        methods: " ++ show methods
+          ++ "\n"
+      oo = trace text assumptions
+  methods' <- mapM (elim'method subst oo) methods
+  let message = "\n------ methods afeter: " ++ show methods'
+      ee = trace message methods'
+
+  return ee
 
 
 elim'method :: Subst M'V Type -> [(Name, Sigma'Type)] -> Method -> Type'Check Method

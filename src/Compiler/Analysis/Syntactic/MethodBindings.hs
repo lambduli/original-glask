@@ -15,14 +15,14 @@ import qualified Compiler.Analysis.Syntactic.Bindings as Bindings
 
 
 
-extract :: [Declaration] -> [(Name, Bind'Group, Type, Name)]
+extract :: [Declaration] -> [(Name, Bind'Group, Type, Name, [Predicate])]
 extract declarations = concat $ mapMaybe collect declarations
 
 
 {-  NOTE: For now, I am expecting only Instances to contain actual implementations. -}
-collect :: Declaration -> Maybe [(Name, Bind'Group, Type, Name)] -- method name, bind group, instance type, class of the instance
-collect (Instance (_ :=> (Is'In cl'n type')) declarations) = do
+collect :: Declaration -> Maybe [(Name, Bind'Group, Type, Name, [Predicate])] -- method name, bind group, instance type, class of the instance, instance context
+collect (Instance (context :=> (Is'In cl'n type')) declarations) = do
   let bindings  = mapMaybe ((fmap (\ (name, b'g) -> (name, b'g, type'))) . Bindings.collect) declarations
-      complete  = map (\ (m'name, b'g, t) -> (m'name, b'g, t, cl'n) ) bindings
+      complete  = map (\ (m'name, b'g, t) -> (m'name, b'g, t, cl'n, context) ) bindings
   return complete
 collect _ = Nothing

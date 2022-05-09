@@ -13,7 +13,7 @@ import Compiler.Syntax.BindGroup ( Bind'Group(Bind'Group, name, alternatives) )
 import Compiler.Syntax.Kind ( Kind )
 import Compiler.Syntax.Predicate ( Predicate )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
-import {-# SOURCE #-} Compiler.Syntax.Type ( T'V', Type, M'V )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'V', Type (T'Forall), M'V )
 
 import Compiler.TypeSystem.Error ( Error(..) )
 import Compiler.TypeSystem.Infer ( Infer, Type'Check, get'constraints )
@@ -28,6 +28,9 @@ import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term(fre
 import Compiler.TypeSystem.Type.Infer.Match ( infer'matches )
 import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'infer'sigma, kind'specify )
 import Compiler.TypeSystem.Expected ( Expected(Check) )
+
+
+import Debug.Trace
 
 
 {-  Description:
@@ -47,9 +50,11 @@ infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }
   
   -- (qs :=> t) <- instantiate scheme
   (skolems, qs, t) <- skolemise scheme
+
+  let pp = trace ("\n\n infer'method  ...  scheme: " ++ show scheme ++ "\n  ... qs: " ++ show qs ++ "\n  ... t: " ++ show t ++ "\n  ... skolems: " ++ show skolems) t
   -- STEJNEJ DUVOD JAKO U EXPLICIT - HLEDEJ KOMENTAR A VYSVETLENI TAM
 
-  (matches', preds, _) <- infer'matches matches $ Check t
+  (matches', preds, _) <- infer'matches matches $ Check pp -- t
   -- now solve it
   cs't <- get'constraints
   case run'solve cs't :: Either Error (Subst M'V Type) of
@@ -83,5 +88,6 @@ infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }
                     then throwError Context'Too'Weak
                     else do
                       let matches'' = map (phs'matches subst) matches'
-                      let method' = Method scheme bg{ alternatives = matches'' } cl'name
+                      let scheme' = T'Forall skolems (qs :=> t)
+                      let method' = Method scheme' bg{ alternatives = matches'' } cl'name
                       return (method', deferred'preds)

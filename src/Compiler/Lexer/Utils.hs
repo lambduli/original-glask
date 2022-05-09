@@ -178,7 +178,7 @@ use'parser parser source = go [] $ runState parser (initial'state source)
     -- go :: [a] -> (a, Parse'State) -> [a]
     go acc (token, p'state)
       = if finished
-        then acc
+        then reverse acc
         else go (token : acc) $ runState parser p'state
       where
         finished = done p'state
