@@ -1,23 +1,28 @@
 module Main where
 { infixl 5 +
+; infixl 5 *
 
-; int'id :: Int -> Int
-; int'id i = i
+-- ; int'id :: Int -> Int
+-- ; int'id i = i
 
 ; class Num a where
-  { (+) :: a -> a -> a }
+  { (+) :: a -> a -> a
+  ; (*) :: a -> a -> a }
 
-; instance Num Int
+; instance Num Int where
+  { (+) x y = x + y
+  ; (*) x y = x * y }
 
 ; data Maybe a = Just a | Nothing
 
 ; instance Num a => Num (Maybe a) where
-  { (+) (Just n) (Just m) = Just (n + m) }
+  { (+) (Just n) (Just m) = Just (n + m)
+  ; (*) (Just n) (Just m) = Just (n * m) }
 
 -- klic je to trignout u explicitnich funkci taky
 -- tenhle example to presne trigne
-; fobar :: Num a => Maybe a -> a
-; fobar (Just n) = n + n
+-- ; fobar :: Num a => Maybe a -> a
+-- ; fobar (Just n) = n + n
 
 -- ; overloaded :: Num a => a -> a
 -- ; overloaded a = a

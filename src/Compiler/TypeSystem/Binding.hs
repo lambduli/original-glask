@@ -24,5 +24,5 @@ data Explicit = Explicit Sigma'Type Bind'Group
 
   Bind'Group - The method implementation itself.
 -}
-data Method = Method Sigma'Type {- (Subst T'V Type) -} Bind'Group Name -- type scheme, implementation, type class
+data Method = Method Sigma'Type {- (Subst T'V Type) -} Bind'Group Name Name -- type scheme, implementation, type class, global variable name where it will be put
   deriving (Show)

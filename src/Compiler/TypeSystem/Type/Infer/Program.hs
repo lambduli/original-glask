@@ -82,7 +82,7 @@ infer'whole'program program infer'env counter = do
       oo = trace ("methods: " ++ show methods) explicits
 
       substituted'explicits = map (\ (Explicit sigma b'g) -> Explicit (apply kind'subst sigma) b'g) oo -- explicits
-      substituted'methods   = map (\ (Method sigma b'g cl'n) -> Method (apply kind'subst sigma) b'g cl'n) methods
+      substituted'methods   = map (\ (Method sigma b'g cl'n d'n) -> Method (apply kind'subst sigma) b'g cl'n d'n) methods
 
   {-  NOTES:  It's OK for me to use the same `infer'env'` - the idea is - the isolated kind inference and substitution
               on Explicits and Methods should never influence/change anything in the inference environment.

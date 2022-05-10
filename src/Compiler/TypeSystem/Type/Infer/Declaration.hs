@@ -657,6 +657,6 @@ eliminate'methods subst assumptions methods = do
 
 
 elim'method :: Subst M'V Type -> [(Name, Sigma'Type)] -> Method -> Type'Check Method
-elim'method subst assums (Method sigma Bind'Group{ name = n, alternatives = alts } c'name) = do
+elim'method subst assums (Method sigma Bind'Group{ name = n, alternatives = alts } c'name d'name) = do
   alts' <- mapM (elim'match subst assums sigma) alts
-  return $ Method sigma (Bind'Group{ name = n, alternatives = alts' }) c'name
+  return $ Method sigma (Bind'Group{ name = n, alternatives = alts' }) c'name d'name

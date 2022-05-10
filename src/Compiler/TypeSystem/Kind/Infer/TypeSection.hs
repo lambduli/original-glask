@@ -136,6 +136,6 @@ infer'methods :: [Method] -> Kind'Check [Method]
 infer'methods methods = mapM do'kind'method methods
   where
     do'kind'method :: Method -> Kind'Check Method
-    do'kind'method (Method sigma b'g cl'n) = do
+    do'kind'method (Method sigma b'g cl'n d'n) = do
       sigma' <- kind'infer'sigma sigma
-      return $ Method sigma' b'g cl'n
+      return $ Method sigma' b'g cl'n d'n

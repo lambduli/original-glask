@@ -14,7 +14,7 @@ import Compiler.Syntax.BindGroup ( Bind'Group )
 import Compiler.Syntax.Declaration ( Declaration, Data, Class )
 import Compiler.Syntax.HasKind ( HasKind(kind) )
 import Compiler.Syntax.Name ( Name )
-import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'V'(..), Type(..), M'V (Tau) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'V'(..), Type(..), M'V (Tau), T'C (T'C) )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
 import Compiler.Syntax.Predicate ( Predicate(Is'In) )
 
@@ -41,7 +41,7 @@ import qualified Compiler.Analysis.Semantic.Dependency.Types as Types
 to'program :: [Declaration] -> Program
 to'program decls = Program{ bind'section = (explicits, implicits), methods = methods, method'annotations = m'anns, data'n'class'sections = type'sections {- data'declarations = data'decls -} }
   where
-    method'annotations :: [(Name, Sigma'Type, Name, Name)]
+    method'annotations :: [(Name, Sigma'Type, Name, Name)] -- method name, type scheme, class param name, class name
     method'annotations = Method'Annotations.extract decls
 
     m'anns = map (\ (method'n, s't, _, cl'name) -> (method'n, s't, cl'name)) method'annotations
@@ -53,6 +53,12 @@ to'program decls = Program{ bind'section = (explicits, implicits), methods = met
     methods :: [Method]
     methods = map make'method method'bindings
       where
+        -- to make the name of the method, I need the d- part, the class name part and the type constructor type
+        get'ty'const :: Type -> Type
+        get'ty'const (T'App ty _) = get'ty'const ty
+        get'ty'const ty@(T'Con (T'C name _)) = ty
+        get'ty'const _ = error "shouldn't have happened"
+
         make'method :: (Name, Bind'Group, Type, Name, [Predicate]) -> Method
         make'method x@(method'name, bind'group, instance'type, class'name, inst'context) =
           let Just (_, T'Forall tvs qualified'type, class'var'name, cl'name) = find (\ (m'n, _, _, _) -> m'n == method'name) method'annotations -- NOTE: This should always find the result, so the pattern matching on Just (...) should always succeed
@@ -116,8 +122,16 @@ to'program decls = Program{ bind'section = (explicits, implicits), methods = met
               -- after that I finally have a correct type which can be substituted for the `cl'param'tv`
               -- and then when the `scheme` is being created I can simply add those free type variables which I have just alpha renamed to unique names
               -- into the forall, after I remove
-
-              method = Method scheme bind'group class'name
+              ty'const@(T'Con (T'C ty'name _)) = case instance'type' of
+                                                  T'Var' t' -> error "illegal syntactically"
+                                                  T'Meta m'v -> error "illegal syntactically"
+                                                  T'Con (T'C name _) -> instance'type'
+                                                  T'Tuple tys -> error "not supporting tuples now"
+                                                  -- TODO: but later it would be the specific constructor for the tuple, like `(,)` for a pair
+                                                  T'App ty _ -> get'ty'const ty
+                                                  T'Forall t's qual -> error "illegal syntactically"
+              dict'name =  "d-" ++ cl'name ++ "-" ++ ty'name ++ "-" ++ method'name
+              method = Method scheme bind'group class'name dict'name
 
           in method
 
@@ -144,7 +158,7 @@ to'program decls = Program{ bind'section = (explicits, implicits), methods = met
     class'decls   :: [Class]
     class'decls   = Classes.extract decls
 
-    is            = Instances.extract decls
+    is            = map fst $ Instances.extract decls
 
     d'n'c'secs    :: [[Either Data Class]]
     d'n'c'secs    = Types.sort (map Left data'decls ++ map Right class'decls)

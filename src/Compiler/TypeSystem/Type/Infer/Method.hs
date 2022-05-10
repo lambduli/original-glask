@@ -45,7 +45,7 @@ import Debug.Trace
 -}
 {- Returning a [Constraint Type] might not be strictly necessary -}
 infer'method :: Method -> Type'Check (Method, [Predicate])
-infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches } cl'name) = do
+infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches } cl'name dict'name) = do
   -- scheme' <- kind'infer'sigma scheme -- this is no longer necessary - it's been done before-hand
   
   -- (qs :=> t) <- instantiate scheme
@@ -89,5 +89,5 @@ infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }
                     else do
                       let matches'' = map (phs'matches subst) matches'
                       let scheme' = T'Forall skolems (qs :=> t)
-                      let method' = Method scheme' bg{ alternatives = matches'' } cl'name
+                      let method' = Method scheme' bg{ alternatives = matches'' } cl'name dict'name
                       return (method', deferred'preds)
