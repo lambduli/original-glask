@@ -12,7 +12,7 @@ import Compiler.Syntax.BindGroup ( Bind'Group(Bind'Group, name, alternatives) )
 import Compiler.Syntax.Kind ( Kind(K'Star) )
 import Compiler.Syntax.Predicate ( Predicate )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
-import {-# SOURCE #-} Compiler.Syntax.Type ( T'V', Type, M'V )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'V', Type (T'Forall), M'V )
 
 import Compiler.TypeSystem.Error ( Error(..) )
 import Compiler.TypeSystem.Infer ( Infer, Type'Check, get'constraints )
@@ -43,7 +43,7 @@ import Debug.Trace
 
 -}
 {- Returning a [Constraint Type] might not be strictly necessary -}
-infer'expl :: Explicit -> Type'Check [Predicate]
+infer'expl :: Explicit -> Type'Check (Explicit, [Predicate])
 infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }) = do
   scheme' <- kind'specify scheme -- this is only needed when infer'expl is invoked on local declarations
   
@@ -58,7 +58,7 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
       Otazka ale zustava - je skolemizace to jediny, co je treba udelat v tomhle miste jinak? Nebo bych mel zkontrolovat
       vic veci? Najdi si implementaci `infer'expr` pro Ann a porovnej s tim co se deje tam, neco podobnyho by se asi melo dit i tady si myslim.
   -}
-  (preds, _) <- infer'matches matches $ Check t
+  (matches', preds, _) <- infer'matches matches $ Check t
   -- now solve it
   cs't <- get'constraints
   case run'solve cs't :: Either Error (Subst M'V Type) of
@@ -98,7 +98,8 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
               else  if not (null retained'preds)
                     then throwError Context'Too'Weak
                     else
-                      let r = return (deferred'preds {-, cs't -} {- , (k `Unify` K'Star) : cs'k ++ cs'k' -}) -- NOTE *1
+                      let scheme'' = T'Forall skolems (qs :=> t)
+                          r = return (Explicit scheme'' bg{ name = name, alternatives = matches' } , deferred'preds {-, cs't -} {- , (k `Unify` K'Star) : cs'k ++ cs'k' -}) -- NOTE *1
                           -- message = "{{ infer'expl }}"
                           --         ++ "\n |  deferred'preds: " ++ show deferred'preds
                           --         ++ "\n |  retained'preds: " ++ show retained'preds

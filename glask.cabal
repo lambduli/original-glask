@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e3e4af56a0e02f45a102e5ebebb60517eff787585197d44a192ae61fe64b067a
+-- hash: 4d19a7ecdb6f9415e9e4b2fe0b2fa2f240c46e25c7a4d2ff0a4f82fb24103755
 
 name:           glask
 version:        0.1.0.0
@@ -46,6 +46,7 @@ library
       Compiler.Analysis.Syntactic.FieldEnv
       Compiler.Analysis.Syntactic.Fixity
       Compiler.Analysis.Syntactic.FixityEnv
+      Compiler.Analysis.Syntactic.Instance
       Compiler.Analysis.Syntactic.MethodAnnotations
       Compiler.Analysis.Syntactic.MethodBindings
       Compiler.Analysis.Syntactic.SynonymEnv
@@ -74,7 +75,9 @@ library
       Compiler.Syntax.Literal
       Compiler.Syntax.Match
       Compiler.Syntax.Name
+      Compiler.Syntax.Overloaded
       Compiler.Syntax.Pattern
+      Compiler.Syntax.Placeholder
       Compiler.Syntax.Predicate
       Compiler.Syntax.Qualified
       Compiler.Syntax.Signature
@@ -99,6 +102,7 @@ library
       Compiler.TypeSystem.Binding
       Compiler.TypeSystem.BindSection
       Compiler.TypeSystem.Class
+      Compiler.TypeSystem.ClassEnv
       Compiler.TypeSystem.Constraint
       Compiler.TypeSystem.Error
       Compiler.TypeSystem.Expected
@@ -108,6 +112,7 @@ library
       Compiler.TypeSystem.Kind.Infer.Annotation
       Compiler.TypeSystem.Kind.Infer.Class
       Compiler.TypeSystem.Kind.Infer.Data
+      Compiler.TypeSystem.Kind.Infer.Instance
       Compiler.TypeSystem.Kind.Infer.Program
       Compiler.TypeSystem.Kind.Infer.Type
       Compiler.TypeSystem.Kind.Infer.TypeSection

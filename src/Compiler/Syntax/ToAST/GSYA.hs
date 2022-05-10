@@ -227,8 +227,8 @@ instance GSYA Term'Pat where
             go state@State{ op'stack = [] }
               = return state{ op'stack = [o1] }
             
-            go state@State{ op'stack = o2@Operator{ fixity = Postfix } : op'stack, output = out }
-              = go state{ output = out |> o2, op'stack = op'stack }
+            -- go state@State{ op'stack = o2@Operator{ fixity = Postfix } : op'stack, output = out }
+            --   = go state{ output = out |> o2, op'stack = op'stack }
             
             go state@State{ op'stack = o2@Operator{ precedence = prec'o2 } : op'stack }
               | prec'o2 < prec'o1 = return state{ op'stack = o1 : o2 : op'stack }

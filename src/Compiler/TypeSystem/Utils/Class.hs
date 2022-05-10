@@ -1,6 +1,7 @@
 module Compiler.TypeSystem.Utils.Class where
 
 
+import qualified Data.Set as Set
 import qualified Data.Map.Strict as Map
 import Data.Maybe ( isJust, isNothing )
 import Control.Monad.Except ( liftM, ExceptT, MonadError(throwError) )
@@ -12,12 +13,13 @@ import Compiler.Syntax.Instance ( Instance )
 import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.Predicate ( Predicate(..) )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
-import {-# SOURCE #-} Compiler.Syntax.Type ( T'V', Type(..), M'V(..) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( T'V' (T'V'), Type(..), M'V(..) )
+import Compiler.Syntax.HasKind ( HasKind(kind) )
 
 import Compiler.TypeSystem.Error ( Error(Unexpected) )
-import Compiler.TypeSystem.Solver.Substitution ( Subst )
-import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply) )
-import Compiler.TypeSystem.InferenceEnv ( Class'Env(..) )
+import Compiler.TypeSystem.Solver.Substitution ( Subst (Sub) )
+import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term (free'vars) )
+import Compiler.TypeSystem.ClassEnv ( Class'Env(..) )
 import Compiler.TypeSystem.Class ( Class )
 import Compiler.TypeSystem.Solver.Solve ( Solve )
 import Compiler.TypeSystem.Solver.Unify ( Unify(match, unify) )
@@ -115,12 +117,16 @@ by'inst cl'env pred@(Is'In name type') =
   -- first'defined [try'inst it | it <- instances cl'env name]
   where
       try'inst :: Instance -> Solve [Predicate]
-      try'inst (preds :=> head) = do
-        u <- match head pred :: Solve (Subst M'V Type)
-        return (map (apply u) preds)
+      try'inst inst@(preds :=> head) = do
+        let free'in'inst  = Set.toList $ free'vars inst :: [T'V'] -- because instances always contain rigid variables, not flexible ones
+        let mapping       = map (\ tv'@(T'V' n k) -> (tv', T'Meta $ Tau n k)) free'in'inst -- all rigid variables will be "instantiated" to flexible ones
+        let subst         = Sub $ Map.fromList mapping :: Subst T'V' Type
+        let (preds' :=> head')         = apply subst inst
+        u <- match head' pred :: Solve (Subst M'V Type)
+        return (map (apply u) preds')
 
       first'defined :: [Instance] -> Solve [Predicate]
-      first'defined [] = throwError $ Unexpected "Error: I think I didn't find any instances of the thing."
+      first'defined [] = throwError $ Unexpected $ "Error: I think I didn't find any instances of a class '" ++ name ++ "' for a type '" ++ show type' ++ "'. || insts: " ++ show (instances cl'env name) ++ " || kind of type' " ++ show (kind type')
       first'defined (inst : insts) = do
         -- v <- try'inst inst -- NOTE: Tohle jsem zakomentoval hodne pozde v noci. Myslim, ze `v` se nikde nepouziva
         -- a ze to vzniklo z chyby

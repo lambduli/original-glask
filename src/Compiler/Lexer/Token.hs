@@ -161,9 +161,9 @@ infix 4 ~~
 (Tok'Semicolon _) ~~ (Tok'Semicolon _) = True
 (Tok'Left'Brace _) ~~ (Tok'Left'Brace _) = True
 (Tok'Right'Brace _) ~~ (Tok'Right'Brace _) = True
-(Tok'Int _ _) ~~ (Tok'Int _ _) = True
-(Tok'Double _ _) ~~ (Tok'Double _ _) = True
-(Tok'Char _ _) ~~ (Tok'Char _ _) = True
-(Tok'String _ _) ~~ (Tok'String _ _) = True
+(Tok'Int i _) ~~ (Tok'Int i' _) = i == i'
+(Tok'Double d _) ~~ (Tok'Double d' _) = d == d'
+(Tok'Char ch _) ~~ (Tok'Char ch' _) = ch == ch'
+(Tok'String s _) ~~ (Tok'String s' _) = s == s'
 (Tok'EOF _) ~~ (Tok'EOF _) = True
 _ ~~ _ = False

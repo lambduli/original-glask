@@ -26,6 +26,7 @@ import Compiler.TypeSystem.Binding ( Explicit(..), Method(..) )
 
 import Compiler.TypeSystem.Kind.Infer.Data ( infer'data )
 import Compiler.TypeSystem.Kind.Infer.Class ( infer'class )
+import Compiler.TypeSystem.Kind.Infer.Instance ( infer'instance )
 import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'infer'sigma )
 
 import Compiler.TypeSystem.Error ( Error )
@@ -42,15 +43,18 @@ import Compiler.Counter ( State(get'counter, update'counter) )
 
 {-                                         Kind Assumptions Class Assumptions                   -}
 infer'type'section :: Type'Section -> Kind'Check ([(Name, Kind)], [(Name, Kind)])
-infer'type'section (data', classes) = do
+infer'type'section (data', classes, instances) = do
   let type'assums   = [ (n, k) | Data (T'C n k) _ _ <- data' ]
       constr'assums = [ (n, k) | Class n (T'V' _ k) _ _ <- classes ]
 
+  -- TODO: I think infer'class ad infer'data could be refactored so that they only return one thing instead of pair, where one thing is empty, investigate
   {-            cl'assumps'd    should always be empty []  -}
   (k'assumps'd, cl'assumps'd) <- merge'into'k'env type'assums (merge'into'constr'env constr'assums ( infer'seq infer'data data' ))
   
   {- k'assumps'c                should always be empty []  -}
   (k'assumps'c, cl'assumps'c) <- merge'into'k'env type'assums (merge'into'constr'env constr'assums ( infer'seq infer'class classes ))
+
+  merge'into'k'env type'assums (merge'into'constr'env constr'assums ( mapM infer'instance instances))
 
   k'cs'all <- get'constraints
 
@@ -132,6 +136,6 @@ infer'methods :: [Method] -> Kind'Check [Method]
 infer'methods methods = mapM do'kind'method methods
   where
     do'kind'method :: Method -> Kind'Check Method
-    do'kind'method (Method sigma b'g) = do
+    do'kind'method (Method sigma b'g cl'n d'n) = do
       sigma' <- kind'infer'sigma sigma
-      return $ Method sigma' b'g
+      return $ Method sigma' b'g cl'n d'n

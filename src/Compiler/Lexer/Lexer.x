@@ -59,7 +59,7 @@ token :-
 <0>         type                        { plain'tok Tok'Type }
 <0>         @namedhole                  { parametrized'tok Tok'Named'Hole id }
 -- <0>         \_                          { plain'tok Tok'Underscore }
-<0>         "\"                         { plain'tok Tok'Lambda }
+<0>         \\                          { plain'tok Tok'Lambda }
 <0>         class                       { plain'tok Tok'Class }
 <0>         instance                    { plain'tok Tok'Instance }
 <0>         where                       { plain'tok $ Tok'Where }

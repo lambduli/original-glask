@@ -25,7 +25,7 @@ data Program
   = Program
     { bind'section :: Bind'Section
     , methods :: [Method]
-    , method'annotations :: [(Name, Sigma'Type)]
+    , method'annotations :: [(Name, Sigma'Type, Name)] -- method name, method type, class name
     -- , data'declarations :: [Data] 
     , data'n'class'sections :: [Type'Section]
     }

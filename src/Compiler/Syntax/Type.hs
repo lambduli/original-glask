@@ -101,7 +101,7 @@ from type safety standpoint. And how far we can get to the cliff before falling.
 
 instance Show Type where
   show (T'Var' (T'V' name kind'))
-    = name  -- ignoring the kind of the type variable
+    = "(" ++ name ++ " :: " ++ show kind' ++ ")" -- ignoring the kind of the type variable
     -- = "(" ++ name ++ " :: " ++ show kind' ++ ")"
 
   show (T'Meta (Tau name kind'))

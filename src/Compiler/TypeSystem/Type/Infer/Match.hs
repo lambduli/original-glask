@@ -26,13 +26,13 @@ import Compiler.Syntax.Pattern (Pattern)
 import Compiler.TypeSystem.Assumption (Assumption)
 
 
-infer'pats' :: [Pattern] -> Expected Type -> Type'Check ([Predicate], [Type], [Assumption Sigma'Type], Type)
+infer'pats' :: [Pattern] -> Expected Type -> Type'Check ([Pattern], [Predicate], [Type], [Assumption Sigma'Type], Type)
 infer'pats' [] Infer = do
   meta <- fresh'meta
-  return ([], [], [], meta)
+  return ([], [], [], [], meta)
 
 infer'pats' [] (Check t) = do
-  return ([], [], [], t)
+  return ([], [], [], [], t)
 
 infer'pats' (pat : pats) expected = do
   ty' <- case expected of
@@ -42,11 +42,11 @@ infer'pats' (pat : pats) expected = do
   
   (arg'ty, res'ty) <- unify'fun ty'
   
-  (preds, assumptions) <- check'pattern pat arg'ty
+  (pat', preds, assumptions) <- check'pattern pat arg'ty
 
-  (preds', types', assumptions', last'type) <- infer'pats' pats (Check res'ty)
+  (pats', preds', types', assumptions', last'type) <- infer'pats' pats (Check res'ty)
 
-  return (preds ++ preds', arg'ty : types', assumptions ++ assumptions', last'type)
+  return (pat' : pats', preds ++ preds', arg'ty : types', assumptions ++ assumptions', last'type)
 
   -- tahle funkce by mela postupne pomoci unify'fun (nebo tak neco)
   -- rozlozit ten expected type na argument type a result type
@@ -66,21 +66,21 @@ infer'pats' (pat : pats) expected = do
   -- return (preds, types, assumptions, undefined)
 
 
-infer'match :: Match -> Expected Type -> Type'Check (Actual Type, [Predicate], [Predicate])
+infer'match :: Match -> Expected Type -> Type'Check (Match, Actual Type, [Predicate], [Predicate])
 infer'match match@Match{ patterns = patterns, rhs = expr } expected = do
   -- ([Predicate], [Type], [Assumption Scheme])
-  (preds'patts, types'patts, as'patts, rhs'type) <- infer'pats' patterns expected
+  (patterns', preds'patts, types'patts, as'patts, rhs'type) <- infer'pats' patterns expected
   -- now I have the first and the third value to return
   -- I can use the list of assumptions to infer the body
   -- ([Predicate], Type, [Constraint Type], [Constraint Kind])
-  preds'expr <- merge'into't'env as'patts (check'rho expr rhs'type)
+  (expr', preds'expr) <- merge'into't'env as'patts (check'rho expr rhs'type)
   -- now I have the second, fourth, fifth, and sixth
   
   let actual'type = case expected of
                       Check _ -> Checked
                       Infer -> Inferred $ foldr T'Fun rhs'type types'patts
 
-  return (actual'type, preds'patts, preds'expr)
+  return (match{ patterns = patterns', rhs = expr' }, actual'type, preds'patts, preds'expr)
   -- TODO: NOTE
   -- It is not really necessary to return the predicates in two distinct lists.
   -- I think they could be merged for good.
@@ -95,7 +95,7 @@ infer'match match@Match{ patterns = patterns, rhs = expr } expected = do
 -- pak uz neni potreba abych tady delal nejakou unifikaci
 -- protoze bych se mel moct spolehnout na to, ze pokud bude nejaka potreba, tak se provede dole
 -- diky infer'pats a infer'expr
-infer'matches :: [Match] -> Expected Type -> Type'Check ([Predicate], Actual Type)
+infer'matches :: [Match] -> Expected Type -> Type'Check ([Match], [Predicate], Actual Type)
 infer'matches matches expected@(Check type') = do
   -- results :: [([Type], Type, [Predicate], [Predicate])]
   results <- mapM (`infer'match` expected) matches
@@ -106,19 +106,20 @@ infer'matches matches expected@(Check type') = do
   -- let cs'unif     = map (Unify type') types
   -- Previous line unifies each function type with the type' passed as an argument.
 
-  let preds'patts = concat  [ pred  | (_, pred, _) <- results ]
-  let preds'exprs = concat  [ pred  | (_, _, pred) <- results ]
+  let matches'    = [ match | (match, _, _, _) <- results ]
+  let preds'patts = concat  [ pred  | (_, _, pred, _) <- results ]
+  let preds'exprs = concat  [ pred  | (_, _, _, pred) <- results ]
   let preds       = preds'patts ++ preds'exprs
 
 
-  return (preds, Checked)
+  return (matches', preds, Checked)
 
 infer'matches matches Infer = do
   -- results :: [([Type], Type, [Predicate], [Predicate])]
   results <- mapM (`infer'match` Infer) matches
 
   -- let types = [ foldr (type'fn . from'inferred) t'expr actual'ts'patts | (actual'ts'patts, Inferred t'expr, _, _) <- results ]
-  let types = [ type' | (Inferred type', _, _) <- results ]
+  let types = [ type' | (_, Inferred type', _, _) <- results ]
 
   meta'var <- fresh'meta -- Musel jsem si vyrobit sam promennou, pres kterou muzu spojit vsechny typy vraceny ze vsech infer'match
   
@@ -131,14 +132,15 @@ infer'matches matches Infer = do
 
   -- Previous line unifies all function types together. 
 
-  let preds'patts = concat  [ pred  | (_, pred, _) <- results ]
-  let preds'exprs = concat  [ pred  | (_, _, pred) <- results ]
+  let matches'    = [ match | (match, _, _, _) <- results ]
+  let preds'patts = concat  [ pred  | (_, _, pred, _) <- results ]
+  let preds'exprs = concat  [ pred  | (_, _, _, pred) <- results ]
   let preds       = preds'patts ++ preds'exprs
 
   -- let res'type = head [ t | (Inferred t, _, _) <- results ]
   -- let type' = foldr T'Fun res'type $ map (\ (Inferred t) -> t) $ head [ actual'types | (actual'types, _, _, _) <- results ]
 
-  return (preds, Inferred meta'var)
+  return (matches', preds, Inferred meta'var)
 
     -- where
       -- from'inferred (Inferred t) = t

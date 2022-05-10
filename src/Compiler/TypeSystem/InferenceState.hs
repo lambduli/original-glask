@@ -1,6 +1,5 @@
 module Compiler.TypeSystem.InferenceState where
 
-
 import Compiler.Counter ( Counter, State(..) )
 
 import Compiler.TypeSystem.Constraint ( Constraint )

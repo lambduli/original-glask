@@ -6,15 +6,19 @@ module Compiler.TypeSystem.Type.Infer.Expression where
 
 import Control.Monad ( foldM )
 import Control.Monad.Except ( MonadError(throwError) )
+import Data.Foldable ( find )
 
 
 import Compiler.Counter ( fresh )
 
 import Compiler.Syntax.Kind ( Kind(K'Star) )
-import Compiler.Syntax.Predicate ( Predicate )
+import Compiler.Syntax.Predicate ( Predicate (Is'In) )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
 import Compiler.Syntax.Expression ( Expression(..) )
 import {-# SOURCE #-} Compiler.Syntax.Type ( Type(T'Tuple, T'Forall), Rho'Type, Sigma'Type )
+import Compiler.Syntax.TFun ( pattern T'Fun )
+import Compiler.Syntax.Overloaded ( Overloaded(..) )
+import qualified Compiler.Syntax.Placeholder as Placeholder
 
 import Compiler.TypeSystem.Infer ( Infer, Type'Check )
 import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
@@ -25,47 +29,147 @@ import Compiler.TypeSystem.Type.Infer.Pattern ( infer'pat, infer'pattern, check'
 import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Match ( infer'match )
 import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Declaration ( infer'decls )
 
-import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env, inst'sigma, unify'fun, check'sigma, infer'rho, check'rho, subs'check, skolemise, generalize, quantify, qualify, instantiate )
+import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env, inst'sigma, unify'fun, check'sigma, infer'rho, check'rho, subs'check, skolemise, generalize, quantify, qualify, instantiate, lookup'in'overloaded )
 import Compiler.TypeSystem.Expected ( Expected (Infer, Check) )
 import Compiler.TypeSystem.Actual ( Actual (Checked, Inferred) )
+import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'specify )
 import Compiler.TypeSystem.Error ( Error(Unexpected, Typed'Hole) )
-import Compiler.Syntax.TFun ( pattern T'Fun )
+
+import Debug.Trace
 
 
-infer'expr :: Expression -> Expected Rho'Type -> Type'Check ([Predicate], Actual Rho'Type)
+infer'expr :: Expression -> Expected Rho'Type -> Type'Check (Expression, [Predicate], Actual Rho'Type)
 infer'expr (Var var'name) expected = do
   sigma <- lookup't'env var'name expected
-  inst'sigma sigma expected
+  (preds, actual) <- inst'sigma sigma expected
 
-infer'expr (Const const'name) expected = do
+  let ty = case expected of
+            Check t -> t
+            Infer -> case actual of
+                      Checked -> error "should never happen"
+                      Inferred t -> t
+
+  -- TODO: HERE - the var might be overloaded constant, or it might be a method, or it might be one of mutually recrusive definitions
+  -- I need some way of knowing whether it's one of those
+  m <- lookup'in'overloaded var'name
+  expr' <- case m of
+            Nothing -> -- OK, just do the normal thing
+              return $ Var var'name
+            Just Overloaded -> do -- application of the overloaded variable to possibly many placeholders
+              -- so I need to know how many dictionaries the overloaded constant expects
+              -- where do I get this information?
+              -- from the sigma!
+              -- it will be in the shape: forall [x...] . (context) => type
+              -- and I need to know what the context is
+              -- depending on how many things are in the context, that many placeholder arguments
+
+              -- trik je, ze ja potrebuju vedet, do ceho se to jako instanciuje
+              -- no nejlepsi by asi tim padem bylo z inst'sigma vratit jeste jeden mapping
+              -- mapping z tech rigid typovejch promennejch do tech instanciovanejch
+              -- ja uz vracim `preds`, to jsou instanciovany predikaty, a jsou urcite z te sigmy,
+              -- pokud budou urcite v obou modech ve stejnym poradi, tak bych mohl pouzit proste to
+              -- a tohle by melo snad platit, v obou modech inst'sigma vede na volani instantiate, coz by snad melo vest na stejny poradi
+              -- v zasade je podle me klicovy akorat to, aby instantiate a inst'sigma a dalsi funkce dodrzely stejny poradi, jako je ten typ samotnej ulozenej v kontextu
+              let placeholders  = map (\ (Is'In cl'name ty) -> Placeholder $ Placeholder.Dictionary cl'name ty) preds
+                  application   = foldl App (Var var'name) placeholders
+              return application
+            Just (Method cl'name) -> do -- put the placeholder
+            -- I think that if it's a method placeholder the type should be something different
+            -- when I have something like     foo :: Foo a => a -> a
+            -- what I actually need is the `a` part, aka - the type which is qualified by the Foo predicate (assuming foo is from class Foo)
+            -- because when I am eliminating this method, having the    a -> a    type won't help me much
+            -- it's not like it is completely useless, but I will actually need to do the same "investigative work" only with worse clues
+            -- so now I need to find a predicate, which shares the name with the class name of this method
+              case find (\ (Is'In c'n _) -> c'n == cl'name) preds of
+                Nothing -> do
+                  throwError $ Unexpected ("Could not find a predicate with class'es name '" ++ cl'name ++ "' in the type of '" ++ var'name ++ "'")
+                Just (Is'In c'name ty) ->
+                  return $ Placeholder $ Placeholder.Method var'name ty cl'name
+            Just Recursive -> -- put the placeholder
+              return $ Placeholder $ Placeholder.Recursive var'name ty
+
+  return (expr', preds, actual)
+
+infer'expr c@(Const const'name) expected = do
   sigma <- lookup't'env const'name expected
-  inst'sigma sigma expected
+  (preds, actual) <- inst'sigma sigma expected
+  return (c, preds, actual)
 
-infer'expr (Op op'name) expected = do
+infer'expr o@(Op op'name) expected = do
   sigma <- lookup't'env op'name expected
-  inst'sigma sigma expected
+  (preds, actual) <- inst'sigma sigma expected
 
-infer'expr (Lit lit) expected = do
-  infer'lit lit expected
+  let ty = case expected of
+            Check t -> t
+            Infer -> case actual of
+                      Checked -> error "should never happen"
+                      Inferred t -> t
+
+  -- TODO: HERE - the var might be overloaded constant, or it might be a method, or it might be one of mutually recrusive definitions
+  -- I need some way of knowing whether it's one of those
+  m <- lookup'in'overloaded op'name
+  let oo = trace ("\n[[   overloaded operator?   operator: " ++ op'name ++ "  || m: " ++ show m ++ "   |||  placeholder: " ++ show (Placeholder.Method op'name ty "class-name")) m
+  expr' <- case oo of
+            Nothing -> -- OK, just do the normal thing
+              return $ Op op'name
+            Just Overloaded -> do -- application of the overloaded variable to possibly many placeholders
+              -- so I need to know how many dictionaries the overloaded constant expects
+              -- where do I get this information?
+              -- from the sigma!
+              -- it will be in the shape: forall [x...] . (context) => type
+              -- and I need to know what the context is
+              -- depending on how many things are in the context, that many placeholder arguments
+
+              -- trik je, ze ja potrebuju vedet, do ceho se to jako instanciuje
+              -- no nejlepsi by asi tim padem bylo z inst'sigma vratit jeste jeden mapping
+              -- mapping z tech rigid typovejch promennejch do tech instanciovanejch
+              -- ja uz vracim `preds`, to jsou instanciovany predikaty, a jsou urcite z te sigmy,
+              -- pokud budou urcite v obou modech ve stejnym poradi, tak bych mohl pouzit proste to
+              -- a tohle by melo snad platit, v obou modech inst'sigma vede na volani instantiate, coz by snad melo vest na stejny poradi
+              -- v zasade je podle me klicovy akorat to, aby instantiate a inst'sigma a dalsi funkce dodrzely stejny poradi, jako je ten typ samotnej ulozenej v kontextu
+              let placeholders  = map (\ (Is'In cl'name ty) -> Placeholder $ Placeholder.Dictionary cl'name ty) preds
+                  application   = foldl App (Op op'name) placeholders
+              return application
+            Just (Method cl'name) -> do -- put the placeholder
+            -- I think that if it's a method placeholder the type should be something different
+            -- when I have something like     foo :: Foo a => a -> a
+            -- what I actually need is the `a` part, aka - the type which is qualified by the Foo predicate (assuming foo is from class Foo)
+            -- because when I am eliminating this method, having the    a -> a    type won't help me much
+            -- it's not like it is completely useless, but I will actually need to do the same "investigative work" only with worse clues
+            -- so now I need to find a predicate, which shares the name with the class name of this method
+              case find (\ (Is'In c'n _) -> c'n == cl'name) preds of
+                Nothing -> do
+                  throwError $ Unexpected ("Could not find a predicate with class'es name '" ++ cl'name ++ "' in the type of '" ++ op'name ++ "'")
+                Just (Is'In c'name ty) ->
+                  return $ Placeholder $ Placeholder.Method op'name ty cl'name
+            Just Recursive -> -- put the placeholder
+              return $ Placeholder $ Placeholder.Recursive op'name ty
+
+
+  return (expr', preds, actual)
+
+infer'expr l@(Lit lit) expected = do
+  (preds, actual) <- infer'lit lit expected
+  return (l, preds, actual)
 
 infer'expr (Abs pattern' body) Infer = do
-  (preds, arg'type, assumptions) <- infer'pattern pattern'
-  (preds', rho) <- merge'into't'env assumptions (infer'rho body)
+  (pattern'', preds, arg'type, assumptions) <- infer'pattern pattern'
+  (body', preds', rho) <- merge'into't'env assumptions (infer'rho body)
 
-  return (preds ++ preds', Inferred (arg'type `T'Fun` rho))
+  return (Abs pattern'' body', preds ++ preds', Inferred (arg'type `T'Fun` rho))
 
 infer'expr (Abs pattern' body) (Check rho) = do
   (arg'type, res'type) <- unify'fun rho
-  (preds, assumptions) <- check'pattern pattern' arg'type
-  preds' <- merge'into't'env assumptions (check'rho body res'type)
-  return (preds ++ preds', Checked)
+  (pattern'', preds, assumptions) <- check'pattern pattern' arg'type
+  (body', preds') <- merge'into't'env assumptions (check'rho body res'type)
+  return (Abs pattern'' body', preds ++ preds', Checked)
 
 infer'expr (App fun arg) expected = do
-  (preds, fun'type) <- infer'rho fun
+  (fun', preds, fun'type) <- infer'rho fun
   (arg'type, res'type) <- unify'fun fun'type
-  preds' <- check'sigma arg arg'type
+  (arg', preds') <- check'sigma arg arg'type
   (preds'', actual'') <- inst'sigma res'type expected
-  return (preds ++ preds' ++ preds'', actual'')
+  return (App fun' arg', preds ++ preds' ++ preds'', actual'')
 
 infer'expr (Infix'App left op right) expected = do
   infer'expr (App (App op left) right) expected
@@ -78,8 +182,6 @@ infer'expr (Infix'App left op right) expected = do
 
 -- TODO: IMPLEMENT
 infer'expr (Tuple [expr'a, expr'b]) expected = do
-  (preds'a, actual'a) <- infer'expr expr'a expected
-
   undefined
 
 -- TODO: IMPLEMENT
@@ -93,37 +195,38 @@ infer'expr (Tuple exprs) expected = do
   --       return (preds, t : types, cs ++ constrs)
 
 infer'expr (If condition then' else') Infer = do
-  preds <- check'rho condition t'Bool
+  (condition', preds) <- check'rho condition t'Bool
 
-  (preds'then, rho'then) <- infer'rho then'
-  (preds'else, rho'else) <- infer'rho else'
+  (then'', preds'then, rho'then) <- infer'rho then'
+  (else'', preds'else, rho'else) <- infer'rho else'
 
   preds' <- subs'check rho'then rho'else
   preds'' <- subs'check rho'else rho'then
   
   (skolems, context, rho) <- skolemise rho'then
   
-  return (preds ++ preds'then ++ preds'else ++ preds' ++ preds'' {- ++ ctxt -} ++ context, Inferred rho {- Inferred oo -})
+  return (If condition' then'' else'', preds ++ preds'then ++ preds'else ++ preds' ++ preds'' {- ++ ctxt -} ++ context, Inferred rho {- Inferred oo -})
 
 infer'expr (If condition then' else') (Check rho) = do
-  preds'cond <- check'rho condition t'Bool
-  preds'then <- check'rho then' rho
-  preds'else <- check'rho else' rho
+  (cond', preds'cond) <- check'rho condition t'Bool
+  (then', preds'then) <- check'rho then' rho
+  (else', preds'else) <- check'rho else' rho
 
   let preds = concat [preds'cond, preds'then, preds'else]
 
-  return (preds, Checked)
+  return (If cond' then' else', preds, Checked)
 
 infer'expr (Let decls body) expected = do
-  (preds'decls, assumptions'decls) <- infer'decls decls
-  (preds'body, t'body) <- merge'into't'env assumptions'decls (infer'expr body expected)
-  return (preds'decls ++ preds'body, t'body)
+  (decls', preds'decls, assumptions'decls) <- infer'decls decls
+  (body', preds'body, t'body) <- merge'into't'env assumptions'decls (infer'expr body expected)
+  return (Let decls' body', preds'decls ++ preds'body, t'body)
 
 infer'expr (Ann expr sigma) expected = do
   -- TODO: fully specify kinds within types in the `sigma`
-  preds <- check'sigma expr sigma
-  (preds', actual') <- inst'sigma sigma expected
-  return (preds ++ preds', actual')
+  sigma' <- kind'specify sigma
+  (expr', preds) <- check'sigma expr sigma'
+  (preds', actual') <- inst'sigma sigma' expected
+  return (Ann expr' sigma, preds ++ preds', actual')
   -- so according the paper this is what should happen:
   {-  Freshly instantiate the implicit type scheme given by the user.
       That most likely means I will need to quantify the qualified type first.
@@ -292,3 +395,7 @@ infer'expr (Case expr matches) expected = do
 
 infer'expr (Hole name) expected = do
   throwError $ Typed'Hole name expected
+
+
+infer'expr (Placeholder _) expected = do
+  throwError $ Unexpected "Infering type for placeholder - should have never happened!"

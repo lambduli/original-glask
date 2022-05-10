@@ -355,15 +355,16 @@ Expression      ::  { Term'Expr }
                 
 
 Exp10           ::  { Term'Expr }
-                :   lambda APat NoneOrMany(APat) '->' Expression    { foldr Term'E'Abst $5 ($2 : $3) }
-                |   let Layout(Declaration) in Expression           { Term'E'Let (concat $2) $4 }
-                |   if Expression then Expression else Expression   { Term'E'If $2 $4 $6 }
-                |   case Expression of Layout(Alt)                  { Term'E'Case $2 $4 }
-                |   OneOrMany(BExp)                                 { case $1 of
+                -- :   lambda APat NoneOrMany(APat) '->' Expression    { foldr Term'E'Abst $5 ($2 : $3) }
+                -- |   let Layout(Declaration) in Expression           { Term'E'Let (concat $2) $4 }
+                -- |   if Expression then Expression else Expression   { Term'E'If $2 $4 $6 }
+                -- |   case Expression of Layout(Alt)                  { Term'E'Case $2 $4 }
+                :   OneOrMany(BExp)                                 { case $1 of
                                                                       { [one'expr] -> one'expr
                                                                       ; many'exprs -> Term'E'App many'exprs } }
 --  A sequence of infix operators and constructors or AExp.
 --  Same as with BPat -> I will need to "straighten" them later.
+-- I am commenting some lines out, trying the change as in -XBlockArguments
 
 
 Alt             ::  { (Term'Pat, Term'Expr) }
@@ -397,6 +398,12 @@ AExp            ::  { Term'Expr }
                 |   '(' Oper ')'                                    { Term'E'Op $2 }
                 |   '(' ')'                                         { Term'E'Id $ Term'Id'Const "()" }
                 |   '_'                                             { Term'E'Hole $1 }
+-- I am adding some lines, trying the change as in -XBlockArguments
+                |   lambda APat NoneOrMany(APat) '->' Expression    { foldr Term'E'Abst $5 ($2 : $3) }
+                |   let Layout(Declaration) in Expression           { Term'E'Let (concat $2) $4 }
+                |   if Expression then Expression else Expression   { Term'E'If $2 $4 $6 }
+                |   case Expression of Layout(Alt)                  { Term'E'Case $2 $4 }
+
 
 
 FieldBind       ::  { (Name, Term'Expr) }

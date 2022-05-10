@@ -14,6 +14,10 @@ class State a where
   get'counter :: a -> Counter
   update'counter :: Counter -> a -> a
 
+instance State Counter where
+  get'counter = id
+  update'counter counter _ = counter
+
 
 letters :: [String]
 letters = [1..] >>= flip replicateM ['a'..'z']

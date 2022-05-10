@@ -149,7 +149,7 @@ infer'type expr i'env counter = do
 
 infer'expr' :: Expression -> Expected Type -> Type'Check ([Predicate], Actual Type, [Constraint Type])
 infer'expr' expr expected = do
-  (preds, actual) <- infer'expr expr expected
+  (expr', preds, actual) <- infer'expr expr expected
 
   constraints <- get'constraints
 

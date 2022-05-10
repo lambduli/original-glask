@@ -1,0 +1,58 @@
+module Main where
+{ infix 4 ==
+; infixl 5 +
+; infixl 6 *
+
+; class Num a where
+  { (+) :: a -> a -> a
+  ; (*) :: a -> a -> a }
+
+; instance Num Int where
+  { (+) x y = x + y
+  ; (*) x y = x * y }
+
+; instance Num Double
+
+; data Bool = True | False
+
+; class Eq a where
+  { (==) :: a -> a -> Bool }
+
+; func :: Eq a => a -> a -> Bool
+; func x y = x == y
+
+; gn a b = a + b
+
+-- FOLLOWING IS NOT SUPPORTED
+-- ; fn (g :: forall x y . x -> y -> x) b =
+--     let { x = g b 23
+--         ; y = g b 'a' }
+--     in  if True then x else y
+
+-- higher rank constructor
+-- useful for class desugaring
+-- works fine, it seems, so it can be used
+; data Example a = Example (forall b . Num b => a -> b -> b)
+
+; id x = x
+
+; e = id \ x -> x + 2
+
+; data Wrapper a = Wrap a
+
+; poly :: forall a . a -> a
+; poly x = x
+
+; test = Wrap poly
+
+; higher :: forall a . (forall b . b -> a -> b) -> a -> a
+; higher fn x = fn x x
+
+-- illegal
+-- ; test' = Wrap higher
+
+; val :: Wrapper (forall a . a -> a)
+; val = val
+
+
+}

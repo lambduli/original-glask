@@ -35,7 +35,7 @@ data Declaration
 
 instance Show Declaration where
   show (Binding bind'group)
-    = "TODO: show bind'group"
+    = show bind'group -- "TODO: show bind'group"
     -- = name ++ " = " ++ show expr
   -- show (Annotated name type' expr)
     -- = name ++ " :: " ++ show type' ++ "\n" ++ name ++ " = " ++ show expr
@@ -81,4 +81,4 @@ data Class = Class { class'name :: Name, class'param :: T'V', class'supers :: [P
 
 instance Show Class where
   show (Class name (T'V' param kind) supers type'decls)
-    = "class " ++ show supers ++ " => " ++ name ++ " " ++ param ++ " where " ++ show type'decls
+    = "class " ++ show supers ++ " => " ++ name ++ " (" ++ param ++ " :: " ++ show kind ++ ") where " ++ show type'decls

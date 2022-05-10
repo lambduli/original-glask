@@ -23,10 +23,13 @@ import Compiler.Syntax.Predicate ( Predicate )
 import Compiler.Syntax.Qualified ( Qualified(..) )
 import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'V'(..), Type(T'Forall, T'Var', T'Meta), Rho'Type, Tau'Type, M'V(..) )
 import Compiler.Syntax.TFun ( pattern T'Fun )
+import Compiler.Syntax.Overloaded ( Overloaded )
+import Compiler.Syntax.Match ( Match )
 
 import Compiler.TypeSystem.Error ( Error(Unexpected, Unbound'Var, Unbound'Type'Var) )
 import Compiler.TypeSystem.Infer ( Infer, run'infer, Type'Check, Kind'Check, add'constraints, get'constraints )
-import Compiler.TypeSystem.InferenceEnv ( Class'Env, Infer'Env(Infer'Env, type'env, kind'env, constraint'env), Type'Env )
+import Compiler.TypeSystem.InferenceEnv ( Infer'Env(Infer'Env, type'env, kind'env, constraint'env, overloaded, instance'env, instances), Type'Env )
+import Compiler.TypeSystem.ClassEnv ( Class'Env )
 import Compiler.TypeSystem.Ambiguity ( ambiguities, candidates, Ambiguity )
 import Compiler.TypeSystem.Solver.Solve ( Solve )
 import Compiler.TypeSystem.Solver.Substitution ( Subst(..) )
@@ -84,6 +87,18 @@ qualify :: Type -> Qualified Type
 qualify t = [] :=> t
 
 
+overload :: [(String, Overloaded)] -> Type'Check a -> Type'Check a
+overload overloads m = do
+  let scope e@Infer'Env{ overloaded = over } = e{ overloaded = overloads ++ over}
+  local scope m
+
+
+add'dicts :: [((Name, Type), Name)] -> Type'Check a -> Type'Check a
+add'dicts dicts m = do
+  let scope e@Infer'Env{ instance'env = dicts' } = e{ instance'env = dicts ++ dicts'}
+  local scope m
+
+
 -- TODO: I really feel like generalizing all the merge'into'... and put'in'... and lookup'...
 --        is the best way to go around. Then put them in some shared Utils module and use them
 --        across all parts of the pipeline.
@@ -135,6 +150,21 @@ lookup'k'env var = do
     Nothing     -> throwError $ Unbound'Type'Var var
     Just kind'  -> return kind'
 
+
+lookup'dict :: (Name, Type) -> Type'Check Name
+lookup'dict placeholder = do
+  env <- asks instance'env
+  case lookup placeholder env of
+    Nothing -> throwError $ Unexpected ("Can't find dictionary for " ++ show placeholder)
+    Just name -> return name
+
+
+lookup'instance :: (Name, Type) -> Type'Check (Name, [Predicate], Predicate)
+lookup'instance placeholder = do
+  env <- asks instances
+  case lookup placeholder env of
+    Nothing -> throwError $ Unexpected ("Can't find an instance for " ++ show placeholder)
+    Just instance' -> return instance'
 
 {-  TODO: Here is a BIG TODO - I need to go over the paper THIH and see if I can replace all my
           uses of instantiate and close'over with what Jones does.
@@ -296,7 +326,8 @@ preds - predicates to split
 split :: Class'Env -> [M'V] -> [M'V] -> [Predicate] -> Solve ([Predicate], [Predicate])
 split cl'env fixed'vars gs preds = do
   preds' <- reduce cl'env preds
-  let (deffered'preds, retained'preds) = partition (all (`elem` fixed'vars) . free'vars) preds'
+  let oo = trace ("{ split }\npreds: " ++ show preds ++ "\npreds': " ++ show preds') preds'
+  let (deffered'preds, retained'preds) = partition (all (`elem` fixed'vars) . free'vars) oo -- preds'
   retained'preds' <- defaulted'preds cl'env (fixed'vars ++ gs) retained'preds
   return (deffered'preds, retained'preds \\ retained'preds')
 
@@ -395,26 +426,26 @@ new'skolem'vars tvs = do
   -- }) tvs
 
 
-tc'rho :: Expression -> Expected Rho'Type -> Type'Check ([Predicate], Actual Rho'Type)
+tc'rho :: Expression -> Expected Rho'Type -> Type'Check (Expression, [Predicate], Actual Rho'Type)
 tc'rho = infer'expr
 
 
-check'rho :: Expression -> Rho'Type -> Type'Check [Predicate]
+check'rho :: Expression -> Rho'Type -> Type'Check (Expression, [Predicate])
 check'rho expr ty = do
   result <- tc'rho expr (Check ty)
   case result of
-    (_, Inferred _) -> throwError $ Unexpected "Internal Error while 'check'rho'"
-    (preds, Checked) -> do
-      return preds
+    (_, _, Inferred _) -> throwError $ Unexpected "Internal Error while 'check'rho'"
+    (expr', preds, Checked) -> do
+      return (expr', preds)
 
 
-infer'rho :: Expression -> Type'Check ([Predicate], Rho'Type)
+infer'rho :: Expression -> Type'Check (Expression, [Predicate], Rho'Type)
 infer'rho expr = do
   result <- tc'rho expr Infer
   case result of
-    (_, Checked) -> throwError $ Unexpected "Internal Error while 'infer'rho'"
-    (preds, Inferred type') -> do
-      return (preds, type')
+    (_, _, Checked) -> throwError $ Unexpected "Internal Error while 'infer'rho'"
+    (expr', preds, Inferred type') -> do
+      return (expr', preds, type')
 
 
 inst'sigma :: Sigma'Type -> Expected Rho'Type -> Type'Check ([Predicate], Actual Type)
@@ -498,10 +529,10 @@ subs'check'fun a1 r1 a2 r2 = do
 -- tak tohle se snad da zkontrolovat
 -- 
 {-  TODO: This function will need to be refactored, fixed and checked thoroughly. -}
-check'sigma :: Expression -> Sigma'Type -> Type'Check [Predicate]
+check'sigma :: Expression -> Sigma'Type -> Type'Check (Expression, [Predicate])
 check'sigma expr sigma = do
   (skolems, preds, rho) <- skolemise sigma
-  preds' <- check'rho expr rho
+  (expr', preds') <- check'rho expr rho
   -- now I need to solve constraints, obtain the substitution, apply it to the sigma and the typing context
   -- then I need to check that sigma, nor types in typing context contain any of the skolems
   --
@@ -530,9 +561,9 @@ check'sigma expr sigma = do
 
       if not $ null bad'vars
       then
-        throwError $ Unexpected "Type is not polymorphic enough!"
+        throwError $ Unexpected "Type is not polymorphic enough!" -- \n| sigma: " ++ show sigma ++ " \n| sigma': " ++ show sigma' ++ "  \n| skolems: " ++ show skolems ++ " \n| free'all: " ++ show free'all ++ "\n| free'sigma: " ++ show free'sigma ++ "\n| skolemized: " ++ show rho
       else do
-        return (preds ++ preds')
+        return (expr', preds ++ preds')
 
 
 -- TODO:  tady budu potrebovat trosku vymyslet neco vlastniho
@@ -546,3 +577,23 @@ split'data'cons :: Rho'Type -> ([Sigma'Type], Tau'Type)
 split'data'cons (arg'type `T'Fun` res'type) = (arg'type : arg'types, out'type)
   where (arg'types, out'type) = split'data'cons res'type
 split'data'cons rho = ([], rho)
+
+
+
+
+
+
+-- stuff for class desugaring
+
+lookup'in'overloaded :: Name -> Type'Check (Maybe Overloaded)
+lookup'in'overloaded name = do
+  overloaded' <- asks overloaded
+  let r = lookup name overloaded'
+  let oo = trace (" { lookup for " ++ name ++ "  found " ++ show r) r
+  return oo
+  -- asks (lookup name . overloaded)
+
+
+-- this function needs to eliminate the placeholders in the Match
+phs'matches :: Subst M'V Type -> Match -> Match
+phs'matches _ x = x
