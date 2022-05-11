@@ -65,6 +65,7 @@ import REPL.Analyses
 import REPL.Expression
 import REPL.Program
 import Compiler.Syntax.BindGroup (Bind'Group(Bind'Group))
+import Interpreter.ToCore (decls'to'core)
 
 
 load :: String -> Counter -> IO ()
@@ -103,6 +104,7 @@ load file'name counter = do
           putStrLn $ "Data declarations for Classes: " ++ show class'data ++ " ... \n"
           putStrLn $ "Getters declarations for Classes: " ++ show getters ++ " ... \n"
           putStrLn $ "bind'sections:  " ++ show (bind'section program) ++ " ... \n"
+          putStrLn $ "\n\n\n\n\ndeclarations to core: " ++ show (decls'to'core decls) ++ "\n\n\n"
           -- putStrLn $ "\nmethods:  " ++ show ms
           -- putStrLn $ "\nmethod'annotations:  " ++ show m'ans
           -- putStrLn $ "\ndata'declarations:   " ++ show ds

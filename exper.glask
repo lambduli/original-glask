@@ -2,8 +2,12 @@ module Main where
 { infixl 5 +
 ; infixl 5 *
 
--- ; int'id :: Int -> Int
--- ; int'id i = i
+; int'id :: Int -> Int
+; int'id i = i
+
+; maybe :: Maybe a -> a -> a
+; maybe (Just x) _ = x
+; maybe Nothing y  = y
 
 ; class Num a where
   { (+) :: a -> a -> a
