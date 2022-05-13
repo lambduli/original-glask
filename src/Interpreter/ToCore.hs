@@ -19,13 +19,13 @@ import Interpreter.Error ( Evaluation'Error(Non'Exhaustive) )
 
 to'core :: AST.Expression -> Core
 to'core (AST.Var name)
-  = Var name
+  = if is'prim'op name then Prim'Op name else Var name
 
 to'core (AST.Const name)
-  = Const name
+  = if is'prim'op name then Prim'Op name else Var name
 
 to'core (AST.Op name)
-  = Op name
+  = if is'prim'op name then Prim'Op name else Var name
 
 to'core (AST.Lit lit)
   = Lit lit
@@ -178,3 +178,8 @@ bind'group'to'core AST.Bind'Group{ AST.name = name, AST.alternatives = matches }
               in  case'
       --map match'to'core matches
 -- TODO: this function needs to build the single lambda from the whole bind group
+
+
+is'prim'op :: Name -> Bool
+is'prim'op name = elem name prim'ops
+  where prim'ops = [ "#=", "#<", "#>", "#+", "#+.", "#*", "#*.", "#-", "#-.", "#div", "#/", "#trace" ]

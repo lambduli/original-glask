@@ -10,8 +10,8 @@ import Data.List (intercalate)
 
 data Core
   = Var Name
-  | Const Name
-  | Op Name
+  -- | Const Name
+  | Prim'Op Name
   | Lit Literal
   | Abs Name Core
   | Case Core [Match]
@@ -24,8 +24,8 @@ data Core
 
 instance Show Core where
   show (Var name) = name
-  show (Const name) = name
-  show (Op name) = "(" ++ name ++ ")"
+  -- show (Const name) = name
+  show (Prim'Op name) = "(" ++ name ++ ")"
   show (Lit lit) = show lit
   show (Abs param body) = "(\\ " ++ param ++ " -> " ++ show body ++ ")"
   show (Case motive matches) = "case " ++ show motive ++ " of\n" ++ (intercalate "\n" $ map show matches) ++ "\n"

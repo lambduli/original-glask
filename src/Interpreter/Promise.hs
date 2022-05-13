@@ -7,4 +7,5 @@ import Interpreter.Environment ( Environment )
 import Interpreter.Address ( Address )
 
 
-data Promise = Promise Expression Environment Address
+newtype Promise = Promise Address -- Expression Environment Address
+  deriving (Show)
