@@ -125,7 +125,7 @@ eval (Case motive matches) env = do
             Right mini'env -> do
               -- now I just need to merge the mini'env with the main env and evalaute the rhs within it
               let new'env = env `Map.union` Map.fromList mini'env
-              eval rhs new'env        
+              eval rhs new'env
 
     where
       make'env :: (Name, Either Promise Value) -> Machine'State (Name, Promise)

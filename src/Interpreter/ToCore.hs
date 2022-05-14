@@ -176,8 +176,6 @@ bind'group'to'core AST.Bind'Group{ AST.name = name, AST.alternatives = matches }
                                         in  Case (Var n) [the'match, error'boundary]
 
               in  case'
-      --map match'to'core matches
--- TODO: this function needs to build the single lambda from the whole bind group
 
 
 is'prim'op :: Name -> Bool

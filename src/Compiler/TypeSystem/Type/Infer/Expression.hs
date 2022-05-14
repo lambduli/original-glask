@@ -388,11 +388,6 @@ infer'expr (Case expr matches) expected = do
   -- -- Now I have taken care of all the memebers of each tuple.
   -- return (preds, t'var, t'cs)
 
--- | TODO: Introductors (how I call them) already have the type annotation in the typing context/
---          So all I need is to retrieve it from there.
--- infer'expr (Intro name exprs) expected = do
---   throwError $ Unexpected "Type Analysis ran into an Introductor - should be impossible!" -- THIS should never happen, I will never type analyze an AST with introductors in it
-
 infer'expr (Hole name) expected = do
   throwError $ Typed'Hole name expected
 
