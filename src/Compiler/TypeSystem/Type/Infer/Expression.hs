@@ -20,16 +20,16 @@ import Compiler.Syntax.TFun ( pattern T'Fun )
 import Compiler.Syntax.Overloaded ( Overloaded(..) )
 import qualified Compiler.Syntax.Placeholder as Placeholder
 
-import Compiler.TypeSystem.Infer ( Infer, Type'Check )
+import Compiler.TypeSystem.Infer ( Infer, Type'Check, add'constraints )
 import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
 import Compiler.TypeSystem.Type.Constants ( t'Bool, type'fn )
 
 import Compiler.TypeSystem.Type.Infer.Literal ( infer'lit )
 import Compiler.TypeSystem.Type.Infer.Pattern ( infer'pat, infer'pattern, check'pattern )
-import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Match ( infer'match )
+import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Match ( infer'match, infer'matches )
 import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Declaration ( infer'decls )
 
-import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env, inst'sigma, unify'fun, check'sigma, infer'rho, check'rho, subs'check, skolemise, generalize, quantify, qualify, instantiate, lookup'in'overloaded, unify'pair )
+import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env, inst'sigma, unify'fun, check'sigma, tc'rho, infer'rho, check'rho, subs'check, skolemise, generalize, quantify, qualify, instantiate, lookup'in'overloaded, unify'pair )
 import Compiler.TypeSystem.Expected ( Expected (Infer, Check) )
 import Compiler.TypeSystem.Actual ( Actual (Checked, Inferred) )
 import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'specify )
@@ -343,64 +343,49 @@ infer'expr (Ann expr sigma) expected = do
 
   -}
 
--- TODO: IMPLEMENT
 infer'expr (Case expr matches) expected = do
-  undefined
-  -- {- Infer the type of the expr. -}
-  -- (preds'expr, type'expr, t'cs'expr) <- infer'expr expr
-  
-  -- {- Infer the types of the list of matches. -}
-  -- -- results :: [([Type], Type, [Predicate], [Predicate], [Constraint Type], [Constraint Kind])]
-  -- results <- mapM infer'match matches
+  {-
+    if I use infer'matches - I can rely on the fact that each match only contains a single patter
+      therefore the function type given by that function will be
+      <pattern type> -> <result type>
 
-  -- -- each match should produce:
-  --   -- Types
-  --     -- a type - for the expression (RHS)
-  --     -- and a list of types - for the list of patterns
-  --     --      in this case the list of types (for patterns) is going to contain only a single type
-  --   -- Predicates
-  --     -- list of predicates from a list of patterns
-  --     -- list of predicates from an expression
-  --     --  I should be able to just append them together without any problem
-  --   -- Constraints
-  --     -- type constraints from the expression (patterns do not produce type constraints, only assumptions)
-  --     -- kind constraints from the expression
-  --     --    Even though patterns produce assumptions - but the local bindings are used only in the RHSs
-  --     --    and that means, that these assumptions do not escape the context of the Match
-  
-  -- -- I then need to unify all the types in the list of types (in this case a singleton) together
-  -- -- that ensures that all patterns are going to match the same thing.
-  -- -- That same thing must be a type of the expr.
-  -- -- So instead - I must take the list of list of types (but in this case it's a list of singletons)
-  -- -- and map that to [Constraint Type] by - for each singleton - unifying that singleton element with a type'expr.
-  -- let t'cs'patterns = [ type'expr `Unify` type'patt | ([type'patt], _, _, _, _) <- results ]
+      <pattern type> should always be the same as <expr type> and
+      <result type> should be <expected> if <expected is not Infer>
 
+      so I can take advantage of that
+  -}
 
-  -- -- Then I need to take a list of types (types of the right hand sides) and map that to the list of
-  -- -- (Constraint Type) by unifying them all with a new fresh variable.
-  -- -- Asserting, that all the right sides are of the same type.
-  -- -- That type is also the result of this whole case expression.
-  -- fresh'name <- fresh
-  -- let t'var = T'Var (T'V fresh'name K'Star)
-  -- {- Now assert that Types of all Right Hand Sides are the same thing. -}
-  -- let t'cs'rhs's = [ t'var `Unify` type'rhs | (_, type'rhs, _, _, _) <- results ]
+  -- first infer the type of a motive
+  (motive, preds'motive, type'motive) <- infer'rho expr
+  -- if I am in Check-ing mode
+  -- I should propagate the type into infer'matches
+  -- to do that, though, I need to construct the correct function type:
+  -- from the motive'type to expected type
+  -- if I am in infer mode
+  -- I stay in infer mode
 
-  -- -- Now I need to concatenate all the Predicates coming both from Pattern and Right Hand Side.
-  -- {- I think I can mix them together, because from the standpoint of the whole expression - it doesn't
-  --     matter, what part of the expression requires that constraints / produces that Predicate
-  --     it just means, it is needed.
-  --     That also means, that the function infer'match could maybe produce a single [Predicate]. -}
-  -- let preds = preds'expr ++ concat [ preds'patts ++ preds'rhs | (_, _, preds'patts, preds'rhs, _) <- results ]
+  let match'type
+        = case expected of
+            Infer -> Infer
+            Check ty -> Check $ type'motive `T'Fun` ty
 
-  -- {-  I also need to concatenate all type constraints and kind constraints from list of matches together
-  --     to those I also need to add constraints from the expr at the top of this branch. -}
-  -- let t'cs = concat $ t'cs'patterns
-  --                   : t'cs'rhs's
-  --                   : t'cs'expr
-  --                   : [ t'cs'patts | (_, _, _, _, t'cs'patts) <- results ]
-  
-  -- -- Now I have taken care of all the memebers of each tuple.
-  -- return (preds, t'var, t'cs)
+  -- now I can run the infer'matches
+  (matches', preds'matches, actual'match) <- infer'matches matches match'type
+
+  -- now if the `actual` is (Inferred t) I need to deconstruct that type and just take the result part
+  -- I can do that using existing function unify'fun
+
+  actual'result <- case actual'match of
+                    Checked -> return Checked
+                    Inferred ty -> do
+                      (in't, out't) <- unify'fun ty
+                      -- now I need to unify the in'type with the type of the motive
+                      -- because in Infer mode, nothing would connect those two types
+                      add'constraints [in't `Unify` type'motive]
+                      return $ Inferred out't
+
+  -- now I just return everything I have collected
+  return (Case motive matches, preds'motive ++ preds'matches, actual'result)
 
 infer'expr (Hole name) expected = do
   throwError $ Typed'Hole name expected
