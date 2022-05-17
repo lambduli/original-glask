@@ -84,3 +84,28 @@
   - Dependency Analysis will need to be perfored for every `let ... = ... in ...` expression --> I will isolate it into the function and return the result in some reasonable shape to be used for the specific thing
   - Dependency Analysis
   - Dependency Analysis for Type Class declarations (no cyclic dependencies)
+
+
+
+# TODO:
+- [ ] Overloads and the second thing from Infer'Env need to be persisted somehow, I need them in the REPL to that my expressions can be correctly elaborated and desugared
+- [ ] calling a function `numberino _ = 23 + 42` in the repl like `numberino True` results in evaluation error - incorrect address, I am not sure what is up with that
+- [ ] when I have a function which is overloaded and expects a dictionary, calling it from REPL must first desugar that expression correctly, so that it supplies those dictionaries
+      Questions: can it happen, that I won't know for sure what dictionary should be used? What happens then? How do I identify, that there is still unresolved something?
+      Example
+
+```haskell
+foo :: Num a => a -> a
+foo x = x + x
+
+-- now what if I call this function from the REPL like this:
+
+foo 23
+```
+
+The whole expression in the repl needs to be defaulted right, so that it can be actually evaluated.
+It could work like this:
+the inference infers that the type of that is `Num a => a`, but defaulting says that `a` is going to be `Int`.
+I then need to eliminate the placeholders with that defaulting substitution, the substitution alone should be enough hopefully.
+And that should eliminate the placeholder and insert the right dictionary.
+Let's see if that will work.

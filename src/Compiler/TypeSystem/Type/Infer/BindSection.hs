@@ -12,7 +12,7 @@ import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, Type (T'Forall) )
 import Compiler.Syntax.Qualified ( Qualified((:=>)) )
 import Compiler.Syntax.Overloaded ( Overloaded(..) )
 
-import Compiler.TypeSystem.Infer ( Infer, Type'Check )
+import Compiler.TypeSystem.Infer ( Infer, Type'Check, add'overloads )
 import Compiler.TypeSystem.Constraint ( Constraint )
 import Compiler.TypeSystem.Binding ( Explicit(Explicit) )
 import Compiler.TypeSystem.BindSection ( Bind'Section )
@@ -30,6 +30,8 @@ infer'bind'section (es, iss) = do
   let as' = [ (v, sc) | Explicit sc Bind'Group{ name = v } <- es ]
   -- register all overloaded explicits into overloaded
   let overloads = mapMaybe (\ (n, T'Forall _ (ctxt :=> _)) -> if null ctxt then Nothing else Just (n, Overloaded)) as'
+  -- NOTE: I need to add those overloads to the Infer'State, for the REPL to later use
+  add'overloads overloads
   (iss', ps, as'') <- overload overloads $ merge'into't'env as' (infer'seq infer'impls iss)
   results <- merge'into't'env (as' ++ as'') (mapM infer'expl es)
   let preds'  = concat [ preds | (_, preds) <- results ]

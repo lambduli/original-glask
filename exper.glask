@@ -14,14 +14,31 @@ module Main where
   ; (*) :: a -> a -> a }
 
 ; instance Num Int where
-  { (+) x y = x + y
-  ; (*) x y = x * y }
+  { (+) x y = int#+ (x, y)
+  ; (*) x y = int#* (x, y) }
+
+; hmmm = 23 + 42
+
+-- ; instance Num Double where
+--   { (+) x y = double#+ (x, y)
+--   ; (*) x y = double#* (x, y) }
 
 ; data Maybe a = Just a | Nothing
 
-; instance Num a => Num (Maybe a) where
-  { (+) (Just n) (Just m) = Just (n + m)
-  ; (*) (Just n) (Just m) = Just (n * m) }
+; data Bool = True | False
+
+-- ; instance Num a => Num (Maybe a) where
+--   { (+) (Just n) (Just m) = Just (n + m)
+--   ; (*) (Just n) (Just m) = Just (n * m) }
+
+; numberino :: a -> Int
+; numberino _ = int#+ (23, 42)
+
+; testing :: a -> Bool
+; testing _ = True
+
+; example :: Int
+; example = 23 + 42
 
 -- klic je to trignout u explicitnich funkci taky
 -- tenhle example to presne trigne

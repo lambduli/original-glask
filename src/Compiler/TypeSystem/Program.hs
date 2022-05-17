@@ -9,6 +9,10 @@ import Compiler.TypeSystem.BindSection ( Bind'Section )
 import Compiler.TypeSystem.TypeSection ( Type'Section )
 import Compiler.TypeSystem.Binding ( Method )
 
+import Interpreter.Core ( Binding )
+import Interpreter.Environment ( Environment )
+import Interpreter.Store ( Store )
+
 
 {-  NOTE: I am looking at the definition of `Program` and thinking.
           It seems like this is yet another representation - very similar to what I already have,
@@ -26,7 +30,10 @@ data Program
     { bind'section :: Bind'Section
     , methods :: [Method]
     , method'annotations :: [(Name, Sigma'Type, Name)] -- method name, method type, class name
-    -- , data'declarations :: [Data] 
+    , data'declarations :: [Data]
     , data'n'class'sections :: [Type'Section]
+    , b'sec'core :: [Binding]
+    , environment :: Environment
+    , store :: Store
     }
   deriving (Show)

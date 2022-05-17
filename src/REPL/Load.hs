@@ -12,6 +12,7 @@ import Compiler.Counter (Counter, letters)
 import Compiler.Parser
 
 import Compiler.Syntax
+import Compiler.Syntax.BindGroup ( Bind'Group(Bind'Group) )
 import Compiler.Syntax.Expression ( Expression(..) )
 import Compiler.Syntax.ToAST
 -- import Compiler.Syntax.ToAST.TranslateEnv
@@ -47,12 +48,14 @@ import Compiler.Analysis.Semantic.SemanticError
 
 import Compiler.TypeSystem.Error
 
-import Compiler.TypeSystem.Program
+import Compiler.TypeSystem.Infer ( add'instances )
+import Compiler.TypeSystem.Program ( Program( Program, data'declarations, bind'section, methods, method'annotations, b'sec'core, environment, store) )
 import Compiler.TypeSystem.Type.Infer.Program
 -- import Compiler.TypeSystem.Binding
 -- import Compiler.TypeSystem.Utils.Infer
 -- import Compiler.TypeSystem.Infer
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env(..), init't'env )
+import Compiler.TypeSystem.InferenceState ( Infer'State )
 import Compiler.TypeSystem.ClassEnv ( Class'Env )
 
 import Compiler.TypeSystem.Solver.Substitution ( Subst(Sub) )
@@ -64,8 +67,17 @@ import REPL.Repl
 import REPL.Analyses
 import REPL.Expression
 import REPL.Program
-import Compiler.Syntax.BindGroup (Bind'Group(Bind'Group))
-import Interpreter.ToCore (decls'to'core)
+
+import Interpreter.ToCore ( decls'to'core, section'to'core, data'to'core )
+import qualified Interpreter.Core as Core
+import Interpreter.Environment ( Environment )
+import Interpreter.Store ( Store )
+import Interpreter.Address ( Address )
+import Interpreter.Promise ( Promise(..) )
+
+
+import Debug.Trace
+import Data.List (intercalate)
 
 
 load :: String -> Counter -> IO ()
@@ -96,20 +108,28 @@ load file'name counter = do
       case process'declarations decls trans'env counter' of
         Left err -> do
           putStrLn $ "Error: " ++ show err
-        Right (program, infer'env, trans'env, counter'', class'data, getters) -> do
+        Right (program, infer'env, trans'env, counter'', infer'state) -> do
           putStrLn "Successfully loaded the prelude."
           putStrLn ""
           -- let Program{ bind'sections = bs, methods = ms, method'annotations = m'ans, data'declarations = ds } = program
           putStrLn $ "Program:\n" ++ show program ++ " ...\n\n\n"
-          putStrLn $ "Data declarations for Classes: " ++ show class'data ++ " ... \n"
-          putStrLn $ "Getters declarations for Classes: " ++ show getters ++ " ... \n"
           putStrLn $ "bind'sections:  " ++ show (bind'section program) ++ " ... \n"
-          putStrLn $ "\n\n\n\n\ndeclarations to core: " ++ show (decls'to'core decls) ++ "\n\n\n"
+          -- putStrLn $ "\n\n\n\n\ndeclarations to core: " ++ show (decls'to'core decls) ++ "\n\n\n"
           -- putStrLn $ "\nmethods:  " ++ show ms
           -- putStrLn $ "\nmethod'annotations:  " ++ show m'ans
           -- putStrLn $ "\ndata'declarations:   " ++ show ds
 
           let k'e = kind'env infer'env
+
+          let b'section = bind'section program
+          let b'sec'core = section'to'core b'section
+
+          let data'decls = data'declarations program
+          let constructor'core = data'to'core data'decls
+
+          let (env, stor) = build'env'store $ b'sec'core ++ constructor'core
+          let rots = intercalate "\n\n" $ map show $ Map.toList stor
+          let ooo = trace ("\n\n\n\n.... env: " ++ show env ++ "\n\n..... stor: " ++ rots ++ "\n\n\n\n") env
 
           -- putStrLn $ "\n\n\n type env:  " ++ show (type'env infer'env)
           -- putStrLn $ "Kind Env:  " ++ show k'e
@@ -122,7 +142,40 @@ load file'name counter = do
 
           -- TODO: I need to generate code for the declarations, stuff like constructors need to be registered and actually all functions need to be registered
           -- there is a lot of code generation that will take place before the REPL can be run
-          repl (program, infer'env, trans'env{ TE.kind'context = k'e `Map.union` (TE.kind'context trans'env)}, counter'')
+          repl (program{ b'sec'core = b'sec'core ++ constructor'core, environment = ooo, store = stor }, infer'env, trans'env{ TE.kind'context = k'e `Map.union` (TE.kind'context trans'env)}, counter'', infer'state)
+
+
+build'env'store :: [Core.Binding] -> (Environment, Store)
+build'env'store bindings =
+  let store = Map.empty
+      env   = Map.empty
+      -- the goal is to register all bindings into the environment (and store therefore)
+      -- then evaluate the body within that extended environment
+      -- it's done like this:
+      --
+      -- I first create an environment, which will hold ALL of the bindings
+      -- this environment is important, because not only the body will be evaluated within it
+      -- but also all of the bodies of the bindings
+      next'addr = 0
+
+      update :: (Address, [(Address, Name, Core.Core)], Environment) -> Core.Binding -> (Address, [(Address, Name, Core.Core)], Environment)
+      update (next'addr, collection, env') Core.Binding{ Core.name = n, Core.lambda = core }
+        = let next'env = Map.insert n (Promise next'addr) env'
+          in  (next'addr + 1, (next'addr, n, core) : collection, next'env)
+
+      (_, triples, new'env) = foldl update (next'addr, [], env) bindings
+  -- now I have all the important stuff to build the store
+  -- that means that those suspensions (Core, Env)
+  -- will all contain the final environment
+  -- it is simple from here
+  -- I then just evaluate the body of the let within the correct store and environment
+
+  -- so I need to upt every suspension into the store
+      mini'store = Map.fromList $! map (\(addr, _, core) -> (addr, Left (core, new'env))) triples
+      new'store = store `Map.union` mini'store
+
+
+  in (new'env, new'store)
 
 
 load'declarations :: String -> Counter -> Either Semantic'Error ([Declaration], TE.Translate'Env, Counter)
@@ -161,7 +214,7 @@ make'program declarations trans'env counter =
   in program
 
 
-process'declarations :: [Declaration] -> TE.Translate'Env -> Counter -> Either Error (Program, Infer'Env, TE.Translate'Env, Counter, [Data], [Declaration])
+process'declarations :: [Declaration] -> TE.Translate'Env -> Counter -> Either Error (Program, Infer'Env, TE.Translate'Env, Counter, Infer'State Type)
 process'declarations declarations trans'env counter = do
   -- for the inference I am going to need to build things like class environment and instance environment
   let class'env = Class'Env.extract declarations
@@ -270,8 +323,6 @@ process'declarations declarations trans'env counter = do
 
       penta'tuples = map (\ (x, (a, b, c, _)) -> (x, (a, b, c))) hexa'tuples
 
-
-
   -- TODO: I need to extract `Type Assumptions` about all data constructors in the list of Declarations
   let constr'assumptions = Data.extract declarations
 
@@ -300,7 +351,7 @@ process'declarations declarations trans'env counter = do
   -- (Type'Env, [Constraint Kind])
   -- (t'env, k'constr) <- run'infer infer'env (infer'program program)
 
-  (program', t'env', k'env', c'env, cnt, cl'env) <- infer'whole'program program infer'env counter
+  (program', t'env', k'env', c'env, cnt, cl'env, infer'state) <- infer'whole'program program infer'env counter
 
 
   -- TODO: I also need to do the Kind inference, probably even before type inference
@@ -315,7 +366,7 @@ process'declarations declarations trans'env counter = do
   --        and union them and return it
 
   -- NOTE: Now I add all the instance dictionaries and dictionary-constructors into the program
-  let pr@Program{ bind'section = (explicits, implicits's), methods = methods } = program'
+  let pr@Program{ bind'section = (explicits, implicits's), methods = methods, data'declarations = data'decls } = program'
   let extra'implicits = map (\ (Binding bg) -> Implicit bg) extra'declarations
   -- TODO: I also need to convert methods into implicits (at this point the type annotation would be useless)
   -- Method Sigma'Type Bind'Group Name Name
@@ -326,28 +377,30 @@ process'declarations declarations trans'env counter = do
               -- , Binding (b'g{ name = m'name })  -- I am just switching the name, rest stays the same
               -- ]) -- TODO: the this method needs a getter from the dictionary, or maybe I will define it together with the data declaration for the class-data-dictionary
           methods
-  let new'program = pr{ bind'section = (explicits ++ method'declarations, implicits's ++ [extra'implicits]) }
-  -- extra'implicits are the dictionaries themselves - variable binding with the right hand side being a construction of the dictionary (later it might be a function too)
-  -- method'declarations are global bindings of methods with unique names
 
   -- TODO: ted je potreba vyrobit data deklarace pro vsechny ty tridy
   -- na vyssi urovni z nich pak budu muset vygenerovat curried constructory, ale to by se snad melo dit az v kroku kdy budu delat generaci do core
   let sign'type :: Declaration -> Sigma'Type
       sign'type (Signature (T'Signature _ sigma)) = sigma
       
-      make'class :: Class -> (Data, [Declaration])
+      make'class :: Class -> (Data, [Explicit])
       make'class Class{ class'name = cl'name, class'param = cl'par, class'supers = supers, class'declarations = decls }
         = let the'name = "x"
               the'body = Var the'name
               patterns = replicate (length decls) P'Wild -- only wildcards
               matches = map (\ indx -> let (front, _ : rear) = splitAt indx patterns in Match{ patterns = [P'Con cl'name $ front ++ [P'Var the'name] ++ rear], rhs = the'body }) [0 .. length decls - 1]
-              getters = zipWith (\ (Signature (T'Signature name _)) match -> Binding $ Bind'Group{ name = name, alternatives = [match] }) decls matches
+              getters = zipWith (\ (Signature (T'Signature name sigma)) match -> Explicit sigma $ Bind'Group{ name = name, alternatives = [match] }) decls matches
           
               d = Data{ type'name = T'C cl'name (K'Star `K'Arr` K'Star), type'params = [cl'par], constructors = [Con'Decl cl'name (map sign'type decls)] }
           in (d, getters)
 
       (data', getterss) = unzip $ map make'class classes
       getters' = concat getterss
+
+
+  let new'program = pr{ bind'section = (explicits ++ method'declarations ++ getters', implicits's ++ [extra'implicits]), data'declarations = data'decls ++ data' }
+  -- extra'implicits are the dictionaries themselves - variable binding with the right hand side being a construction of the dictionary (later it might be a function too)
+  -- method'declarations are global bindings of methods with unique names
 
       
       --
@@ -361,4 +414,4 @@ process'declarations declarations trans'env counter = do
   -- Class { class'name :: Name, class'param :: T'V', class'supers :: [Predicate], class'declarations :: [Declaration] }
 
 
-  return (new'program, infer'env{ type'env = t'env', kind'env = k'env', constraint'env = c'env, class'env = cl'env }, trans'env, cnt, data', getters')
+  return (new'program, infer'env{ type'env = t'env', kind'env = k'env', constraint'env = c'env, class'env = cl'env }, trans'env, cnt, infer'state)

@@ -26,11 +26,12 @@ import qualified Compiler.Syntax.Overloaded as Overloaded
 import Compiler.TypeSystem.Error ( Error )
 import Compiler.TypeSystem.Program ( Program(..) )
 import Compiler.TypeSystem.Binding ( Explicit(Explicit), Method (Method) )
-import Compiler.TypeSystem.InferenceEnv ( Infer'Env(..), Kind'Env, Type'Env, Constraint'Env )
-import Compiler.TypeSystem.InferenceState ( Infer'State(..) )
+import Compiler.TypeSystem.InferenceEnv ( Infer'Env, Kind'Env, Type'Env, Constraint'Env )
+import qualified Compiler.TypeSystem.InferenceEnv as I'Env
+import Compiler.TypeSystem.InferenceState ( Infer'State )
 import qualified Compiler.TypeSystem.InferenceState as I'State
 
-import Compiler.TypeSystem.Infer ( run'infer, Infer, Type'Check, get'constraints )
+import Compiler.TypeSystem.Infer ( run'infer, Infer, Type'Check, get'constraints, add'overloads )
 -- import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
 import Compiler.TypeSystem.Type.Infer.BindSection ( check'seq, infer'bind'section, infer'seq )
 import Compiler.TypeSystem.Type.Infer.Method ( infer'method )
@@ -40,7 +41,7 @@ import Compiler.TypeSystem.Solver.Substitution ( Subst (Sub), empty'subst )
 import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term (free'vars) )
 import Compiler.TypeSystem.Solver.Composable ( Composable(merge, compose) )
 import Compiler.TypeSystem.Utils.Infer ( default'subst, overload, merge'into't'env )
-import Compiler.TypeSystem.Utils.Class ( reduce )
+import Compiler.TypeSystem.Utils.Class ( reduce, instances )
 import Compiler.TypeSystem.ClassEnv ( Class'Env )
 
 import Compiler.TypeSystem.Kind.Infer.Program ( infer'kinds )
@@ -51,31 +52,31 @@ import Compiler.TypeSystem.Type.Infer.Declaration ( eliminate, eliminate'methods
 import Debug.Trace
 
 
-infer'whole'program :: Program -> Infer'Env -> Counter -> Either Error (Program, Type'Env, Kind'Env, Constraint'Env, Counter, Class'Env)
+infer'whole'program :: Program -> Infer'Env -> Counter -> Either Error (Program, Type'Env, Kind'Env, Constraint'Env, Counter, Class'Env, Infer'State Type)
 infer'whole'program program infer'env counter = do
-  let k'infer'state = Infer'State{ I'State.counter = counter, constraints = [] }
+  let k'infer'state = I'State.Infer'State{ I'State.counter = counter, I'State.constraints = [], I'State.overloaded = [], I'State.instances = [] }
 
   ((k'env, class'env', kind'subst), k'infer'state') <- run'infer infer'env (infer'kinds program ) k'infer'state
 
-  let base't'env  = type'env infer'env
-      base'k'env  = kind'env infer'env
-      base'cl'env = constraint'env infer'env
+  let base't'env  = I'Env.type'env infer'env
+      base'k'env  = I'Env.kind'env infer'env
+      base'cl'env = I'Env.constraint'env infer'env
 
   let new'k'env         = k'env `Map.union` base'k'env
       new'class'env     = class'env' `Map.union` base'cl'env
-      substituted't'env = apply kind'subst (type'env infer'env)
+      substituted't'env = apply kind'subst (I'Env.type'env infer'env)
       
-      cl'env              = class'env infer'env
+      cl'env              = I'Env.class'env infer'env
       substituted'cl'env  = apply kind'subst cl'env
 
       ooo = trace ("{{ whole program }}\n  cl'env: " ++ show cl'env ++ "\n\n  ||  substed'cl'env: " ++ show substituted'cl'env ++ "\n\n ||  data and shit: " ++ show (data'n'class'sections program)) substituted'cl'env
 
   let Program{ bind'section = (explicits, implicits'list), methods = methods } = program
-      infer'env' = infer'env{ kind'env = new'k'env
-                            , type'env = substituted't'env
-                            , constraint'env = new'class'env
-                            , kind'substitution = kind'subst
-                            , class'env = ooo {- substituted'cl'env -} }
+      infer'env' = infer'env{ I'Env.kind'env = new'k'env
+                            , I'Env.type'env = substituted't'env
+                            , I'Env.constraint'env = new'class'env
+                            , I'Env.kind'substitution = kind'subst
+                            , I'Env.class'env = ooo {- substituted'cl'env -} }
                             -- NOTE: I need to put the kind substitution into the typing environment
                             --        when I later encounter any typing annotation (in the declaration or inline)
                             --        I first need to apply this substitution to it to fully specify the Kinds in it.
@@ -97,11 +98,13 @@ infer'whole'program program infer'env counter = do
 
 
   let counter' = get'counter k'infer'state'''
-      t'infer'state = Infer'State{ I'State.counter = counter', constraints = [] }
+  -- NOTE: the reason why I am taking the stuff from the inference environment is because I need to put it in the state, but the state only comes to existence here, and so I need to do that
+      t'infer'state = I'State.Infer'State{ I'State.counter = counter', I'State.constraints = [], I'State.instances = I'Env.instances infer'env', I'State.overloaded = I'Env.overloaded infer'env' }
 
   ((t'env, program''), t'infer'state') <- run'infer infer'env' (infer'types program') t'infer'state
 
   let new't'env = t'env `Map.union` substituted't'env -- it shouldn't matter which direction this is
+      ooooo = trace ("; t'infer'state': " ++ show t'infer'state' ++ ";\n;\n;\n;\n") t'infer'state'
       counter''  = get'counter t'infer'state'
 
   {-  NOTES:
@@ -112,13 +115,14 @@ infer'whole'program program infer'env counter = do
 
       Same works for class'env.
   -}
-  return (program'', new't'env, new'k'env, new'class'env, counter'', substituted'cl'env)
+  return (program'', new't'env, new'k'env, new'class'env, counter'', substituted'cl'env, ooooo)
 
 
 infer'types :: Program -> Type'Check (Type'Env, Program)
 infer'types prg@Program{ bind'section = bg, methods = methods, method'annotations = m'anns } = do
   -- TODO: I first need to register all method constants as methods
   let overloads = map (\ (n, _, cl'name) -> (n, Overloaded.Method cl'name)) m'anns -- (Method _ Bind'Group{ name = n } cl'name)j
+  add'overloads overloads
 
 
   -- ([Predicate], [(Name, Scheme)], [Constraint Type], [Constraint Kind])
@@ -141,7 +145,13 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
   let overloads' = mapMaybe (\ (n, T'Forall _ (ctxt :=> _)) -> if null ctxt then Nothing else Just (n, Overloaded.Overloaded)) assumptions
   (methods', preds') <- overload (overloads ++ overloads') $ merge'into't'env assumptions $ check'seq infer'method methods
 
-  let ee = trace ("\n\n { overloads methods }  overloads: " ++ show overloads ++ "\n   | methods: " ++ show methods ++ "\n   |  methods with placeholders?: " ++ show methods') methods'
+  -- NOTE: I need to store method overloads into the Infer'State, for the REPL to operate on it too
+  add'overloads overloads'
+
+  st <- get
+  let aa = trace ("!\n!\n!\n!\n" ++ "current state after addition: " ++ show st ++ "!\n!\n!\n!\n!\n!\n") methods'
+
+  let ee = trace ("\n\n { overloads methods }  overloads: " ++ show overloads ++ "\n   | methods: " ++ show methods ++ "\n   |  methods with placeholders?: " ++ show methods')  aa -- methods'
 
   -- Question:  So all of the constraints were already solved in smaller groups of them.
   --            Do I expect some different result from solving them all?
@@ -159,7 +169,7 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
   case run'solve cs't {- (cs't ++ cs't') -} :: Either Error (Subst M'V Type) of
     Left err -> trace "here 1" throwError err
     Right subst -> do
-      Infer'Env{ type'env = t'env, class'env = c'env } <- ask
+      I'Env.Infer'Env{ I'Env.type'env = t'env, I'Env.class'env = c'env } <- ask
       -- return (apply subst $ Map.fromList assumptions)
 
 

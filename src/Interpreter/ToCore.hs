@@ -15,6 +15,8 @@ import qualified Compiler.Syntax.BindGroup as AST
 
 import Interpreter.Core ( Core(..), Binding(..), Match(..) )
 import Interpreter.Error ( Evaluation'Error(Non'Exhaustive) )
+import Compiler.TypeSystem.BindSection (Bind'Section)
+import Compiler.TypeSystem.Binding (Explicit(Explicit), Implicit (Implicit))
 
 
 to'core :: AST.Expression -> Core
@@ -35,7 +37,7 @@ to'core (AST.Abs pattern expr)
         body'             = to'core body
         all'patterns      = pattern : patterns
 
-        vars'patts        = zip (take (length all'patterns) letters) all'patterns
+        vars'patts        = zip (take (length all'patterns) $ map ("__" ++) letters) all'patterns
         vars              = map fst vars'patts
 
         -- TODO: now I need to build the CASE expression
@@ -105,6 +107,36 @@ to'core (AST.Placeholder _)
   = error "To'Core transformation: found placeholder"
 
 
+section'to'core :: Bind'Section -> [Binding]
+section'to'core (explicits, implicitss) =
+  let expl'core = map (\ (Explicit _ bg) -> bind'group'to'core bg) explicits
+      impl'core = concatMap (map (\ (Implicit bg) -> bind'group'to'core bg)) implicitss
+      all'core = expl'core ++ impl'core
+  in  all'core
+
+
+data'to'core :: [AST.Data] -> [Binding]
+data'to'core data'decls =
+  let data'constrs = concatMap make'd'constrs data'decls
+      
+      make'd'constrs :: AST.Data -> [Binding]
+      make'd'constrs AST.Data{ AST.constructors = constructors }
+        -- TODO: for each constructor I need to create a Binding
+        = map make'constr constructors
+
+      -- Constr'Decl = Con'Decl Name [Type]
+      make'constr :: AST.Constr'Decl -> Binding
+      make'constr (AST.Con'Record'Decl _ _) = error "Internal error: this should never happen! #32842"
+      make'constr (AST.Con'Decl tag arg'types)
+        = let names = take (length arg'types) letters
+        -- now I need to fold that into the lambda
+              vars = map Var names
+              body = Intro tag vars
+              lambda = foldr Abs body names
+          in  Binding tag lambda
+  in data'constrs
+
+
 decls'to'core :: [AST.Declaration] -> [Binding]
 decls'to'core declarations = mapMaybe collect declarations
 
@@ -119,6 +151,10 @@ match'to'core m@AST.Match{ AST.patterns = pats, AST.rhs = expr } = Match{ patter
 
 
 bind'group'to'core :: AST.Bind'Group -> Binding
+bind'group'to'core AST.Bind'Group{ AST.name = name, AST.alternatives = [AST.Match{ AST.patterns = [], AST.rhs = rhs }] }
+  -- NOTE: If there are no patterns, and only single equation, it is a variable declaration
+  --      I then only produce a Binding, for the name and the right hand side
+  = Binding{ name = name, lambda = to'core rhs }
 bind'group'to'core AST.Bind'Group{ AST.name = name, AST.alternatives = matches }
   = Binding{ name = name, lambda = lambda }
     -- TODO: strategy for translating a full bindgroup into a lambda
@@ -180,4 +216,4 @@ bind'group'to'core AST.Bind'Group{ AST.name = name, AST.alternatives = matches }
 
 is'prim'op :: Name -> Bool
 is'prim'op name = elem name prim'ops
-  where prim'ops = [ "#=", "#<", "#>", "#+", "#+.", "#*", "#*.", "#-", "#-.", "#div", "#/", "#trace" ]
+  where prim'ops = [ "int#==", "int#<", "int#>", "int#+", "double#+", "int#*", "double#*", "int#-", "double#-", "double#/", "int#/", "trace#" ]

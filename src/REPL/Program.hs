@@ -39,7 +39,14 @@ import qualified Compiler.Analysis.Semantic.Dependency.Types as Types
 
 
 to'program :: [Declaration] -> Program
-to'program decls = Program{ bind'section = (explicits, implicits), methods = methods, method'annotations = m'anns, data'n'class'sections = type'sections {- data'declarations = data'decls -} }
+to'program decls = Program{ bind'section = (explicits, implicits)
+                          , methods = methods
+                          , method'annotations = m'anns
+                          , data'n'class'sections = type'sections
+                          , data'declarations = data'decls
+                          , b'sec'core = []
+                          , environment = Map.empty
+                          , store = Map.empty }
   where
     method'annotations :: [(Name, Sigma'Type, Name, Name)] -- method name, type scheme, class param name, class name
     method'annotations = Method'Annotations.extract decls

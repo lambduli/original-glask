@@ -29,7 +29,7 @@ import Compiler.TypeSystem.Type.Infer.Pattern ( infer'pat, infer'pattern, check'
 import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Match ( infer'match )
 import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Declaration ( infer'decls )
 
-import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env, inst'sigma, unify'fun, check'sigma, infer'rho, check'rho, subs'check, skolemise, generalize, quantify, qualify, instantiate, lookup'in'overloaded )
+import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env, inst'sigma, unify'fun, check'sigma, infer'rho, check'rho, subs'check, skolemise, generalize, quantify, qualify, instantiate, lookup'in'overloaded, unify'pair )
 import Compiler.TypeSystem.Expected ( Expected (Infer, Check) )
 import Compiler.TypeSystem.Actual ( Actual (Checked, Inferred) )
 import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'specify )
@@ -181,8 +181,22 @@ infer'expr (Infix'App left op right) expected = do
   -}
 
 -- TODO: IMPLEMENT
-infer'expr (Tuple [expr'a, expr'b]) expected = do
-  undefined
+infer'expr (Tuple [expr'a, expr'b]) Infer = do
+  -- TODO: just infer those two types and put them in the tupple type I guess
+  (expr'a', preds'a, type'a) <- infer'rho expr'a
+  (expr'b', preds'b, type'b) <- infer'rho expr'b
+  return (Tuple [expr'a', expr'b'], preds'a ++ preds'b, Inferred $ T'Tuple [type'a, type'b])
+
+infer'expr (Tuple [expr'a, expr'b]) (Check t) = do
+  -- TODO: how do we do that?
+  -- I need to write a function, which will unify the expected type with a two-ple type
+  -- the two-ple type will contain two type variables right? similar to the function which unifies with function type
+  -- 
+  (type'a, type'b) <- unify'pair t
+  (expr'a', preds'a) <- check'rho expr'a type'a
+  (expr'b', preds'b) <- check'rho expr'b type'b
+
+  return (Tuple [expr'a', expr'b'], preds'a ++ preds'b, Checked)
 
 -- TODO: IMPLEMENT
 infer'expr (Tuple exprs) expected = do

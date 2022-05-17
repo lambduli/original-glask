@@ -73,6 +73,8 @@ import Compiler.TypeSystem.Constraint (Constraint)
 
 
 import Debug.Trace
+import Compiler.TypeSystem.Type.Infer.Declaration (eliminate, elim'expr)
+import Compiler.TypeSystem.InferenceEnv (Infer'Env(overloaded, instances))
 
 
 read'expr :: String -> Translate'Env -> Translate'State -> Either Semantic'Error (Expression, Translate'State)
@@ -103,11 +105,14 @@ read'expr input trans'env trans'state = do
 
 
 -- TODO: move this function into a TypeSystem module (and rename it probably)
-infer'type :: Expression -> Infer'Env -> Counter -> Either Error (Sigma'Type, Counter)
+infer'type :: Expression -> Infer'Env -> Counter -> Either Error (Sigma'Type, Expression, Counter)
 infer'type expr i'env counter = do
   -- ([Predicate], Type, [Constraint Type], [Constraint Kind])
-  let t'i'state = Infer'State{ I'State.counter = counter, constraints = [] }
-  ((preds, actual, cs't), i'state') <- run'infer i'env (infer'expr' expr Infer) t'i'state
+  let t'i'state = Infer'State{ I'State.counter = counter, constraints = [], I'State.overloaded = [], I'State.instances = [] }
+  ((preds, actual, cs't, expr'), i'state') <- run'infer i'env (infer'expr' expr Infer) t'i'state
+
+
+  let eeee = trace ("| the expression with placeholders: " ++ show expr' ++ "\n|\n|\n|") expr'
 
   -- TODO: refactor later (get rid of the pattern matching, possibly by calling function which actually returns type instead of Actual)
   type' <- case actual of
@@ -120,17 +125,29 @@ infer'type expr i'env counter = do
   
   rs <- runIdentity $ runExceptT $ reduce c'env (apply subst preds) :: Either Error [Predicate]
 
+  -- I'Env.Infer'Env{ I'Env.type'env = t'env, I'Env.class'env = c'env } <- ask
+      -- return (apply subst $ Map.fromList assumptions)
+
+  -- let rs = runIdentity $ runExceptT $ reduce c'env (apply subst (preds ++ preds'))
+
+
+
+
   -- NOTE:  Maybe I don't need to do any defaulting when inferring just a single Expression and inside the REPL?
   -- TODO:  I need to find out what exactly would that defaulting substitution do to the Expression Type.
   --        I am pretty sure I saw it also do the monomorphisation restriction. I might want to disable that one in the REPL too.
   -- s' <- runIdentity $ runExceptT $ default'subst c'env [] rs :: Either Error (Subst T'V Type)
   let s' = Sub Map.empty
 
-  subst' <- runIdentity $ runExceptT (s' `merge` subst)
+  subst' <- runIdentity $ runExceptT (subst `merge` s')
 
-  let scheme = close'over $ apply subst' rs :=> apply subst' type'
+  let bbb = trace (".\n.\n.\n" ++ "the type: " ++ show type' ++ " | after subst: " ++ show (apply subst' type') ++ "\n.\n.\n.\n.\n") subst'
 
-  let counter' = get'counter i'state'
+  let scheme = close'over $ apply subst rs :=> apply subst type'
+
+  (eliminated'expr, i'state'') <- run'infer i'env (elim'expr [] bbb eeee) i'state'
+
+  let counter' = get'counter i'state''
 
   -- let message = "{{ tracing infer'type in REPL }}"
   --               ++ "\n | scheme: " ++ show scheme
@@ -144,13 +161,87 @@ infer'type expr i'env counter = do
   --               ++ "\n | subst: " ++ show subst
   --     oo = trace message scheme
 
-  return (scheme, counter')
+  return (scheme, eliminated'expr, counter')
 
 
-infer'expr' :: Expression -> Expected Type -> Type'Check ([Predicate], Actual Type, [Constraint Type])
+
+
+
+-- THIS function is basically fuplicate of the one above
+-- the reason for it is the defaulting
+-- when I run the command :t <expression>
+-- I don't want to do defaulting
+-- but when I try to execute some expression in the repl (no special command)
+-- then I first need to default everything that can be defaulted
+-- and if there are ambiguities -> raise an error
+-- so that's exactly the difference
+infer'expr'type :: Expression -> Infer'Env -> Counter -> Either Error (Sigma'Type, Expression, Counter)
+infer'expr'type expr i'env counter = do
+  -- ([Predicate], Type, [Constraint Type], [Constraint Kind])
+  let t'i'state = Infer'State{ I'State.counter = counter, constraints = [], I'State.overloaded = [], I'State.instances = [] }
+  ((preds, actual, cs't, expr'), i'state') <- run'infer i'env (infer'expr' expr Infer) t'i'state
+
+
+  let eeee = trace ("| the expression with placeholders: " ++ show expr' ++ "\n|\n|\n|") expr'
+
+  -- TODO: refactor later (get rid of the pattern matching, possibly by calling function which actually returns type instead of Actual)
+  type' <- case actual of
+              Inferred t  -> Right t
+              _           -> Left $ Unexpected "Internal Error - infer'type in the REPL" 
+
+  subst <- run'solve cs't  :: Either Error (Subst M'V Type)
+
+  let Infer'Env{ type'env = t'env, class'env = c'env } = i'env
+  
+  rs <- runIdentity $ runExceptT $ reduce c'env (apply subst preds) :: Either Error [Predicate]
+
+  -- I'Env.Infer'Env{ I'Env.type'env = t'env, I'Env.class'env = c'env } <- ask
+      -- return (apply subst $ Map.fromList assumptions)
+
+  -- let rs = runIdentity $ runExceptT $ reduce c'env (apply subst (preds ++ preds'))
+  def'subst <- runIdentity $ runExceptT $ default'subst c'env [] rs
+
+
+
+
+  -- NOTE:  Maybe I don't need to do any defaulting when inferring just a single Expression and inside the REPL?
+  -- TODO:  I need to find out what exactly would that defaulting substitution do to the Expression Type.
+  --        I am pretty sure I saw it also do the monomorphisation restriction. I might want to disable that one in the REPL too.
+  -- s' <- runIdentity $ runExceptT $ default'subst c'env [] rs :: Either Error (Subst T'V Type)
+  let s' = def'subst
+
+  subst' <- runIdentity $ runExceptT (subst `merge` s')
+
+  let bbb = trace (".\n.\n.\n" ++ "the type: " ++ show type' ++ " | after subst: " ++ show (apply subst' type') ++ "\n.\n.\n.\n.\n") subst'
+
+  let scheme = close'over $ apply subst rs :=> apply subst type'
+
+  (eliminated'expr, i'state'') <- run'infer i'env (elim'expr [] bbb eeee) i'state'
+
+  let counter' = get'counter i'state''
+
+  -- let message = "{{ tracing infer'type in REPL }}"
+  --               ++ "\n | scheme: " ++ show scheme
+  --               ++ "\n | before close'over: " ++ show (apply subst' rs :=> apply subst' type')
+  --               ++ "\n | rs: " ++ show rs
+  --               ++ "\n | preds: " ++ show preds
+  --               ++ "\n | preds substituted: " ++ show (apply subst preds)
+  --               ++ "\n | type': " ++ show type'
+  --               ++ "\n | constraints: " ++ show cs't
+  --               ++ "\n | subst': " ++ show subst'
+  --               ++ "\n | subst: " ++ show subst
+  --     oo = trace message scheme
+
+  return (scheme, eliminated'expr, counter')
+
+
+
+
+
+infer'expr' :: Expression -> Expected Type -> Type'Check ([Predicate], Actual Type, [Constraint Type], Expression)
 infer'expr' expr expected = do
   (expr', preds, actual) <- infer'expr expr expected
 
   constraints <- get'constraints
 
-  return (preds, actual, constraints)
+  return (preds, actual, constraints, expr')

@@ -39,7 +39,7 @@ kind'specify sigma = do
   infer'env <- ask
   infer'state <- get
   let counter       = get'counter infer'state
-      infer'state'  = Infer'State{ counter = counter, constraints = [] }
+      infer'state'  = Infer'State{ counter = counter, constraints = [], instances = [], overloaded = [] }
 
   case run'infer infer'env (kind'infer'sigma sigma) infer'state' of
     Left err ->
