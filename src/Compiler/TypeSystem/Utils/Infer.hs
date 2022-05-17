@@ -21,7 +21,7 @@ import Compiler.Syntax.HasKind ( HasKind(kind) )
 import Compiler.Syntax.Kind ( Kind (K'Star) )
 import Compiler.Syntax.Predicate ( Predicate )
 import Compiler.Syntax.Qualified ( Qualified(..) )
-import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'V'(..), Type(T'Forall, T'Var', T'Meta), Rho'Type, Tau'Type, M'V(..) )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Sigma'Type, T'V'(..), Type(T'Forall, T'Var', T'Meta, T'Tuple), Rho'Type, Tau'Type, M'V(..) )
 import Compiler.Syntax.TFun ( pattern T'Fun )
 import Compiler.Syntax.Overloaded ( Overloaded )
 import Compiler.Syntax.Match ( Match )
@@ -358,7 +358,7 @@ with'defaults fn cl'env vars preds = do
   tss <- mapM (candidates cl'env) vps
 
   if any null tss
-    then throwError $ Unexpected "cannot resolve ambiguity"
+    then throwError $ Unexpected $ "cannot resolve ambiguity: " ++ show vps
     else return $ fn vps $ map head tss
 
 
@@ -385,6 +385,18 @@ unify'fun fun't = do
   let constraint = fun't `Unify` (arg't `T'Fun` res't)
   add'constraints [constraint]
   return (arg't, res't)
+
+
+unify'pair :: Rho'Type -> Type'Check (Rho'Type, Rho'Type)
+unify'pair (T'Tuple [first't, second't])
+  = return (first't, second't)
+
+unify'pair tuple't = do
+  first't <- fresh'meta
+  second't <- fresh'meta
+  let constraint = tuple't `Unify` T'Tuple [first't, second't]
+  add'constraints [constraint]
+  return (first't, second't)
 
 
 {-  OUTWARD INVARIANT: All meta type variables have kind `*`. -}

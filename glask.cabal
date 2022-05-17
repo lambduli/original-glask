@@ -147,6 +147,16 @@ library
       REPL.Program
       REPL.Repl
       REPL.Type
+      Interpreter.Address
+      Interpreter.Core
+      Interpreter.Environment
+      Interpreter.Error
+      Interpreter.Evaluate
+      Interpreter.Promise
+      Interpreter.State
+      Interpreter.Store
+      Interpreter.ToCore
+      Interpreter.Value
   other-modules:
       Paths_glask
   hs-source-dirs:

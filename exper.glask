@@ -2,22 +2,43 @@ module Main where
 { infixl 5 +
 ; infixl 5 *
 
--- ; int'id :: Int -> Int
--- ; int'id i = i
+; int'id :: Int -> Int
+; int'id i = i
+
+; maybe :: Maybe a -> a -> a
+; maybe (Just x) _ = x
+; maybe Nothing y  = y
 
 ; class Num a where
   { (+) :: a -> a -> a
   ; (*) :: a -> a -> a }
 
 ; instance Num Int where
-  { (+) x y = x + y
-  ; (*) x y = x * y }
+  { (+) x y = int#+ (x, y)
+  ; (*) x y = int#* (x, y) }
+
+; hmmm = 23 + 42
+
+-- ; instance Num Double where
+--   { (+) x y = double#+ (x, y)
+--   ; (*) x y = double#* (x, y) }
 
 ; data Maybe a = Just a | Nothing
 
-; instance Num a => Num (Maybe a) where
-  { (+) (Just n) (Just m) = Just (n + m)
-  ; (*) (Just n) (Just m) = Just (n * m) }
+; data Bool = True | False
+
+-- ; instance Num a => Num (Maybe a) where
+--   { (+) (Just n) (Just m) = Just (n + m)
+--   ; (*) (Just n) (Just m) = Just (n * m) }
+
+; numberino :: a -> Int
+; numberino _ = int#+ (23, 42)
+
+; testing :: a -> Bool
+; testing _ = True
+
+; example :: Int
+; example = 23 + 42
 
 -- klic je to trignout u explicitnich funkci taky
 -- tenhle example to presne trigne
@@ -30,4 +51,25 @@ module Main where
 -- ; foo n = let { r = overloaded n
 --               ; m = int'id n }
 --           in  r
+
+
+-- ; add'maybe :: Num a => a -> a
+-- ; add'maybe :: Int -> Int
+-- with, or without the annotation - it seems to be working fine
+; add'maybe x = case Just x of
+                { Just a -> a + a }
+
+; a'fn :: Num a => a -> a
+; a'fn x = x
+
+-- this needs to propagate that constraint
+-- and it does
+; b'fn x = case a'fn x of
+           { n -> n }
+
+
+-- but this is somehow broken
+; c'fn _ = case 23 of
+         { n -> n }
+
 }

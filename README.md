@@ -4,9 +4,7 @@
 # TODO:
 - ## Lexer
 - ## Parsing Stage 1
-  - resolve all shift/reduce conflicts (10)
-- ## Parsing Stage 2
-  - construct application trees from application lists (Extended Shunting Yard Algorithm)
+  - resolve all shift/reduce conflicts (10) - I think there is a lot more now, around 60 (as a consequence of allowing lambdas and cases and so on to stand anywhere)
 
 - ## Building the Trans'Env
   - in the process of building the Translate Environment I have run into the problem
@@ -23,8 +21,6 @@
   - this design will introduce some overhead, but maybe it will make it work just right
 
 - ## Semantic Analysis and Transformation
-  - merge all binding groups (at first each one only contains single equation) into a single group
-  - check that all data constructors which are operators and defined as POST/PRE-fix are always unary (consider having the similar requirement on binary infix operators)
   - check type contexts validity (read Haskell Report for that and consult my Parser.y - specificaly Class\Instance declarations)
     - basic structure checking is done by the parser - add better error reporting in the future
   - type synonym substitution
@@ -34,18 +30,36 @@
 
 - ## Error Reporting
   - propagate locations through the representations
-  - figure out how to tie locations with type inference
+  - idea: it would be cool if at each level, there would be a function called by default which would decorate a possible error which might come from within, this way it would basically build an error stack, or something similar
+  - figure out how to tie locations with type inference - there is a mention of cosntraint gathering having a nice error-reporting property, but I don't see how
 
 - ## Serialization / Pretty Printing
   - I am currently the most inclined to the idea of using the original input as user wrote it and just decorating it with informations and errors - all of that have to be made possible by location informations
-  - implement show (for debugging) for Match'Group and Match
-
-- ## Kind Analysis
-  - Write tests
 
 - ## Type Analysis
-  - Arbitrary-rank Polimorphism
-  - Write tests
+  - `case of` expression
+
+- ## Type Classes
+  - `class hierarchy` - this needs to work:
+```haskell
+class Foo a
+
+class Foo a => Bar a
+
+class Baz a
+
+instance Baz a => Foo [a]
+
+instance Bar [a] -- this is not legal, because Bar is a subclass of Foo and Foo on [a] requires the `a` to be `Baz a` ==> therefore `Bar [a]` must require the same
+-- maybe with flexible instances and stuff I could define something like
+
+instance Bar [Int]
+-- and if there is
+instance Baz Int
+-- then this would be OK?
+-- YEP, it works exactly like that
+
+```
 
 - # Notes on the implementation
   - ? make the Kind Variables in the Type Variables correct (this will be done by the part of implementation which translates from Term'Type to Type)
@@ -84,3 +98,28 @@
   - Dependency Analysis will need to be perfored for every `let ... = ... in ...` expression --> I will isolate it into the function and return the result in some reasonable shape to be used for the specific thing
   - Dependency Analysis
   - Dependency Analysis for Type Class declarations (no cyclic dependencies)
+
+
+
+# TODO:
+- [x] Overloads and the second thing from Infer'Env need to be persisted somehow, I need them in the REPL to that my expressions can be correctly elaborated and desugared
+- [x] calling a function `numberino _ = 23 + 42` in the repl like `numberino True` results in evaluation error - incorrect address, I am not sure what is up with that
+- [x] when I have a function which is overloaded and expects a dictionary, calling it from REPL must first desugar that expression correctly, so that it supplies those dictionaries
+      Questions: can it happen, that I won't know for sure what dictionary should be used? What happens then? How do I identify, that there is still unresolved something?
+      Example
+
+```haskell
+foo :: Num a => a -> a
+foo x = x + x
+
+-- now what if I call this function from the REPL like this:
+
+foo 23
+```
+
+The whole expression in the repl needs to be defaulted right, so that it can be actually evaluated.
+It could work like this:
+the inference infers that the type of that is `Num a => a`, but defaulting says that `a` is going to be `Int`.
+I then need to eliminate the placeholders with that defaulting substitution, the substitution alone should be enough hopefully.
+And that should eliminate the placeholder and insert the right dictionary.
+Let's see if that will work.

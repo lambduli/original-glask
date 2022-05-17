@@ -1,0 +1,34 @@
+module Main where
+{ class Num a
+
+; instance Num Int
+; instance Num Double
+
+; class Test a where
+  { test :: a -> a -> a }
+
+; instance Test Int where
+  { test x y = 23 }
+
+; foo k y = k
+
+; bar a = foo a a
+
+; what :: Int
+; what = test 23 42
+
+; data Foo = Foo Int
+
+; f1 = Foo 23
+
+; data Bool = True | False
+
+-- ; boo = test
+
+; data Maybe a = Just a | Nothing
+
+; add'maybe x = case Just x of
+                { Just a -> a + a }
+
+
+}

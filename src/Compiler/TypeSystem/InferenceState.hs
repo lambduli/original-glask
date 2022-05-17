@@ -1,5 +1,11 @@
 module Compiler.TypeSystem.InferenceState where
 
+
+import Compiler.Syntax.Name ( Name )
+import {-# SOURCE #-} Compiler.Syntax.Type ( Type )
+import Compiler.Syntax.Predicate ( Predicate )
+import Compiler.Syntax.Overloaded ( Overloaded ) 
+
 import Compiler.Counter ( Counter, State(..) )
 
 import Compiler.TypeSystem.Constraint ( Constraint )
@@ -8,7 +14,10 @@ import Compiler.TypeSystem.Constraint ( Constraint )
 
 
 data Infer'State a = Infer'State  { counter :: Counter
-                                  , constraints :: [Constraint a] }
+                                  , constraints :: [Constraint a]
+                                  , overloaded :: [(Name, Overloaded)]
+                                  , instances :: [((Name, Type), (Name, [Predicate], Predicate))] }
+      deriving (Show)
 
 
 instance State (Infer'State a) where

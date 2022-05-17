@@ -1,4 +1,4 @@
-module Compiler.TypeSystem.Infer (Infer, Type'Check, Kind'Check, run'infer, add'constraints, get'constraints) where
+module Compiler.TypeSystem.Infer (Infer, Type'Check, Kind'Check, run'infer, add'constraints, get'constraints, add'overloads, add'instances) where
 
 
 import qualified Data.Map.Strict as Map
@@ -8,14 +8,17 @@ import Control.Monad.State ( MonadState(get, put), gets, evalStateT, StateT )
 import Control.Monad.Except ( Except, runExcept )
 
 
+import Compiler.Syntax.Name ( Name )
+import Compiler.Syntax.Predicate ( Predicate )
 import {-# SOURCE #-} Compiler.Syntax.Expression ( Expression )
 import {-# SOURCE #-} Compiler.Syntax.Type ( Type )
 import Compiler.Syntax.Kind ( Kind )
+import Compiler.Syntax.Overloaded ( Overloaded )
 
 import Compiler.TypeSystem.Error ( Error )
 
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env )
-import Compiler.TypeSystem.InferenceState ( Infer'State (constraints, Infer'State) )
+import Compiler.TypeSystem.InferenceState ( Infer'State (constraints, Infer'State, overloaded, instances) )
 import Compiler.TypeSystem.Constraint ( Constraint )
 
 
@@ -57,3 +60,19 @@ add'constraints constrs = do
 
 get'constraints :: Infer [Constraint b] b
 get'constraints = do gets constraints
+
+
+add'overloads :: [(Name, Overloaded)] -> Infer () Type
+add'overloads overloads = do
+  i'state <- get
+  let current'overloads = overloaded i'state
+      new'state         = i'state{ overloaded = current'overloads ++ overloads }
+  put new'state
+
+
+add'instances :: [((Name, Type), (Name, [Predicate], Predicate))] -> Infer () Type
+add'instances instances' = do
+  i'state <- get
+  let current'instances = instances i'state
+      new'state         = i'state{ instances = current'instances ++ instances' }
+  put new'state

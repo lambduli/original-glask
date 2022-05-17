@@ -1,9 +1,11 @@
 module Compiler.Analysis.Syntactic.Bindings where
 
 import qualified Data.Map.Strict as Map
-import Data.Maybe
+import Data.Maybe ( mapMaybe )
 
-import Compiler.Syntax
+import Compiler.Syntax.BindGroup ( Bind'Group(Bind'Group, name) )
+import Compiler.Syntax.Declaration ( Declaration(Binding) )
+import Compiler.Syntax.Name ( Name )
 
 
 

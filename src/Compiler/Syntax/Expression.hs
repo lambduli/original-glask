@@ -46,4 +46,3 @@ instance Show Expression where
   show (Case expr options) = "case " ++ show expr ++ " of \n { " ++ "TODO: show options" ++ " }"
   show (Hole name) = name
   show (Placeholder pl'h) = "<" ++ show pl'h ++ ">"
-  -- show (Intro name exprs) = "(" ++ name ++ " " ++ unwords (map show exprs) ++ ")"
