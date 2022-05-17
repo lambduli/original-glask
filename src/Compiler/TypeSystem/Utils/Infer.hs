@@ -46,9 +46,6 @@ import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Expression ( infer'expr )
 import Compiler.TypeSystem.Solver ( run'solve )
 
 
-import Debug.Trace
-
-
 quantify :: [M'V] -> Qualified Type -> Sigma'Type
 quantify meta'vars q'type = sigma
   where
@@ -326,8 +323,7 @@ preds - predicates to split
 split :: Class'Env -> [M'V] -> [M'V] -> [Predicate] -> Solve ([Predicate], [Predicate])
 split cl'env fixed'vars gs preds = do
   preds' <- reduce cl'env preds
-  let oo = trace ("{ split }\npreds: " ++ show preds ++ "\npreds': " ++ show preds') preds'
-  let (deffered'preds, retained'preds) = partition (all (`elem` fixed'vars) . free'vars) oo -- preds'
+  let (deffered'preds, retained'preds) = partition (all (`elem` fixed'vars) . free'vars) preds'
   retained'preds' <- defaulted'preds cl'env (fixed'vars ++ gs) retained'preds
   return (deffered'preds, retained'preds \\ retained'preds')
 
@@ -600,9 +596,7 @@ split'data'cons rho = ([], rho)
 lookup'in'overloaded :: Name -> Type'Check (Maybe Overloaded)
 lookup'in'overloaded name = do
   overloaded' <- asks overloaded
-  let r = lookup name overloaded'
-  let oo = trace (" { lookup for " ++ name ++ "  found " ++ show r) r
-  return oo
+  return $ lookup name overloaded'
   -- asks (lookup name . overloaded)
 
 

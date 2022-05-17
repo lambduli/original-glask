@@ -30,9 +30,6 @@ import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'infer'sigma, kind'specif
 import Compiler.TypeSystem.Expected ( Expected(Check) )
 
 
-import Debug.Trace
-
-
 {-  Description:
 
     The `infer'method` function infers and checks a type for the method binding.
@@ -50,11 +47,9 @@ infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }
   
   -- (qs :=> t) <- instantiate scheme
   (skolems, qs, t) <- skolemise scheme
-
-  let pp = trace ("\n\n infer'method  ...  scheme: " ++ show scheme ++ "\n  ... qs: " ++ show qs ++ "\n  ... t: " ++ show t ++ "\n  ... skolems: " ++ show skolems) t
   -- STEJNEJ DUVOD JAKO U EXPLICIT - HLEDEJ KOMENTAR A VYSVETLENI TAM
 
-  (matches', preds, _) <- infer'matches matches $ Check pp -- t
+  (matches', preds, _) <- infer'matches matches $ Check t
   -- now solve it
   cs't <- get'constraints
   case run'solve cs't :: Either Error (Subst M'V Type) of

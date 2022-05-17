@@ -20,9 +20,6 @@ import Interpreter.Core ( Core(..), Binding(..), Match(..) )
 import Interpreter.Error ( Evaluation'Error(..) )
 
 
-import Debug.Trace
-
-
 data Pattern'Match'Result a
   = OK a
   | Match'Failed
@@ -35,12 +32,7 @@ eval (Var name) env = do
     Nothing -> return $! Left $! Unbound'Var name -- NOTE: should never ever happen
     Just promise -> do
       -- force the promise
-      store <- get
-      let xxx = trace ("///////////////////////////////   evaluation of variable --> forcing the promise it points to   | name: " ++ name ++ "  | promise: " ++ show promise ++ "   | size of the store now: " ++ show (Map.size store) ++ "" ) promise
-      val <- force xxx
-      store <- get
-      let v = trace ("forcing a variable:  '" ++ name ++ "'  was done   |||| size of the store now:  " ++ show (Map.size store)) val
-      return v
+      force promise
 
 -- eval (Const name) env = do
 --   -- look up the promise in the env
@@ -78,16 +70,12 @@ eval (App fn arg) env = do
 
     Right (Closure param body env') -> do
       store <- get
-      let ttt = trace ("**********  closure eval" ++ "\n param: " ++ param ++ "\n body: " ++ show body ++ "\n store size: " ++ show (Map.size store) ++ "\n argument: " ++ show arg) store
-      let size = Map.size ttt
+      let size = Map.size store
       let next'addr = size
       let new'store = Map.insert next'addr (Left (arg, env)) store
       put new'store
       let new'env = Map.insert param (Promise next'addr) env'
-      r <- eval body new'env
-      store <- get
-      let bbb = trace ("&&&&&&&&&& closure done\n param: " ++ param ++ "\n store size: " ++ show (Map.size store)) r
-      return bbb
+      eval body new'env
 
     Right _ -> return $ Left $ Unexpected "Evaluation Error: while evaluating function expression I didn't get a Closure!" -- NOTE: should never really happen
 
@@ -127,15 +115,12 @@ eval (Let bindings body) env = do
 
 eval (Case motive matches) env = do
   store <- get
-  let eee = trace ("????????????\n\n??????????? BEFORE  store size: " ++ show (Map.size store) ++ "   ||| and the motive:  " ++ show motive) env
-  r <- eval motive eee
+  r <- eval motive env
   store <- get
-  let rrr = trace ("!!!!!!!!!!!!\n\n!!!!!!!!!!! AFTER store size: " ++ show (Map.size store) ++ "  |||   and the result:  " ++ show r) r
-  case rrr of
+  case r of
     Left err -> return r
     Right val -> do
-      let ooo = trace ("--------------------------  case evalauted motive: " ++ show val) val
-      r <- pattern'match ooo matches
+      r <- pattern'match val matches
       case r of
         Left err -> return (Left err)
         Right Match'Failed -> return (Left (Unexpected "Evaluation - Pattern Matching: case analysis has no boundary."))
@@ -248,17 +233,14 @@ eval (Case motive matches) env = do
       pattern'match'promise p@(Promise _) (P'Var name) = do
         -- promise is not forced, it is simply associated with the variable name
         store <- get
-        let part = trace ("_______________ var name: " ++ name
-                          ++ " \n________ promise: " ++ show p
-                          ++ "\n____ store: " ++ show store) p
-        return $! Right $! OK [(name, Left part)]
+        return $! Right $! OK [(name, Left p)]
       
       pattern'match'promise prom@(Promise _) pattern@(P'Con _ _) = do
         -- I force the promise to get a value
         -- then I pattern match it with existing function
         r <- force prom
         case r of
-          Left err -> trace ("force failed #1: " ++ show err) $ return (Left err)
+          Left err -> return (Left err)
           -- it needs to terminate the program, instead of continuing with another match
           Right val -> do
             pattern'match' val pattern
@@ -268,7 +250,7 @@ eval (Case motive matches) env = do
         -- then I pattern match it with existing function
         r <- force prom
         case r of
-          Left err -> trace ("force failed #2: " ++ show err) $ return (Left err)
+          Left err -> return (Left err)
           Right val -> do
             pattern'match' val pattern
       
@@ -368,18 +350,7 @@ eval (Intro tag cores) env = do
 
   values <- mapM force promises
 
-  let xxx = trace ("::::::::::::::::::::::::: intro name: " ++ show tag
-                ++ "\n next'addr: " ++ show next'addr
-                ++ "\n addressess: " ++ show addresses
-                ++ "\n pairs: " ++ show pairs
-                ++ "\n ministore: " ++ show mini'store
-                ++ "\n mini size: " ++ show (Map.size mini'store)
-                ++ "\n new size: " ++ show (Map.size new'store)
-                ++ "\n\n new store: " ++ show (new'store Map.!? (next'addr - 1))
-                ++ "\n\n\n promises: " ++ show promises ++ " \n\n\n"
-                ++ "\n\n :::::    force values: " ++ show values) promises
-
-  return $! Right $! Data tag xxx -- promises
+  return $! Right $! Data tag promises
 
 eval (Error err) env = do
   -- I just raise an error
@@ -418,8 +389,8 @@ do'prim'op "int#+" (Data "(,)" [first'p, second'p]) = do
       -- now I just add those together and return the result as a value
       let sum = i + e
       return (Right (Literal (Lit'Int sum)))
-    (Left err, _) -> trace ("forcing #3: ") $ return (Left err)
-    (_, Left err) -> trace ("forcing #3: ") $ return (Left err)
+    (Left err, _) -> return (Left err)
+    (_, Left err) -> return (Left err)
     _ -> return (Left (Unexpected "Evaluation Error: Primitive Operation 'int#+' applied to something bad"))
 
 do'prim'op name val = do

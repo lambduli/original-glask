@@ -2,7 +2,7 @@ module REPL.Load where
 
 
 import System.IO
-import Data.List
+import Data.List ( intercalate )
 import qualified Data.Map.Strict as Map
 import Data.Tuple.Extra
 
@@ -76,8 +76,6 @@ import Interpreter.Address ( Address )
 import Interpreter.Promise ( Promise(..) )
 
 
-import Debug.Trace
-import Data.List (intercalate)
 
 
 load :: String -> Counter -> IO ()
@@ -112,8 +110,8 @@ load file'name counter = do
           putStrLn "Successfully loaded the prelude."
           putStrLn ""
           -- let Program{ bind'sections = bs, methods = ms, method'annotations = m'ans, data'declarations = ds } = program
-          putStrLn $ "Program:\n" ++ show program ++ " ...\n\n\n"
-          putStrLn $ "bind'sections:  " ++ show (bind'section program) ++ " ... \n"
+          -- putStrLn $ "Program:\n" ++ show program ++ " ...\n\n\n"
+          -- putStrLn $ "bind'sections:  " ++ show (bind'section program) ++ " ... \n"
           -- putStrLn $ "\n\n\n\n\ndeclarations to core: " ++ show (decls'to'core decls) ++ "\n\n\n"
           -- putStrLn $ "\nmethods:  " ++ show ms
           -- putStrLn $ "\nmethod'annotations:  " ++ show m'ans
@@ -128,8 +126,6 @@ load file'name counter = do
           let constructor'core = data'to'core data'decls
 
           let (env, stor) = build'env'store $ b'sec'core ++ constructor'core
-          let rots = intercalate "\n\n" $ map show $ Map.toList stor
-          let ooo = trace ("\n\n\n\n.... env: " ++ show env ++ "\n\n..... stor: " ++ rots ++ "\n\n\n\n") env
 
           -- putStrLn $ "\n\n\n type env:  " ++ show (type'env infer'env)
           -- putStrLn $ "Kind Env:  " ++ show k'e
@@ -142,7 +138,7 @@ load file'name counter = do
 
           -- TODO: I need to generate code for the declarations, stuff like constructors need to be registered and actually all functions need to be registered
           -- there is a lot of code generation that will take place before the REPL can be run
-          repl (program{ b'sec'core = b'sec'core ++ constructor'core, environment = ooo, store = stor }, infer'env, trans'env{ TE.kind'context = k'e `Map.union` (TE.kind'context trans'env)}, counter'', infer'state)
+          repl (program{ b'sec'core = b'sec'core ++ constructor'core, environment = env, store = stor }, infer'env, trans'env{ TE.kind'context = k'e `Map.union` (TE.kind'context trans'env)}, counter'', infer'state)
 
 
 build'env'store :: [Core.Binding] -> (Environment, Store)

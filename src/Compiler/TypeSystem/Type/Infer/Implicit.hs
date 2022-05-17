@@ -36,9 +36,6 @@ import Compiler.TypeSystem.Expected ( Expected(Infer, Check) )
 import Compiler.TypeSystem.Actual ( Actual (Inferred) )
 
 
-import Debug.Trace
-
-
 {- Returning a [Constraint Type] might not be strictly necessary -}
 infer'impls :: [Implicit] -> Type'Check ([Implicit], [Predicate], [(Name, Sigma'Type)])
 infer'impls implicits = do

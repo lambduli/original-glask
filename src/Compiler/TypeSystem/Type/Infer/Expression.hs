@@ -35,8 +35,6 @@ import Compiler.TypeSystem.Actual ( Actual (Checked, Inferred) )
 import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'specify )
 import Compiler.TypeSystem.Error ( Error(Unexpected, Typed'Hole) )
 
-import Debug.Trace
-
 
 infer'expr :: Expression -> Expected Rho'Type -> Type'Check (Expression, [Predicate], Actual Rho'Type)
 infer'expr (Var var'name) expected = do
@@ -108,8 +106,7 @@ infer'expr o@(Op op'name) expected = do
   -- TODO: HERE - the var might be overloaded constant, or it might be a method, or it might be one of mutually recrusive definitions
   -- I need some way of knowing whether it's one of those
   m <- lookup'in'overloaded op'name
-  let oo = trace ("\n[[   overloaded operator?   operator: " ++ op'name ++ "  || m: " ++ show m ++ "   |||  placeholder: " ++ show (Placeholder.Method op'name ty "class-name")) m
-  expr' <- case oo of
+  expr' <- case m of
             Nothing -> -- OK, just do the normal thing
               return $ Op op'name
             Just Overloaded -> do -- application of the overloaded variable to possibly many placeholders

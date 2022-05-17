@@ -72,7 +72,6 @@ import Compiler.Syntax (Expression, Predicate)
 import Compiler.TypeSystem.Constraint (Constraint)
 
 
-import Debug.Trace
 import Compiler.TypeSystem.Type.Infer.Declaration (eliminate, elim'expr)
 import Compiler.TypeSystem.InferenceEnv (Infer'Env(overloaded, instances))
 
@@ -111,9 +110,6 @@ infer'type expr i'env counter = do
   let t'i'state = Infer'State{ I'State.counter = counter, constraints = [], I'State.overloaded = [], I'State.instances = [] }
   ((preds, actual, cs't, expr'), i'state') <- run'infer i'env (infer'expr' expr Infer) t'i'state
 
-
-  let eeee = trace ("| the expression with placeholders: " ++ show expr' ++ "\n|\n|\n|") expr'
-
   -- TODO: refactor later (get rid of the pattern matching, possibly by calling function which actually returns type instead of Actual)
   type' <- case actual of
               Inferred t  -> Right t
@@ -141,25 +137,11 @@ infer'type expr i'env counter = do
 
   subst' <- runIdentity $ runExceptT (subst `merge` s')
 
-  let bbb = trace (".\n.\n.\n" ++ "the type: " ++ show type' ++ " | after subst: " ++ show (apply subst' type') ++ "\n.\n.\n.\n.\n") subst'
-
   let scheme = close'over $ apply subst rs :=> apply subst type'
 
-  (eliminated'expr, i'state'') <- run'infer i'env (elim'expr [] bbb eeee) i'state'
+  (eliminated'expr, i'state'') <- run'infer i'env (elim'expr [] subst' expr') i'state'
 
   let counter' = get'counter i'state''
-
-  -- let message = "{{ tracing infer'type in REPL }}"
-  --               ++ "\n | scheme: " ++ show scheme
-  --               ++ "\n | before close'over: " ++ show (apply subst' rs :=> apply subst' type')
-  --               ++ "\n | rs: " ++ show rs
-  --               ++ "\n | preds: " ++ show preds
-  --               ++ "\n | preds substituted: " ++ show (apply subst preds)
-  --               ++ "\n | type': " ++ show type'
-  --               ++ "\n | constraints: " ++ show cs't
-  --               ++ "\n | subst': " ++ show subst'
-  --               ++ "\n | subst: " ++ show subst
-  --     oo = trace message scheme
 
   return (scheme, eliminated'expr, counter')
 
@@ -180,9 +162,6 @@ infer'expr'type expr i'env counter = do
   -- ([Predicate], Type, [Constraint Type], [Constraint Kind])
   let t'i'state = Infer'State{ I'State.counter = counter, constraints = [], I'State.overloaded = [], I'State.instances = [] }
   ((preds, actual, cs't, expr'), i'state') <- run'infer i'env (infer'expr' expr Infer) t'i'state
-
-
-  let eeee = trace ("| the expression with placeholders: " ++ show expr' ++ "\n|\n|\n|") expr'
 
   -- TODO: refactor later (get rid of the pattern matching, possibly by calling function which actually returns type instead of Actual)
   type' <- case actual of
@@ -212,25 +191,11 @@ infer'expr'type expr i'env counter = do
 
   subst' <- runIdentity $ runExceptT (subst `merge` s')
 
-  let bbb = trace (".\n.\n.\n" ++ "the type: " ++ show type' ++ " | after subst: " ++ show (apply subst' type') ++ "\n.\n.\n.\n.\n") subst'
-
   let scheme = close'over $ apply subst rs :=> apply subst type'
 
-  (eliminated'expr, i'state'') <- run'infer i'env (elim'expr [] bbb eeee) i'state'
+  (eliminated'expr, i'state'') <- run'infer i'env (elim'expr [] subst' expr') i'state'
 
   let counter' = get'counter i'state''
-
-  -- let message = "{{ tracing infer'type in REPL }}"
-  --               ++ "\n | scheme: " ++ show scheme
-  --               ++ "\n | before close'over: " ++ show (apply subst' rs :=> apply subst' type')
-  --               ++ "\n | rs: " ++ show rs
-  --               ++ "\n | preds: " ++ show preds
-  --               ++ "\n | preds substituted: " ++ show (apply subst preds)
-  --               ++ "\n | type': " ++ show type'
-  --               ++ "\n | constraints: " ++ show cs't
-  --               ++ "\n | subst': " ++ show subst'
-  --               ++ "\n | subst: " ++ show subst
-  --     oo = trace message scheme
 
   return (scheme, eliminated'expr, counter')
 

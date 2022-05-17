@@ -48,8 +48,6 @@ import Compiler.TypeSystem.Utils.Infer ( default'subst, add'dicts, lookup'dict, 
 import Compiler.TypeSystem.Solver.Composable ( Composable(merge) )
 
 
-import Debug.Trace
-
 {-  TODO: I inteded to use this function to infer list of declarations like `let` blocks.
           I think it would be best to utilize the infrastructure I already have - the one from the THIH.
           This function might be used just to utilize it.
@@ -214,10 +212,8 @@ infer'types bg = do
       -- probably
       -- so I need a fully substituted typing context/assumptions about all the bindings now
       let assumptions' = apply subst assumptions
-          oo = trace ("{ \n... declarations with placeholders: " ++ show bg' ++ "\n and assumptions so far: " ++ show assumptions') assumptions'
-      eliminated <- eliminate subst oo bg'
-      let aa = trace ("\n ---- and after elimination: " ++ show eliminated) eliminated
-      return (aa, preds, map properly'close assumptions')
+      eliminated <- eliminate subst assumptions' bg'
+      return (eliminated, preds, map properly'close assumptions')
       -- TODO: NOTE
       --
       --  Tady je takova otazka - v modulu Program ve funkci infer'types
@@ -554,11 +550,7 @@ elim'expr assumps subst (Placeholder (Placeholder.Method name ty cl'name)) = do
   -- now to make the application
   let app = selector `App` placeholder
   -- now to return the result of elimination of that application
-  eliminated <- elim'expr assumps subst app
-
-  let oo = trace ("tracing method placeholder | original: " ++ show ((Placeholder.Method name ty cl'name)) ++ "  |  eliminated: " ++ show eliminated ++ "  | subst: " ++ show subst) eliminated
-
-  return oo
+  elim'expr assumps subst app
   
 
 elim'expr assumps subst (Placeholder (Placeholder.Recursive name ty)) = do
@@ -645,15 +637,7 @@ get'ty'const ty
 
 eliminate'methods :: Subst M'V Type -> [(Name, Sigma'Type)] -> [Method] -> Type'Check [Method]
 eliminate'methods subst assumptions methods = do
-  let text = "\n+++++++ assumptions: " ++ show assumptions
-          ++ "\n        methods: " ++ show methods
-          ++ "\n"
-      oo = trace text assumptions
-  methods' <- mapM (elim'method subst oo) methods
-  let message = "\n------ methods afeter: " ++ show methods'
-      ee = trace message methods'
-
-  return ee
+  mapM (elim'method subst assumptions) methods
 
 
 elim'method :: Subst M'V Type -> [(Name, Sigma'Type)] -> Method -> Type'Check Method

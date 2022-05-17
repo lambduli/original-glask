@@ -148,53 +148,42 @@ repl (program@Program{ environment = environment, store = store }, i'env@Infer'E
               -- loop
               repl (program, i'env, trans'env, counter'', infer'state)
 
-    -- _ -> do
-    --   -- here the evaluation will happen
-    --   -- I have the environment and store
-    --   -- so just read the expression, convert it to Core
-    --   -- evaluate it within the env and store
-    --   -- 
-    --   -- read'expr :: String -> Translate'Env -> Translate'State -> Either Semantic'Error (Expression, Translate'State)
-    --   case read'expr line trans'env counter of
-    --     Left trans'err -> do
-    --       putStrLn $ "Error: " ++ show trans'err
-    --     Right (expr, counter''') -> do
-    --       -- todo: I need to type check the expression
-    --       putStrLn $ "Expression: " ++ show expr
+    -- COMMAND :c(core)
+    ':' : 'c' : line -> do
+      case read'expr line trans'env counter of
+        Left trans'err -> do
+          putStrLn $ "Error: " ++ show trans'err
+        Right (expr, counter''') -> do
+          let inf'env = i'env{ I'Env.instances = I'State.instances infer'state, I'Env.overloaded = I'State.overloaded infer'state }
+          let error'or'scheme = infer'expr'type expr inf'env counter'''
+          -- print
+          case error'or'scheme of
+            Left err -> do
+              putStrLn $ "Type Error: " ++ show err
+              -- loop
+              repl (program, i'env, trans'env, counter''', infer'state)
+            Right (_, expr', counter'''') -> do
+              let core'expr = to'core expr'
+              putStrLn $ "Core:\n" ++ show core'expr
+              repl (program{ store = store }, i'env, trans'env, counter'''', infer'state)
 
-    --       putStrLn $ "\n\n              evaluation environment: " ++ show environment
-    --       putStrLn $ "\n\n              evaluation pointer 8: " ++ show (store Map.!? 8)
-    --       putStrLn $ "\n\n              evaluation pointer 10: " ++ show (store Map.!? 10)
-
-
-    --       -- NOTE: before I run the infer'type, I need to modify the i'env
-    --       -- I need to add all overloads and instances form the previous state into it
-    --       let inf'env = i'env{ I'Env.instances = I'State.instances infer'state, I'Env.overloaded = I'State.overloaded infer'state }
-    --       putStrLn $ "|takze jak teda vypada inf'env? " ++ show inf'env ++ "|\n|\n|\n"
-    --       -- putStrLn $ "\n\n\n\n\n\n\n\n\n\n............. i'env: " ++ show i'env ++ "\n\n\n\n\n\n\n"
-
-    --       -- let error'or'scheme = infer'type expr inf'env counter'''
-    --       -- print
-    --       -- case error'or'scheme of
-    --         -- Left err -> do
-    --           -- putStrLn $ "Type Error: " ++ show err
-    --           -- loop
-    --           -- repl (program, i'env, trans'env, counter''', infer'state)
-    --         -- Right (_, expr', counter'''/) -> do
-    --       let core'expr = to'core expr
-    --       putStrLn $ "Elaborated Expression: " ++ show expr
-    --       putStrLn $ "Core Expression: " ++ show core'expr
-    --       let (res, store') = runState (eval core'expr environment) store
-    --       case res of
-    --         Left eval'err -> do
-    --           putStrLn $ "Evaluation Error: " ++ show eval'err
-    --         Right value -> do
-    --           let hacky'serialized = show value
-    --           putStrLn "Evaluated to: "
-    --           putStrLn hacky'serialized
-              
-    --           repl (program{ store = store' }, i'env, trans'env, counter''', infer'state)
-    --           -- putStrLn "<expression evaluation is not implemented yet>"
+    -- COMMAND :d(esugared)
+    ':' : 'd' : line -> do
+      case read'expr line trans'env counter of
+        Left trans'err -> do
+          putStrLn $ "Error: " ++ show trans'err
+        Right (expr, counter''') -> do
+          let inf'env = i'env{ I'Env.instances = I'State.instances infer'state, I'Env.overloaded = I'State.overloaded infer'state }
+          let error'or'scheme = infer'expr'type expr inf'env counter'''
+          -- print
+          case error'or'scheme of
+            Left err -> do
+              putStrLn $ "Type Error: " ++ show err
+              -- loop
+              repl (program, i'env, trans'env, counter''', infer'state)
+            Right (_, expr', counter'''') -> do
+              putStrLn $ "Desugared:\n" ++ show expr'
+              repl (program{ store = store }, i'env, trans'env, counter'''', infer'state)
 
 
     _ -> do
@@ -209,17 +198,17 @@ repl (program@Program{ environment = environment, store = store }, i'env@Infer'E
           putStrLn $ "Error: " ++ show trans'err
         Right (expr, counter''') -> do
           -- todo: I need to type check the expression
-          putStrLn $ "Expression: " ++ show expr
+          -- putStrLn $ "Expression: " ++ show expr
 
-          putStrLn $ "\n\n              evaluation environment: " ++ show environment
-          putStrLn $ "\n\n              evaluation pointer 8: " ++ show (store Map.!? 8)
-          putStrLn $ "\n\n              evaluation pointer 10: " ++ show (store Map.!? 10)
+          -- putStrLn $ "\n\n              evaluation environment: " ++ show environment
+          -- putStrLn $ "\n\n              evaluation pointer 8: " ++ show (store Map.!? 8)
+          -- putStrLn $ "\n\n              evaluation pointer 10: " ++ show (store Map.!? 10)
 
 
           -- NOTE: before I run the infer'type, I need to modify the i'env
           -- I need to add all overloads and instances form the previous state into it
           let inf'env = i'env{ I'Env.instances = I'State.instances infer'state, I'Env.overloaded = I'State.overloaded infer'state }
-          putStrLn $ "|takze jak teda vypada inf'env? " ++ show inf'env ++ "|\n|\n|\n"
+          -- putStrLn $ "|takze jak teda vypada inf'env? " ++ show inf'env ++ "|\n|\n|\n"
           -- putStrLn $ "\n\n\n\n\n\n\n\n\n\n............. i'env: " ++ show i'env ++ "\n\n\n\n\n\n\n"
 
           let error'or'scheme = infer'expr'type expr inf'env counter'''
@@ -231,8 +220,8 @@ repl (program@Program{ environment = environment, store = store }, i'env@Infer'E
               repl (program, i'env, trans'env, counter''', infer'state)
             Right (_, expr', counter'''') -> do
               let core'expr = to'core expr'
-              putStrLn $ "Elaborated Expression: " ++ show expr'
-              putStrLn $ "Core Expression: " ++ show core'expr
+              -- putStrLn $ "Elaborated Expression: " ++ show expr'
+              -- putStrLn $ "Core Expression: " ++ show core'expr
               let (res, store') = runState (eval core'expr environment) store
               case res of
                 Left eval'err -> do

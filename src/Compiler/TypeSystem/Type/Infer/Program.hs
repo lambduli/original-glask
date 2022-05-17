@@ -49,9 +49,6 @@ import Compiler.TypeSystem.Kind.Infer.TypeSection ( infer'annotated, infer'metho
 import Compiler.TypeSystem.Type.Infer.Declaration ( eliminate, eliminate'methods )
 
 
-import Debug.Trace
-
-
 infer'whole'program :: Program -> Infer'Env -> Counter -> Either Error (Program, Type'Env, Kind'Env, Constraint'Env, Counter, Class'Env, Infer'State Type)
 infer'whole'program program infer'env counter = do
   let k'infer'state = I'State.Infer'State{ I'State.counter = counter, I'State.constraints = [], I'State.overloaded = [], I'State.instances = [] }
@@ -69,20 +66,17 @@ infer'whole'program program infer'env counter = do
       cl'env              = I'Env.class'env infer'env
       substituted'cl'env  = apply kind'subst cl'env
 
-      ooo = trace ("{{ whole program }}\n  cl'env: " ++ show cl'env ++ "\n\n  ||  substed'cl'env: " ++ show substituted'cl'env ++ "\n\n ||  data and shit: " ++ show (data'n'class'sections program)) substituted'cl'env
-
   let Program{ bind'section = (explicits, implicits'list), methods = methods } = program
       infer'env' = infer'env{ I'Env.kind'env = new'k'env
                             , I'Env.type'env = substituted't'env
                             , I'Env.constraint'env = new'class'env
                             , I'Env.kind'substitution = kind'subst
-                            , I'Env.class'env = ooo {- substituted'cl'env -} }
+                            , I'Env.class'env = substituted'cl'env }
                             -- NOTE: I need to put the kind substitution into the typing environment
                             --        when I later encounter any typing annotation (in the declaration or inline)
                             --        I first need to apply this substitution to it to fully specify the Kinds in it.
-      oo = trace ("methods: " ++ show methods) explicits
 
-      substituted'explicits = map (\ (Explicit sigma b'g) -> Explicit (apply kind'subst sigma) b'g) oo -- explicits
+      substituted'explicits = map (\ (Explicit sigma b'g) -> Explicit (apply kind'subst sigma) b'g) explicits
       substituted'methods   = map (\ (Method sigma b'g cl'n d'n) -> Method (apply kind'subst sigma) b'g cl'n d'n) methods
 
   {-  NOTES:  It's OK for me to use the same `infer'env'` - the idea is - the isolated kind inference and substitution
@@ -104,7 +98,6 @@ infer'whole'program program infer'env counter = do
   ((t'env, program''), t'infer'state') <- run'infer infer'env' (infer'types program') t'infer'state
 
   let new't'env = t'env `Map.union` substituted't'env -- it shouldn't matter which direction this is
-      ooooo = trace ("; t'infer'state': " ++ show t'infer'state' ++ ";\n;\n;\n;\n") t'infer'state'
       counter''  = get'counter t'infer'state'
 
   {-  NOTES:
@@ -115,7 +108,7 @@ infer'whole'program program infer'env counter = do
 
       Same works for class'env.
   -}
-  return (program'', new't'env, new'k'env, new'class'env, counter'', substituted'cl'env, ooooo)
+  return (program'', new't'env, new'k'env, new'class'env, counter'', substituted'cl'env, t'infer'state')
 
 
 infer'types :: Program -> Type'Check (Type'Env, Program)
@@ -127,8 +120,6 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
 
   -- ([Predicate], [(Name, Scheme)], [Constraint Type], [Constraint Kind])
   (bg', preds, assumptions) <- overload overloads $ infer'bind'section bg
-
-  let oo = trace ("\n\n{ with placeholders }  bg': " ++ show bg') bg'
 
   -- let message = "{{ tracing infer'types }} "
   --             ++ "\n|  preds: " ++ show preds
@@ -149,10 +140,6 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
   add'overloads overloads'
 
   st <- get
-  let aa = trace ("!\n!\n!\n!\n" ++ "current state after addition: " ++ show st ++ "!\n!\n!\n!\n!\n!\n") methods'
-
-  let ee = trace ("\n\n { overloads methods }  overloads: " ++ show overloads ++ "\n   | methods: " ++ show methods ++ "\n   |  methods with placeholders?: " ++ show methods')  aa -- methods'
-
   -- Question:  So all of the constraints were already solved in smaller groups of them.
   --            Do I expect some different result from solving them all?
   --            I think I can imagine getting an error now, even thought they were fine in smaller groups.
@@ -167,7 +154,7 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
   
   cs't <- get'constraints
   case run'solve cs't {- (cs't ++ cs't') -} :: Either Error (Subst M'V Type) of
-    Left err -> trace "here 1" throwError err
+    Left err -> throwError err
     Right subst -> do
       I'Env.Infer'Env{ I'Env.type'env = t'env, I'Env.class'env = c'env } <- ask
       -- return (apply subst $ Map.fromList assumptions)
@@ -207,18 +194,14 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
 
                       assum'applied = apply sub assumptions
                       (assum'closed, substs) = unzip $ map properly'close assum'applied
-                      rr = trace (">>> substs: " ++ show substs ++ "   |||  sub: " ++ show sub) substs
-                      composed'substs = foldl compose sub rr -- substs -- I think this should work, compose does not require all of them to agree
+                      composed'substs = foldl compose sub substs -- I think this should work, compose does not require all of them to agree
                       -- more importantly, it has to compose with the original substitution, I was missing that, and it didn't work
-                  let xx = trace ("\n\n OOOOOO || methods to eliminate: " ++ show methods' ++ "\n  assum'closed " ++ show assum'closed ++ "\n  composed'substs " ++ show composed'substs ) ee
                       
                   -- TODO: I need to call eliminate in the bind group too, give it the correct substitution and assumptions
-                  bg'' <- eliminate composed'substs assum'closed oo -- bg'
-
-                  let zz = trace ("\n\n ELIMINATED BINDINGS: " ++ show bg'' ++ "\n COMPOSED'SUBSTS: " ++ show composed'substs) bg''
+                  bg'' <- eliminate composed'substs assum'closed bg'
 
                   -- AND METHODS NEED THAT TOO!!!
-                  methods'' <- eliminate'methods composed'substs assum'closed xx -- methods'
+                  methods'' <- eliminate'methods composed'substs assum'closed methods'
 
 
                       -- message = "<<< tracing >>>   "
@@ -240,4 +223,4 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
                   -- let ms = map (\ (n, q't) -> (n, close'over q't)) m'anns
                   -- return (apply subst' $ Map.fromList $ assumptions ++ ms, cs'k ++ cs'k')
 
-                  return (Map.fromList assum'closed, prg{ bind'section = zz, methods = methods'' })
+                  return (Map.fromList assum'closed, prg{ bind'section = bg'', methods = methods'' })

@@ -20,10 +20,8 @@ import Compiler.TypeSystem.Type.Constants ( type'fn )
 import Compiler.TypeSystem.Expected ( Expected (Check, Infer) )
 import Compiler.TypeSystem.Actual ( Actual(Checked, Inferred) )
 import Compiler.Syntax.TFun ( pattern T'Fun )
-
-import Debug.Trace
-import Compiler.Syntax.Pattern (Pattern)
-import Compiler.TypeSystem.Assumption (Assumption)
+import Compiler.Syntax.Pattern ( Pattern )
+import Compiler.TypeSystem.Assumption ( Assumption )
 
 
 infer'pats' :: [Pattern] -> Expected Type -> Type'Check ([Pattern], [Predicate], [Type], [Assumption Sigma'Type], Type)

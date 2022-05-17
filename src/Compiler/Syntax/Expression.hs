@@ -27,22 +27,37 @@ data Expression
   | Case Expression [Match]
   | Hole Name
   | Placeholder Placeholder
-  -- | Intro Name [Expression]
   deriving (Eq)
 
 
 instance Show Expression where
   show (Var name) = name
+
   show (Const name) = name
+
   show (Op op) = op
+
   show (Lit lit) = show lit
+
   show (Abs pattern'param body) = "(\\ " ++ show pattern'param ++ " -> " ++ show body ++ ")"
-  show (App left right) = "(" ++ show left ++ " " ++ show right ++ ")"
+
+  show (App left right@(App a'left a'right))
+    = show left ++ " (" ++ show right ++ ")"
+
+  show (App left right) = show left ++ " " ++ show right
+
   show (Infix'App left op right ) = "(" ++ show left ++ " " ++ show op ++ " " ++ show right ++ ")"
+
   show (Tuple exprs) = "(" ++ intercalate ", " (map show exprs) ++ ")"
+
   show (If cond' then' else') = "if " ++ show cond' ++ " then " ++ show then' ++ " else " ++ show else'
+
   show (Let decls body) = "let " ++ intercalate "\n" (map show decls) ++ " in " ++ show body
+
   show (Ann type' expr) = show expr ++ " :: " ++ show type'
+
   show (Case expr options) = "case " ++ show expr ++ " of \n { " ++ "TODO: show options" ++ " }"
+
   show (Hole name) = name
+
   show (Placeholder pl'h) = "<" ++ show pl'h ++ ">"

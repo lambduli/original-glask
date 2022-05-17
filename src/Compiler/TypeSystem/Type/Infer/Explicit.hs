@@ -30,8 +30,6 @@ import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'infer'sigma, kind'specif
 import Compiler.TypeSystem.Expected ( Expected(Check) )
 
 
-import Debug.Trace
-
 {-  Description:
 
     The `infer'expl` function infers and checks a type for the explicitly annotated binding.

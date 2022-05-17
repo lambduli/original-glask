@@ -53,8 +53,6 @@ import Compiler.Analysis.Semantic.SemanticError ( Semantic'Error(..), GSYA'Error
 import Compiler.Syntax.ToAST.GSYA.Token (Token (..))
 import Compiler.Syntax.Fixity ( Fixity(..) )
 
-import Debug.Trace
-
 
 -- NOTE and TODO:
 -- The second argument counter ::Int is just a temporary solution to the problem I have ran into.
