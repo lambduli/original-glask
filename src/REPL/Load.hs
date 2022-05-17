@@ -107,7 +107,7 @@ load file'name counter = do
         Left err -> do
           putStrLn $ "Error: " ++ show err
         Right (program, infer'env, trans'env, counter'', infer'state) -> do
-          putStrLn "Successfully loaded the prelude."
+          putStrLn "Successfully loaded the file."
           putStrLn ""
           -- let Program{ bind'sections = bs, methods = ms, method'annotations = m'ans, data'declarations = ds } = program
           -- putStrLn $ "Program:\n" ++ show program ++ " ...\n\n\n"
