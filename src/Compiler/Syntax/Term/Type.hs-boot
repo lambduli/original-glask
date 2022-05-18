@@ -2,10 +2,10 @@
 
 module Compiler.Syntax.Term.Type where
 
-import Compiler.Syntax.Term.Identifier
+import Compiler.Syntax.Term.Identifier ( Term'Id )
 
 
-import Compiler.TypeSystem.Solver.Substitutable
+import Compiler.TypeSystem.Solver.Substitutable ( Term )
 
 
 data Term'Type

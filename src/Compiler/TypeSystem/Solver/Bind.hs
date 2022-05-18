@@ -51,11 +51,6 @@ instance Bind M'V Type where
     | involves'poly type'       = throwError $ Impredicative var type'
     | otherwise                 = return $ Sub $ Map.singleton var type'
 
-  bind var@(Sigma name _) type'
-    | lift var == type'         = return empty'subst
-    | name `occurs'in` type'    = throwError $ Infinite'Type (T'Meta var) type'
-    | otherwise                 = return $ Sub $ Map.singleton var type'
-
 
 instance Bind String Kind where
   bind varname kind'

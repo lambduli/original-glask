@@ -39,8 +39,7 @@ instance Eq T'V'
 instance Ord T'V'
 
 
-data M'V  = Sigma Name Kind
-          | Tau Name Kind
+data M'V = Tau Name Kind
 
 
 instance Eq M'V

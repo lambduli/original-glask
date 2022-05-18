@@ -42,7 +42,7 @@ import Compiler.Syntax.ToAST.Translate ( run'translate, Translate )
 import Compiler.Syntax.ToAST.TranslateState ( Translate'State )
 import qualified Compiler.Syntax.ToAST.TranslateEnv as Trans'Env
 
-import Compiler.TypeSystem.Type.Constants ( type'fn, type'list )
+import Compiler.TypeSystem.Type.Constants ( type'fn, type'list, unit'type )
 import Compiler.TypeSystem.Solver.Substitutable ( Term(free'vars) )
 import Compiler.TypeSystem.Utils.Infer ( close'over, close'over' )
 
@@ -464,14 +464,26 @@ instance To'AST Term'Pat Pattern where
     return $ P'Lit literal
 
   -- NOTE: This is just momentary implementation for simple patterns
-  to'ast (Term'P'App (constr't'pat : arg't'pats)) = do
+  to'ast (Term'P'App (left't'pat : Term'P'Op (Term'Id'Const con'op'name) : arg't'pats)) = do
+    left'pat <- to'ast left't'pat
     arg'pats <- mapM to'ast arg't'pats
-    case constr't'pat of
-      Term'P'Id (Term'Id'Const con'name) -> -- desugar into P'Con
-        return $ P'Con con'name arg'pats
-      Term'P'Op (Term'Id'Const con'op'name) -> -- desugar into P'Con
-        return $ P'Con con'op'name arg'pats
-      _ -> error "Not implemented: Pattern Application Term --> AST"
+    return $ P'Con con'op'name $ left'pat : arg'pats
+
+  to'ast (Term'P'App (constr't'pat : arg't'pats)) 
+    | Term'P'Id (Term'Id'Const con'name) <- constr't'pat = do
+      arg'pats <- mapM to'ast arg't'pats
+      return $ P'Con con'name arg'pats
+    | Term'P'Op (Term'Id'Const con'op'name) <- constr't'pat = do
+      arg'pats <- mapM to'ast arg't'pats
+      return $ P'Con con'op'name arg'pats
+
+    -- arg'pats <- mapM to'ast arg't'pats
+    -- case constr't'pat of
+    --   Term'P'Id (Term'Id'Const con'name) -> -- desugar into P'Con
+    --     return $ P'Con con'name arg'pats
+    --   Term'P'Op (Term'Id'Const con'op'name) -> -- desugar into P'Con
+    --     return $ P'Con con'op'name arg'pats
+    --   _ -> error "Not implemented: Pattern Application Term --> AST"
 
   to'ast (Term'P'App t'pats) = do
     -- first map the list of Term Expressions to the list of Tokens (GSYA Tokens) 
@@ -783,6 +795,9 @@ instance To'AST Term'Type Type where
   to'ast (Term'T'Tuple t'types) = do
     types <- mapM to'ast t'types
     return $ T'Tuple types
+
+  to'ast Term'T'Unit = do
+    return unit'type
 
   to'ast (Term'T'List t'type) = do
     type' <- to'ast t'type

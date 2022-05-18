@@ -37,13 +37,6 @@ infer'type (T'Meta (Tau name _)) = do
     Nothing -> throwError $ Unexpected $ "Internal Error: While doing Kind Inference I have found a meta type variable '" ++ name ++ "' which is not registered in the Kind Context."
     Just kind -> return kind
 
-infer'type (T'Meta (Sigma name _)) = do
-  k'env <- asks kind'env
-
-  case k'env Map.!? name of
-    Nothing -> throwError $ Unexpected $ "Internal Error: While doing Kind Inference I have found a meta type variable '" ++ name ++ "' which is not registered in the Kind Context."
-    Just kind -> return kind
-
 infer'type (T'Con (T'C name _)) = do
   k'env <- asks kind'env
   

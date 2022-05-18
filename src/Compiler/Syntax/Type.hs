@@ -52,21 +52,16 @@ instance Ord T'V' where
   (T'V' n'l _) <= (T'V' n'r _) = n'l <= n'r
 
 
-data M'V  = Sigma Name Kind
-          | Tau Name Kind
+data M'V = Tau Name Kind
           deriving (Eq)
 
 
 instance Ord M'V where
-  (Sigma n'l _) <= (Sigma n'r _) = n'l <= n'r
   (Tau n'l _) <= (Tau n'r _) = n'l <= n'r
-  (Sigma n'l _) <= (Tau n'r _) = n'l <= n'r
-  (Tau n'l _) <= (Sigma n'r _) = n'l <= n'r
 
 
 instance Show M'V where
   show (Tau name kind) = name -- "(" ++ name ++ " :: " ++ show kind ++ ")"
-  show (Sigma name kind) = name -- "(" ++ name ++ " :: " ++ show kind ++ ")"
 
 
 data T'C = T'C Name Kind
@@ -107,14 +102,14 @@ instance Show Type where
   show (T'Meta (Tau name kind'))
     = "?τ=" ++ name
 
-  show (T'Meta (Sigma name kind'))
-    = "?σ=" ++ name
-
   show (T'Con (T'C name kind'))
     = name
 
   show (T'Tuple types)
     = "(" ++ intercalate ", " (map show types) ++ ")"
+
+  show (T'App (T'Con (T'C "[]" _)) t)
+    = "[" ++ show t ++ "]"
 
   -- (a -> b) -> c ... -> (-> a b) c ... (-> ((-> a) b)) c
   show (T'App (T'App (T'Con (T'C "(->)" _)) t'left@(T'App (T'App (T'Con (T'C "(->)" _)) _) _)) t'right)

@@ -123,7 +123,12 @@ load file'name counter = do
           let b'sec'core = section'to'core b'section
 
           let data'decls = data'declarations program
-          let constructor'core = data'to'core data'decls
+
+          -- TODO: I also need to add constructor for () and [] and (,) and (,,) and so on
+          let unit'constr = Core.Binding "()" (Core.Intro "()" [])
+          let cons'constr = Core.Binding ":" (Core.Abs "a" (Core.Abs "as" (Core.Intro ":" [Core.Var "a", Core.Var "as"])))
+          let nil'constr  = Core.Binding "[]" (Core.Intro "[]" [])
+          let constructor'core = unit'constr : cons'constr : nil'constr : data'to'core data'decls
 
           let (env, stor) = build'env'store $ b'sec'core ++ constructor'core
 

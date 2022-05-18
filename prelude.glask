@@ -19,6 +19,10 @@ module Main where
 ; instance Constant Int where
   { vaval = 23 }
 
+; tail :: [a] -> Maybe [a]
+; tail [] = Nothing
+; tail (a : as) = Just as
+
 
 ; data Wrap a = Wrap a
 

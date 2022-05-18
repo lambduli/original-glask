@@ -6,15 +6,16 @@ module Compiler.Syntax.Term.Type where
 
 import qualified Data.Set as Set
 
-import Compiler.Syntax.Term.Identifier
-import Compiler.Syntax.Term.Predicate
+import Compiler.Syntax.Term.Identifier ( Term'Id(..) )
+import Compiler.Syntax.Term.Predicate ( Term'Pred )
 
-import Compiler.TypeSystem.Solver.Substitutable
+import Compiler.TypeSystem.Solver.Substitutable ( Term(..) )
 
 
 data Term'Type
   = Term'T'Id Term'Id
   | Term'T'Tuple [Term'Type]
+  | Term'T'Unit
   | Term'T'List Term'Type
   | Term'T'Arrow [Term'Type]
   | Term'T'App [Term'Type]
@@ -29,6 +30,9 @@ instance Term Term'Id Term'Type where
     = Set.singleton var
 
   free'vars (Term'T'Id (Term'Id'Const _))
+    = Set.empty
+
+  free'vars Term'T'Unit
     = Set.empty
 
   free'vars (Term'T'Tuple term'types)

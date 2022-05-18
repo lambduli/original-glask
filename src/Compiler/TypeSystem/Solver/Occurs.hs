@@ -28,9 +28,6 @@ instance Occurs Type where
   name `occurs'in` (T'Meta (Tau varname k'))
     = name == varname
 
-  name `occurs'in` (T'Meta (Sigma varname k'))
-    = name == varname
-
   name `occurs'in` (T'Con _)
     = False
 

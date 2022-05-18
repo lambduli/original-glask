@@ -81,7 +81,7 @@ token :-
 -- <0>         "(" $space* ")"          { parametrized'tok Tok'Var'Upper (const "()") }
 <0>         "("                         { plain'tok Tok'Left'Paren }
 <0>         ")"                         { plain'tok Tok'Right'Paren }
-<0>         "[" $space* "]"             { parametrized'tok Tok'Ident'Const (const "[]") }
+-- <0>         "[" $space* "]"             { parametrized'tok Tok'Ident'Const (const "[]") }
 <0>         "["                         { plain'tok Tok'Left'Bracket }
 <0>         "]"                         { plain'tok Tok'Right'Bracket }
 <0>         ","                         { plain'tok Tok'Comma }

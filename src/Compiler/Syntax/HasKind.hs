@@ -15,7 +15,6 @@ instance HasKind T'V' where
 
 instance HasKind M'V where
   kind (Tau _ k) = k
-  kind (Sigma _ k) = k
 
 
 instance HasKind T'C where

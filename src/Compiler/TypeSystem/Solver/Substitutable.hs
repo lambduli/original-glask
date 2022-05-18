@@ -321,9 +321,6 @@ instance Substitutable Name M'V Kind where
   apply subst (Tau name kind)
     = Tau name $ apply subst kind
 
-  apply subst (Sigma name kind)
-    = Sigma name $ apply subst kind
-
 
 instance Substitutable Name T'C Kind where
   apply subst (T'C name kind)

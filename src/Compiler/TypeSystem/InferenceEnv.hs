@@ -11,7 +11,7 @@ import Compiler.Syntax.Qualified ( Qualified((:=>)) )
 import Compiler.Syntax.Overloaded ( Overloaded )
 import Compiler.Syntax.Predicate ( Predicate )
 
-import Compiler.TypeSystem.Type.Constants ( t'Bool, t'Char, t'Double, t'Int, type'fn )
+import Compiler.TypeSystem.Type.Constants ( t'Bool, t'Char, t'Double, t'Int, type'fn, unit'type, type'list'of )
 import Compiler.TypeSystem.Class ( Class )
 import Compiler.TypeSystem.ClassEnv ( Class'Env )
 import Compiler.TypeSystem.Solver.Substitution ( Subst )
@@ -42,7 +42,8 @@ init'k'env = Map.fromList
   , ("Char"   , K'Star) 
   , ("Unit"   , K'Star)
   , ("(->)"   , K'Star `K'Arr` (K'Star `K'Arr` K'Star))
-  , ("[]"     , K'Star `K'Arr` K'Star) ]
+  , ("[]"     , K'Star `K'Arr` K'Star)
+  , ("()"     , K'Star) ]
   -- TODO: Questions - do I want to have the List type here?
   -- Or do I define list in the prelude in some (more or less) "hacky" way?
 
@@ -66,5 +67,8 @@ init't'env = Map.fromList
   , ("double#/",  T'Forall []                                   $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
   , ("show#",     T'Forall [T'V' "a" K'Star]                    $ [] :=> (T'Var' (T'V' "a" K'Star) `type'fn` T'App (T'Con (T'C "List" (K'Arr K'Star K'Star))) t'Char)) -- wiring the List type into the compiler
   , ("trace#",    T'Forall [T'V' "a" K'Star]                    $ [] :=> (T'Var' (T'V' "a" K'Star) `type'fn` T'Var' (T'V' "a" K'Star)))
+  , ("()",        T'Forall []                                   $ [] :=> unit'type)
+  , (":",         T'Forall [T'V' "a" K'Star]                    $ [] :=> (T'Var' (T'V' "a" K'Star) `type'fn` (type'list'of (T'Var' (T'V' "a" K'Star)) `type'fn` type'list'of (T'Var' (T'V' "a" K'Star)))))
+  , ("[]",        T'Forall [T'V' "a" K'Star]                    $ [] :=> type'list'of (T'Var' (T'V' "a" K'Star)))
   ]
 -- TODO: revise the list in the future

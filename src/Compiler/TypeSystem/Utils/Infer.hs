@@ -53,7 +53,6 @@ quantify meta'vars q'type = sigma
 
     meta'to'tv :: M'V -> T'V'
     meta'to'tv (Tau name kind) = T'V' name kind
-    meta'to'tv (Sigma _ _) = error "Internal Error - 'quantify' was called with a list containing σ meta variable."
     -- the question is - is it ever allowed for the meta variable to be a sigma?
     -- I think it should never happen.
     -- so maybe it would be best to panic in such cases with some usefull message

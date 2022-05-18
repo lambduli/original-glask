@@ -77,7 +77,7 @@ eval (App fn arg) env = do
       let new'env = Map.insert param (Promise next'addr) env'
       eval body new'env
 
-    Right _ -> return $ Left $ Unexpected "Evaluation Error: while evaluating function expression I didn't get a Closure!" -- NOTE: should never really happen
+    Right v -> return $ Left $ Unexpected $ "Evaluation Error: while evaluating function expression I didn't get a Closure!  " ++ show v -- NOTE: should never really happen
 
 eval (Tuple cores) env = do
   let tag = "(" ++ replicate (length cores - 1) ',' ++ ")"
@@ -133,7 +133,7 @@ eval (Case motive matches) env = do
             Left err -> return (Left err)
             Right mini'env -> do
               -- now I just need to merge the mini'env with the main env and evalaute the rhs within it
-              let new'env = env `Map.union` Map.fromList mini'env
+              let new'env = Map.fromList mini'env `Map.union` env
               eval rhs new'env
 
     where

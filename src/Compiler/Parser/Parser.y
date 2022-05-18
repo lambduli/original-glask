@@ -522,7 +522,7 @@ AType             ::  { Term'Type }
 
 GTyCon            ::  { Term'Type }
                   :   conid                                         { Term'T'Id $ Term'Id'Const $1 }
-                  |   '(' ')'                                       { Term'T'Id $ Term'Id'Const "()" }
+                  |   '(' ')'                                       { Term'T'Unit }
                   |   '['  ']'                                      { Term'T'Id $ Term'Id'Const "[]" }
                   |   '(' '->' ')'                                  { Term'T'Id $ Term'Id'Const "(->)" }
                   |   '(' ',' NoneOrMany(',') ')'                   { Term'T'Id $ Term'Id'Const "(FIX, TUPLE)" }
