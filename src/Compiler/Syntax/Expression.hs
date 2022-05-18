@@ -54,7 +54,7 @@ instance Show Expression where
 
   show (Let decls body) = "let " ++ intercalate "\n" (map show decls) ++ " in " ++ show body
 
-  show (Ann type' expr) = show expr ++ " :: " ++ show type'
+  show (Ann expr type') = show expr ++ " :: " ++ show type'
 
   show (Case expr options) = "case " ++ show expr ++ " of \n { " ++ "TODO: show options" ++ " }"
 

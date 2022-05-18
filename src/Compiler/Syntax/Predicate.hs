@@ -12,4 +12,4 @@ data Predicate = Is'In Name Type
 
 instance Show Predicate where
   show (Is'In class'name type')
-    = class'name ++ " {" ++ show type' ++ " :: " ++ show (kind type') ++ "}"
+    = class'name ++ " " ++ show type'

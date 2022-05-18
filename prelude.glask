@@ -10,6 +10,30 @@ module Main where
 
 ; instance Fractional Double
 
+
+; data Unit = Unit
+
+; class Constant a where
+  { vaval :: a }
+
+; instance Constant Int where
+  { vaval = 23 }
+
+
+; data Wrap a = Wrap a
+
+-- INTERESTING - if the `Num a` part is not here on the following line, it will fail to deduce what the `a` / `23` is
+-- same as ghc, that is interesting - it makes sense I guess, but it suprised me a little
+-- well, come to think of it - it isn't suprising at all
+-- you say, you define Constant for all `Wrap a`
+-- and then assign a specific numeric value to the value-part for `a`
+-- it only makes sense that this instance should not work for (Wrap Bool) then
+-- because that would very much not be compatible
+; instance Num a => Constant (Wrap a) where
+  { vaval = Wrap 23 }
+
+
+
 ; data String = String [Char]
 
 ; class Show a where
@@ -90,6 +114,8 @@ module Main where
 ; expl = 23
 
 ; lambda = \ a b c -> c
+
+; the'what _ = lambda 1 2 3
 
 ; fn :: a -> b -> c -> c
 ; fn = \ a b c -> c

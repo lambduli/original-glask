@@ -37,6 +37,7 @@ data T'V'  = T'V' Name Kind
 
 
 instance Show T'V' where
+  show (T'V' name K'Star) = name -- if the kind is *, then just print its name | this should be used in the forall print, so it's ok
   show (T'V' name kind) = "(" ++ name ++ " :: " ++ show kind ++ ")"
 
 
@@ -101,8 +102,7 @@ from type safety standpoint. And how far we can get to the cliff before falling.
 
 instance Show Type where
   show (T'Var' (T'V' name kind'))
-    = "(" ++ name ++ " :: " ++ show kind' ++ ")" -- ignoring the kind of the type variable
-    -- = "(" ++ name ++ " :: " ++ show kind' ++ ")"
+    = name
 
   show (T'Meta (Tau name kind'))
     = "?τ=" ++ name
@@ -110,15 +110,9 @@ instance Show Type where
   show (T'Meta (Sigma name kind'))
     = "?σ=" ++ name
 
-  -- show (T'Meta (TM'Rho name kind'))
-  --   = name
-
-  -- show (T'Meta (TM'Sigma name kind'))
-  --   = name
-
   show (T'Con (T'C name kind'))
-    = name  -- ignoring the kind of the type constant
-    -- = "(" ++ name ++ " :: " ++ show kind' ++ ")"
+    = name
+
   show (T'Tuple types)
     = "(" ++ intercalate ", " (map show types) ++ ")"
 
@@ -134,8 +128,8 @@ instance Show Type where
   show (T'App t'left t'right)
     = show t'left ++ " " ++ show t'right
 
-  -- show (T'Forall [] qual'type)
-  --   = show qual'type
+  show (T'Forall [] qual'type)
+    = show qual'type
   show (T'Forall tvs qual'type)
     = "(forall " ++ unwords (map show tvs) ++ " . " ++ show qual'type ++ ")"
 

@@ -126,7 +126,13 @@ data'to'core data'decls =
 
       -- Constr'Decl = Con'Decl Name [Type]
       make'constr :: AST.Constr'Decl -> Binding
-      make'constr (AST.Con'Record'Decl _ _) = error "Internal error: this should never happen! #32842"
+      make'constr (AST.Con'Record'Decl tag fields)
+        = let names = take (length fields) letters
+              vars = map Var names
+              body = Intro tag vars
+              lambda = foldr Abs body names
+          in Binding tag lambda
+
       make'constr (AST.Con'Decl tag arg'types)
         = let names = take (length arg'types) letters
         -- now I need to fold that into the lambda

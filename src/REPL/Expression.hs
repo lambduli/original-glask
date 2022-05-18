@@ -6,6 +6,7 @@ module REPL.Expression where
 import System.IO
 import Data.List
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import Data.Tuple.Extra
 import Control.Monad.Identity 
 import Control.Monad.Except
@@ -75,6 +76,8 @@ import Compiler.TypeSystem.Constraint (Constraint)
 import Compiler.TypeSystem.Type.Infer.Declaration (eliminate, elim'expr)
 import Compiler.TypeSystem.InferenceEnv (Infer'Env(overloaded, instances))
 
+import Debug.Trace
+
 
 read'expr :: String -> Translate'Env -> Translate'State -> Either Semantic'Error (Expression, Translate'State)
 read'expr input trans'env trans'state = do
@@ -118,8 +121,18 @@ infer'type expr i'env counter = do
   subst <- run'solve cs't  :: Either Error (Subst M'V Type)
 
   let Infer'Env{ type'env = t'env, class'env = c'env } = i'env
+
+  let preds'  = apply subst preds
+      ts'     = apply subst type'
+  let fs = Set.toList $ free'vars $ apply subst t'env
+      vss = (Set.toList . free'vars) ts'
+      gs = vss \\ fs
+
+
+  (deffered'preds, rs) <- runIdentity $ runExceptT $ split c'env fs vss preds' :: Either Error ([Predicate], [Predicate])
+
   
-  rs <- runIdentity $ runExceptT $ reduce c'env (apply subst preds) :: Either Error [Predicate]
+  -- rs <- runIdentity $ runExceptT $ reduce c'env retained'preds {- (apply subst preds) -} :: Either Error [Predicate]
 
   -- I'Env.Infer'Env{ I'Env.type'env = t'env, I'Env.class'env = c'env } <- ask
       -- return (apply subst $ Map.fromList assumptions)
@@ -133,13 +146,25 @@ infer'type expr i'env counter = do
   -- TODO:  I need to find out what exactly would that defaulting substitution do to the Expression Type.
   --        I am pretty sure I saw it also do the monomorphisation restriction. I might want to disable that one in the REPL too.
   -- s' <- runIdentity $ runExceptT $ default'subst c'env [] rs :: Either Error (Subst T'V Type)
-  let s' = Sub Map.empty
+  -- let s' = Sub Map.empty
 
-  subst' <- runIdentity $ runExceptT (subst `merge` s')
+  -- subst' <- runIdentity $ runExceptT (subst `merge` s')
+
+  -- let message =    " | the type: " ++ show type'
+  --             ++ "\n | after subst: " ++ show (apply subst type') 
+  --             ++ "\n | retained predicates: " ++ show rs
+  --             ++ "\n | retained substituted: " ++ show (apply subst rs)
+  --             ++ "\n | the whole scheme: " ++ show (close'over $ apply subst rs :=> apply subst type')
+  --             ++ "\n |"
+  --             ++ "\n | fs: " ++ show fs
+  --             ++ "\n | vss: " ++ show vss
+  --             ++ "\n | gs: " ++ show gs
+  --             ++ "\n | split resulted in: " ++ show (deffered'preds, rs)
+  -- let bbb = trace message subst
 
   let scheme = close'over $ apply subst rs :=> apply subst type'
 
-  (eliminated'expr, i'state'') <- run'infer i'env (elim'expr [] subst' expr') i'state'
+  (eliminated'expr, i'state'') <- run'infer i'env (elim'expr [] subst expr') i'state'
 
   let counter' = get'counter i'state''
 
