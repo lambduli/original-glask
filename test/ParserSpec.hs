@@ -61,7 +61,7 @@ spec = do
       "foo = 23" ~.. [Binding (Term'P'Id (Term'Id'Var "foo")) (Term'E'Lit (Lit'Int 23))]
 
     it "parses a simple variable binding" $ do
-      "bar = []" ~.. [Binding (Term'P'Id (Term'Id'Var "bar")) (Term'E'Id (Term'Id'Const "[]"))]
+      "bar = []" ~.. [Binding (Term'P'Id (Term'Id'Var "bar")) (Term'E'List [])]
 
 
   describe "Test parsing of a simple class declarations" $ do
@@ -85,7 +85,7 @@ spec = do
       "Maybe Int" ~:: Term'T'App [Term'T'Id (Term'Id'Const "Maybe"), Term'T'Id (Term'Id'Const "Int")]
 
     it "parses a unit type `()`" $ do
-      "()" ~:: Term'T'Id (Term'Id'Const "()")
+      "()" ~:: Term'T'Unit
 
     it "parses a small tuple `(Int, String, Maybe Int)`" $ do
       "(Int, String, Maybe Int)" ~:: Term'T'Tuple [ Term'T'Id (Term'Id'Const "Int")

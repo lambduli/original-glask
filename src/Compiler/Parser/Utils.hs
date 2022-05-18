@@ -29,7 +29,7 @@ import Compiler.Syntax.Term.Identifier ( Term'Id(..) )
 
 
 to'predicates :: Term'Type -> [Term'Pred]
-to'predicates (Term'T'Id (Term'Id'Const "()"))
+to'predicates Term'T'Unit
   = []
 to'predicates (Term'T'Tuple types) = concatMap to'predicates types
 to'predicates (Term'T'App [Term'T'Id (Term'Id'Const con), var@(Term'T'Id (Term'Id'Var _))])
