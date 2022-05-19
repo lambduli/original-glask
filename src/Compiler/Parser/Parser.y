@@ -341,7 +341,7 @@ APat            ::  { Term'Pat }
 
 MaybeAsPat      ::  { Maybe Term'Pat }
                 :   {- empty -}                                     { Nothing }
-                |   '@' APat                                        { Just $2 }
+                |   '@' BPat                                        { Just $2 }
 
 
 FPat            ::  { (Name, Term'Pat) }

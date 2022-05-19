@@ -122,6 +122,19 @@ repl (program@Program{ environment = environment, store = store }, i'env@Infer'E
               -- loop
               repl (program, i'env, trans'env, counter'', infer'state)
 
+    -- COMMAND :p(rint)
+    ':' : 'p' : line -> do
+      case read'expr line trans'env counter of
+        Left _ -> do
+          putStrLn "Incorrect Format! The :p command must be followed by an expression."
+
+          -- loop
+          repl (program, i'env, trans'env, counter, infer'state)
+        Right (expression, counter') -> do
+          putStrLn $ "Parsed: " ++ show expression
+          --     -- loop
+          repl (program, i'env, trans'env, counter', infer'state)
+
     -- COMMAND :k(ind)
     ':' : 'k' : line -> do
       case read'type line trans'env counter of

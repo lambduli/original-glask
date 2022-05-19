@@ -23,10 +23,11 @@ $lower                = [a-z]
 $upper                = [A-Z]
 
 $symbol               = [ \! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ \: ]
+$symbolX              = [ \! \# \$ \% \& \* \+ \. \/ \< \= \> \?    \\ \^ \| \- \~ \: ]
 $opstart              = [ \! \# \$ \% \& \* \+ \. \/ \< \= \> \? \@ \\ \^ \| \- \~ ]
 
-$idchar               = [$lower $upper $digit $symbol \']
-$opchar               = [$symbol $lower $upper $digit \:]
+$idchar               = [$lower $upper $digit $symbolX \']
+$opchar               = [$symbol \:]
 -- TODO: Should operators contain letters and numbers?
 
 @variableident        = $lower $idchar*

@@ -111,12 +111,6 @@ spec = do
     it "reads a variable operator identifier" $ do
       "+" |=> Tok'Operator "+"
 
-    it "reads a variable operator identifier containing digits" $ do
-      ">3<5" |=> Tok'Operator ">3<5"
-
-    it "reads a variable operator identifier containing letters" $ do
-      "+mmo:" |=> Tok'Operator "+mmo:"
-
     it "reads a simple constant operator identifier" $ do
       ":" |=> Tok'Operator'Const ":"
 
