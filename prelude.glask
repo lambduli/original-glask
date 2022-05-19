@@ -11,8 +11,6 @@ module Main where
 ; instance Fractional Double
 
 
-; data Unit = Unit
-
 ; class Constant a where
   { vaval :: a }
 

@@ -124,6 +124,11 @@ instance To'AST Term'Expr Expression where
   to'ast (Term'E'Lit literal)
     = return $ Lit literal
 
+  to'ast (Term'E'Abst t'pat@(Term'P'App t'pats) t'body) = do
+    patterns <- mapM to'ast t'pats
+    body <- to'ast t'body
+    return $ foldr Abs body patterns
+
   to'ast (Term'E'Abst t'pat t'body) = do
     pattern' <- to'ast t'pat
     body <- to'ast t'body

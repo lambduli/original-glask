@@ -399,7 +399,7 @@ AExp            ::  { Term'Expr }
                 |   '(' ')'                                         { Term'E'Id $ Term'Id'Const "()" }
                 |   '_'                                             { Term'E'Hole $1 }
 -- I am adding some lines, trying the change as in -XBlockArguments
-                |   lambda APat NoneOrMany(APat) '->' Expression    { foldr Term'E'Abst $5 ($2 : $3) }
+                |   lambda Pattern '->' Expression                  { Term'E'Abst $2 $4 }
                 |   let Layout(Declaration) in Expression           { Term'E'Let (concat $2) $4 }
                 |   if Expression then Expression else Expression   { Term'E'If $2 $4 $6 }
                 |   case Expression of Layout(Alt)                  { Term'E'Case $2 $4 }
