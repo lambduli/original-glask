@@ -20,6 +20,9 @@ import Interpreter.Core ( Core(..), Binding(..), Match(..) )
 import Interpreter.Error ( Evaluation'Error(..) )
 
 
+import Debug.Trace ( trace )
+
+
 data Pattern'Match'Result a
   = OK a
   | Match'Failed
@@ -115,26 +118,27 @@ eval (Let bindings body) env = do
 
 eval (Case motive matches) env = do
   store <- get
-  r <- eval motive env
-  store <- get
+  let next'addr = Map.size store
+  let prom'cont = Left (motive, env)
+  let new'store = Map.insert next'addr prom'cont store
+  put new'store
+  let prom = Promise next'addr
+
+  r <- pattern'match'lazy prom matches
   case r of
-    Left err -> return r
-    Right val -> do
-      r <- pattern'match val matches
+    Left err -> return (Left err)
+    Right Match'Failed -> return (Left (Unexpected "Evaluation - Pattern Matching: case analysis has no boundary."))
+    Right (OK (captures, rhs)) -> do
+      -- now I must iterate the captures
+      -- each capture might hold a promise or a value
+      -- if its a promise, that's ok, but if it's a value, that value needs to be stored into the store and a promise (pointer) to it will replace the original value in the pair
+      r <- sequence <$> mapM make'env captures
       case r of
         Left err -> return (Left err)
-        Right Match'Failed -> return (Left (Unexpected "Evaluation - Pattern Matching: case analysis has no boundary."))
-        Right (OK (captures, rhs)) -> do
-          -- now I must iterate the captures
-          -- each capture might hold a promise or a value
-          -- if its a promise, that's ok, but if it's a value, that value needs to be stored into the store and a promise (pointer) to it will replace the original value in the pair
-          r <- sequence <$> mapM make'env captures
-          case r of
-            Left err -> return (Left err)
-            Right mini'env -> do
-              -- now I just need to merge the mini'env with the main env and evalaute the rhs within it
-              let new'env = Map.fromList mini'env `Map.union` env
-              eval rhs new'env
+        Right mini'env -> do
+          -- now I just need to merge the mini'env with the main env and evalaute the rhs within it
+          let new'env = Map.fromList mini'env `Map.union` env
+          eval rhs new'env
 
     where
       make'env :: (Name, Either Promise Value) -> Machine'State (Name, Promise)
@@ -151,10 +155,26 @@ eval (Case motive matches) env = do
         return (Right (n, Promise next'addr))
 
 
+      pattern'match'lazy :: Promise -> [Match] -> Machine'State (Pattern'Match'Result ([(Name, Either Promise Value)], Core))
+      pattern'match'lazy prom [] =
+        return $ Left (Unexpected "Evaluation Error: There is no error boundary in the case analysis.")
+
+      pattern'match'lazy prom (Match{ patterns = [pattern], rhs = rhs } : ms) = do
+        r <- pattern'match'promise prom pattern
+        case r of
+          Left err -> return (Left err)
+          Right (OK captures) -> return (Right (OK (captures, rhs)))
+          Right Match'Failed -> pattern'match'lazy prom ms
+
+      pattern'match'lazy _ (Match{ patterns = patts } : ms) = do
+        return (Left (Unexpected "Evaluation Error: Pattern Matching - match inside a case analysis contains zero or many patterns and not exactly one."))
+
+
       -- This function tries each match, it builds the environment during pattern matching, it returns the environment and a right hand side of successful match
       pattern'match :: Value -> [Match] -> Machine'State (Pattern'Match'Result ([(Name, Either Promise Value)], Core))
       pattern'match val [] =
         return $ Left (Unexpected "Evaluation Error: There is no error boundary in the case analysis.")
+
       pattern'match val (Match{ patterns = [pattern], rhs = rhs } : ms) = do
         r <- pattern'match' val pattern
         case r of
@@ -232,7 +252,6 @@ eval (Case motive matches) env = do
       pattern'match'promise :: Promise -> Pattern -> Machine'State (Pattern'Match'Result [(Name, Either Promise Value)])
       pattern'match'promise p@(Promise _) (P'Var name) = do
         -- promise is not forced, it is simply associated with the variable name
-        store <- get
         return $! Right $! OK [(name, Left p)]
       
       pattern'match'promise prom@(Promise _) pattern@(P'Con _ _) = do
@@ -392,6 +411,11 @@ do'prim'op "int#+" (Data "(,)" [first'p, second'p]) = do
     (Left err, _) -> return (Left err)
     (_, Left err) -> return (Left err)
     _ -> return (Left (Unexpected "Evaluation Error: Primitive Operation 'int#+' applied to something bad"))
+
+do'prim'op "trace#" anything = do
+  let result = trace ("... tracing " ++ show anything) anything
+  return (Right result)
+
 
 do'prim'op name val = do
   return (Left (Unexpected $ "Uh oh ... this primitive operation ('" ++ name ++ "') is not implemented yet. (" ++ show val ++ ")"))

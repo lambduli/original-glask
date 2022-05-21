@@ -15,7 +15,7 @@ data Value
   = Literal Literal
   | Operator Name
   | Closure Name Core Environment
-  | Data String [Promise] -- Name of the Constr and list of arguments
+  | Data Name [Promise] -- Name of the Constr and list of arguments
   deriving (Show)
 
 -- instance Show Value where

@@ -222,4 +222,15 @@ bind'group'to'core AST.Bind'Group{ AST.name = name, AST.alternatives = matches }
 
 is'prim'op :: Name -> Bool
 is'prim'op name = elem name prim'ops
-  where prim'ops = [ "int#==", "int#<", "int#>", "int#+", "double#+", "int#*", "double#*", "int#-", "double#-", "double#/", "int#/", "trace#" ]
+  where prim'ops =  [ "int#=="
+                    , "int#<"
+                    , "int#>"
+                    , "int#+"
+                    , "double#+"
+                    , "int#*"
+                    , "double#*"
+                    , "int#-"
+                    , "double#-"
+                    , "double#/"
+                    , "int#/"
+                    , "trace#" ]
