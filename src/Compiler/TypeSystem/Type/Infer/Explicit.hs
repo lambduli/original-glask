@@ -42,7 +42,7 @@ import Compiler.TypeSystem.Expected ( Expected(Check) )
 -}
 {- Returning a [Constraint Type] might not be strictly necessary -}
 infer'expl :: Explicit -> Type'Check (Explicit, [Predicate])
-infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }) = do
+infer'expl e@(Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }) = do
   scheme' <- kind'specify scheme -- this is only needed when infer'expl is invoked on local declarations
   
   (skolems, qs, t) <- skolemise scheme'
@@ -94,7 +94,8 @@ infer'expl (Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }
               {- TODO:  If I want to know exactly what user-denoted type variable in the `scheme` does correspond to some non-variable type, I can use `match` to create a one-way substitution. -}
               then throwError $ Signature'Too'General scheme' sc'
               else  if not (null retained'preds)
-                    then throwError Context'Too'Weak
+                    then do
+                      throwError Context'Too'Weak
                     else
                       let scheme'' = T'Forall skolems (qs :=> t)
                           r = return (Explicit scheme'' bg{ name = name, alternatives = matches' } , deferred'preds {-, cs't -} {- , (k `Unify` K'Star) : cs'k ++ cs'k' -}) -- NOTE *1

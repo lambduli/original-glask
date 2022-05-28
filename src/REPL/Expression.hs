@@ -76,8 +76,6 @@ import Compiler.TypeSystem.Constraint (Constraint)
 import Compiler.TypeSystem.Type.Infer.Declaration (eliminate, elim'expr)
 import Compiler.TypeSystem.InferenceEnv (Infer'Env(overloaded, instances))
 
-import Debug.Trace
-
 
 read'expr :: String -> Translate'Env -> Translate'State -> Either Semantic'Error (Expression, Translate'State)
 read'expr input trans'env trans'state = do

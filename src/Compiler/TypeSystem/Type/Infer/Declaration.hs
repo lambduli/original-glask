@@ -403,8 +403,26 @@ elim'expr assumps subst p@(Placeholder (Placeholder.Dictionary name ty)) = do
     T'Var' t' -> do
       -- if it's a rigid type variable, then there must be a dictionary passed as an argument which I can use
       -- I should be able to look it up
+      -- maybe it won't be there just yet
+      -- example:
+          -- foo :: Test a => a -> a -> ()
+          -- foo a a' =
+          --   let zzz :: x -> x
+          --       zzz o = let _ = test a a' in o
+          --   in ()
+      -- at the deepest LET, the <test, _> can not be eliminated just yet
+      -- even though it is a type variable that is inside the placeholder, but it is a type variable from the surrounding scope
+      -- which means that that scope is yet to put the dictionary there
+      -- QUESTION: Would the same issue arise if the approach was AST -> Typed AST ---desugar/eliminate---> Simple AST
+      -- I think it won't have the same problem. Because the elimination will start from the TOP, so when I get to this level
+      -- the dictionary will be there already.
+      -- I think this is really great point which should go into the thesis!
       param'name <- lookup'dict (name, type')
-      return $ Var param'name
+      case param'name of
+        Nothing -> -- I need to wait until some outer scope takes care of it
+          return $ Placeholder (Placeholder.Dictionary name type')
+        Just p'name ->
+          return $ Var p'name
     T'Meta m'v -> do
       -- this should mean that this type variable is from the outer scope, leaving the placeholder as it is
       return p
@@ -412,7 +430,11 @@ elim'expr assumps subst p@(Placeholder (Placeholder.Dictionary name ty)) = do
       -- it is some specific type, and I can assume that there is an instance for this type (for that class), so I look it up in the global scope
       -- no need to look it up in global scope, it is in instance'env together with local dictionary variables
       param'name <- lookup'dict (name, type')
-      return $ Var param'name
+      case param'name of
+        Just p'name ->
+          return $ Var p'name
+        Nothing -> do
+          throwError $ Unexpected ("Can't find dictionary for " ++ show p)
     T'Tuple tys -> do
       -- I think - same as above?
       undefined
@@ -425,11 +447,22 @@ elim'expr assumps subst p@(Placeholder (Placeholder.Dictionary name ty)) = do
       case t'constr of
         T'Var' t' -> do
           -- very exhaustive discussion was moved to the markdown file on method elaboration
-          -- conclusion is, at this point, the typ earguments do not matter,
+          -- conclusion is, at this point, the type arguments do not matter,
           -- the fact that the type constructor is a rigid type variable means, I will be given the instance in its complete form
           -- I can just lookup the dictionary variable in the scope
+          --
+          -- QUESTION: What if it also won't be there YET?
           param'name <- lookup'dict (name, t'constr)
-          return $ Var param'name
+          case param'name of
+            Nothing ->
+              return $ Placeholder (Placeholder.Dictionary name type')
+              -- I won't fail just yet, instead I will wait for the surrounding scopes to figure it out
+              -- I am not sure what will happen if no scope will take care of this
+              -- but I think at that point the type system raises an error
+              -- and it's better to get the error from TS rather than from this piece of code
+              -- throwError $ Unexpected ("Can't find dictionary for " ++ show p)
+            Just p'name ->
+              return $ Var p'name
 
         T'Meta m'v -> do-- this might resolve to a concrete type, must wait
           -- instead of returning the same thing though, I will update the type in the placeholder, just in case the "properly'closing" substitution

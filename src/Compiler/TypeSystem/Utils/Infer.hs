@@ -147,12 +147,13 @@ lookup'k'env var = do
     Just kind'  -> return kind'
 
 
-lookup'dict :: (Name, Type) -> Type'Check Name
+lookup'dict :: (Name, Type) -> Type'Check (Maybe Name)
 lookup'dict placeholder = do
   env <- asks instance'env
-  case lookup placeholder env of
-    Nothing -> throwError $ Unexpected ("Can't find dictionary for " ++ show placeholder)
-    Just name -> return name
+  return $ lookup placeholder env
+  -- case lookup placeholder env of
+  --   Nothing -> throwError $ Unexpected ("Can't find dictionary for " ++ show placeholder)
+  --   Just name -> return name
 
 
 lookup'instance :: (Name, Type) -> Type'Check (Name, [Predicate], Predicate)
@@ -329,7 +330,7 @@ split cl'env fixed'vars gs preds = do
 {-  NOTE: This version of split is for Explicit and Method.
           The reason is - when I type check Explicit, I get some predicates, but because the type checking was done with skolem variable
           and not with a fresh meta type variable, this leads to those predicates containing skolem type variables and not meta variables
-          for that reason when I cann free'vars on the pred it will ignore the unquantified skolem variables.
+          for that reason when I call free'vars on the pred it will ignore the unquantified skolem variables.
           And because the way `all` works, if it's given an empty list, it will say all members passed the predicate check.
           For that reason I also check that there is no free skolem variables and if yes, then it can not pass.
           That should always work, because I was given a list of meta variables so any skolem is definitely not going to be able to pass
@@ -341,7 +342,7 @@ split' :: Class'Env -> [M'V] -> [T'V'] -> [M'V] -> [Predicate] -> Solve ([Predic
 split' cl'env fixed'vars skolems gs preds = do
   preds' <- reduce cl'env preds
   let (deffered'preds, retained'preds) = partition part' preds'
-      part' pred = (all (`elem` fixed'vars) . free'vars $ pred) && null (free'vars pred :: Set.Set T'V')
+      part' pred = (all (`elem` fixed'vars) . free'vars $ pred) && not (any (`elem` skolems) (free'vars pred :: Set.Set T'V'))
       fr'p = map free'vars preds' :: [Set.Set M'V]
   retained'preds' <- defaulted'preds cl'env (fixed'vars ++ gs) retained'preds
   return (deffered'preds, retained'preds \\ retained'preds')

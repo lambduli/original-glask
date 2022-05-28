@@ -184,6 +184,9 @@ instance Find'Error Term'Type where
   --  aliases for Constraints are not allowed -- therefore it's not necessary to check term'preds
     = find term'type
 
+  find Term'T'Unit
+    = return []
+
 
 instance Find'Error Term'Constr'Decl where
   find (Con'Decl _ term'types)
