@@ -120,11 +120,6 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
   -- ([Predicate], [(Name, Scheme)], [Constraint Type], [Constraint Kind])
   (bg', preds, assumptions) <- overload overloads $ infer'bind'section bg
 
-  -- let message = "{{ tracing infer'types }} "
-  --             ++ "\n|  preds: " ++ show preds
-  --             ++ "\n|  assumptions: " ++ show assumptions
-  --     a = trace message preds
-
   {-  TODO: Maybe it's not a best idea to put the `infer'method` itself right here.
             Maybe it's mixing the abstractions.
             I could write a helper functions for both lines - two functions which would just take `bgs` and `methods`
@@ -138,7 +133,6 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
   -- NOTE: I need to store method overloads into the Infer'State, for the REPL to operate on it too
   add'overloads overloads'
 
-  st <- get
   -- Question:  So all of the constraints were already solved in smaller groups of them.
   --            Do I expect some different result from solving them all?
   --            I think I can imagine getting an error now, even thought they were fine in smaller groups.
@@ -152,29 +146,26 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
   -- TODO:  Investigate. I want to know if it's going to be empty, if I only write declarations which are not ambiguous.
   
   cs't <- get'constraints
-  case run'solve cs't {- (cs't ++ cs't') -} :: Either Error (Subst M'V Type) of
+  case run'solve cs't :: Either Error (Subst M'V Type) of
     Left err -> throwError err
     Right subst -> do
       I'Env.Infer'Env{ I'Env.type'env = t'env, I'Env.class'env = c'env } <- ask
-      -- return (apply subst $ Map.fromList assumptions)
-
 
       let rs = runIdentity $ runExceptT $ reduce c'env (apply subst (preds ++ preds'))
       case rs of
         Left err -> do
           throwError err
+
         Right rs' -> do
           case runIdentity $ runExceptT $ default'subst c'env [] rs' of
             Left err -> do
-              -- let message = "[[[ tracing infer'types ]]]"
-              --             ++ "\n|  c'env: " ++ show c'env
-              --             ++ "\n|  result: " ++ show (preds, assumptions, cs't)
-              --             ++ "\n|  rs': " ++ show rs'
-              --     t = trace message err
               throwError err
+
             Right s' -> do
               case runIdentity $ runExceptT (s' `merge` subst) of
-                Left err -> throwError err
+                Left err -> do
+                  throwError err
+
                 Right subst' -> do
                   let sub = subst'
                   let properly'close :: (Name, Sigma'Type) -> ((Name, Sigma'Type), Subst M'V Type)
@@ -202,24 +193,9 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
                   -- AND METHODS NEED THAT TOO!!!
                   methods'' <- eliminate'methods composed'substs assum'closed methods'
 
-
-                      -- message = "<<< tracing >>>   "
-                      --   ++ "\n|  sub " ++ show sub
-                      --   ++ "\n|  assumptions: " ++ show assumptions
-                      --   ++ "\n|  apply subst assumptions: " ++ show assum'applied
-                      --   ++ "\n|  properly close assumptions: " ++ show assum'closed
-                      --   ++ "\n|  result: " ++ show (apply sub $ Map.fromList assumptions)
-                      --   ++ "\n|"
-                      -- ss = trace message assum'closed
                   {-  QUESTION: Shouldn't I somehow check that the defaulting substitution effectivelly eliminates all the predicates?  -}
                   {-            Or is it OK if there are some predicates which bubble-up to FROM the top level declarations?            -}
                   {-            If they are not eliminated by the defaulting substitution, they are effectively unsolved right?  -}
                   {-  ANSWER:   That's what `default'subst` does - it fails if it can not get rid of them.  -}
-
-                  -- NOTE:  Just testing what happens if I apply the substitution to the method annotations
-                  --        It shoulnd't do any harm. It also shouldn't really have any effect.
-                  --        The type scheme given by the programmer should not change
-                  -- let ms = map (\ (n, q't) -> (n, close'over q't)) m'anns
-                  -- return (apply subst' $ Map.fromList $ assumptions ++ ms, cs'k ++ cs'k')
 
                   return (Map.fromList assum'closed, prg{ bind'section = bg'', methods = methods'' })
