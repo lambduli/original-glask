@@ -3,6 +3,9 @@
 module Compiler.TypeSystem.Type.Infer.Match where
 
 
+import Control.Monad.Except ( MonadError(throwError) )
+
+
 import Compiler.Counter ( fresh )
 
 import Compiler.Syntax.Kind ( Kind (K'Star) )
@@ -22,6 +25,7 @@ import Compiler.TypeSystem.Actual ( Actual(Checked, Inferred) )
 import Compiler.Syntax.TFun ( pattern T'Fun )
 import Compiler.Syntax.Pattern ( Pattern )
 import Compiler.TypeSystem.Assumption ( Assumption )
+import Compiler.TypeSystem.Error ( Error(Unexpected) )
 
 
 infer'pats' :: [Pattern] -> Expected Type -> Type'Check ([Pattern], [Predicate], [Type], [Assumption Sigma'Type], Type)
@@ -84,25 +88,31 @@ infer'match match@Match{ patterns = patterns, rhs = expr } expected = do
   -- I think they could be merged for good.
 
 
--- TODO: Ja si myslim, ze tuhle funkci budu muset prepsat tak, ze kazdy mode ma svoji equation
+{-  NOTE: This function is an abstraction on top of tc'matches -}
+check'matches :: [Match] -> Type -> Type'Check ([Match], [Predicate])
+check'matches matches type' = do
+  (matches', preds, actual) <- tc'matches matches (Check type')
+  case actual of
+    Checked -> do
+      return (matches', preds)
+    Inferred ty -> do
+      throwError $ Unexpected "Internal Error while 'check'matches'"
 
--- v checking modu, dostanu primo typ jako argument - typ funkce - typy patternu jako vstupy
--- typ prave strany jako typ vystupu
---
--- dava pak teda smysl, abych vzal ten type a poslal ho do infer'match
--- pak uz neni potreba abych tady delal nejakou unifikaci
--- protoze bych se mel moct spolehnout na to, ze pokud bude nejaka potreba, tak se provede dole
--- diky infer'pats a infer'expr
-infer'matches :: [Match] -> Expected Type -> Type'Check ([Match], [Predicate], Actual Type)
-infer'matches matches expected@(Check type') = do
+
+infer'matches :: [Match] -> Type'Check ([Match], [Predicate], Type)
+infer'matches matches = do
+  (matches', preds, actual) <- tc'matches matches (Infer)
+  case actual of
+    Checked -> do
+      throwError $ Unexpected "Internal Error while 'infer'matches'"
+    Inferred ty -> do
+      return (matches', preds, ty)
+
+
+tc'matches :: [Match] -> Expected Type -> Type'Check ([Match], [Predicate], Actual Type)
+tc'matches matches expected@(Check type') = do
   -- results :: [([Type], Type, [Predicate], [Predicate])]
   results <- mapM (`infer'match` expected) matches
-
-  -- I think I don't need that anymore
-  -- let types       =         [ foldr type'fn t'expr ts'patts | (ts'patts, t'expr, _, _, _) <- results ]
-  -- Previous line makes a function types from the [Type] and Type in the results.
-  -- let cs'unif     = map (Unify type') types
-  -- Previous line unifies each function type with the type' passed as an argument.
 
   let matches'    = [ match | (match, _, _, _) <- results ]
   let preds'patts = concat  [ pred  | (_, _, pred, _) <- results ]
@@ -112,7 +122,7 @@ infer'matches matches expected@(Check type') = do
 
   return (matches', preds, Checked)
 
-infer'matches matches Infer = do
+tc'matches matches Infer = do
   -- results :: [([Type], Type, [Predicate], [Predicate])]
   results <- mapM (`infer'match` Infer) matches
 
@@ -120,10 +130,6 @@ infer'matches matches Infer = do
   let types = [ type' | (_, Inferred type', _, _) <- results ]
 
   meta'var <- fresh'meta -- Musel jsem si vyrobit sam promennou, pres kterou muzu spojit vsechny typy vraceny ze vsech infer'match
-  
-  -- BIG TODO: Tohle je takovej pokus, pokud je vsechno spravne, tak muze tahle promenna byt uplne normalni Tau promenna a bude to porad fungovat
-  -- fr'name <- fresh
-  -- let meta'var = T'Meta (T'S fr'name K'Star)
   
   let cs'unif     = map (Unify meta'var) types
   add'constraints cs'unif
@@ -135,14 +141,4 @@ infer'matches matches Infer = do
   let preds'exprs = concat  [ pred  | (_, _, _, pred) <- results ]
   let preds       = preds'patts ++ preds'exprs
 
-  -- let res'type = head [ t | (Inferred t, _, _) <- results ]
-  -- let type' = foldr T'Fun res'type $ map (\ (Inferred t) -> t) $ head [ actual'types | (actual'types, _, _, _) <- results ]
-
   return (matches', preds, Inferred meta'var)
-
-    -- where
-      -- from'inferred (Inferred t) = t
-      -- NOTE: This function is partial - it should be always OK
-      -- if it fails, that means there's an bug somewhere in the implementation
-      -- and even though the inference was given a command to `Infer` that type, it for some reason
-      -- returned `Checked` - which must never happen

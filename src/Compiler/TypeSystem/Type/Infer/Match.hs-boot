@@ -16,4 +16,4 @@ import Compiler.TypeSystem.Actual ( Actual )
 infer'match :: Match -> Expected Type -> Type'Check (Match, Actual Type, [Predicate], [Predicate])
 
 
-infer'matches :: [Match] -> Expected Type -> Type'Check ([Match], [Predicate], Actual Type)
+tc'matches :: [Match] -> Expected Type -> Type'Check ([Match], [Predicate], Actual Type)

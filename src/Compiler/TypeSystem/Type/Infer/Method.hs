@@ -25,7 +25,7 @@ import Compiler.TypeSystem.InferenceEnv ( Infer'Env(Infer'Env, type'env, class'e
 import Compiler.TypeSystem.Solver ( run'solve )
 import Compiler.TypeSystem.Solver.Substitution ( Subst )
 import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term(free'vars) )
-import Compiler.TypeSystem.Type.Infer.Match ( infer'matches )
+import Compiler.TypeSystem.Type.Infer.Match ( check'matches )
 import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'infer'sigma, kind'specify )
 import Compiler.TypeSystem.Expected ( Expected(Check) )
 
@@ -49,17 +49,21 @@ infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }
   (skolems, qs, t) <- skolemise scheme
   -- STEJNEJ DUVOD JAKO U EXPLICIT - HLEDEJ KOMENTAR A VYSVETLENI TAM
 
-  (matches', preds, _) <- infer'matches matches $ Check t
+  (matches', preds) <- check'matches matches t
   -- now solve it
   cs't <- get'constraints
   case run'solve cs't :: Either Error (Subst M'V Type) of
-    Left err -> throwError err
+    Left err ->
+      throwError err
+
     Right subst -> do
       let qs' = apply subst qs
           t'  = apply subst t
           -- so I need to apply the substitution to the typing context
           -- because that is how it's done in the THIH paper
+
       Infer'Env{ type'env = t'env, class'env = c'env } <- ask
+
       let fs = Set.toList $ free'vars $ apply subst t'env
           gs = Set.toList (free'vars t') \\ fs
       let sc' = close'over' (qs' :=> t')
@@ -67,22 +71,26 @@ infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }
             -- not <$> entail c'env qs' pred -- this should be the same thing, but more succinctly written
             entailed <- entail c'env qs' pred
             return $ not entailed
+
       let ps' = runIdentity $ runExceptT $ filterM not'entail (apply subst preds)
+      
       case ps' of
-        Left err -> throwError err
+        Left err ->
+          throwError err
+
         Right preds' -> do
           case runIdentity $ runExceptT $ split' c'env fs skolems gs preds' of
-            Left err -> throwError err
-            Right (deferred'preds, retained'preds) -> do
-              -- b <- scheme `sh` sc'
+            Left err ->
+              throwError err
 
-              if False -- not b
-              {- TODO:  If I want to know exactly what user-denoted type variable in the `scheme'` does correspond to some non-variable type, I can use `match` to create a one-way substitution. -}
-              then throwError $ Signature'Too'General scheme sc'
-              else  if not (null retained'preds)
-                    then throwError Context'Too'Weak
-                    else do
-                      let matches'' = map (phs'matches subst) matches'
-                      let scheme' = T'Forall skolems (qs :=> t)
-                      let method' = Method scheme' bg{ alternatives = matches'' } cl'name dict'name
-                      return (method', deferred'preds)
+            Right (deferred'preds, retained'preds) -> do
+              {- TODO:  If I want to know exactly what user-denoted type
+              variable in the `scheme'` does correspond to some non-variable
+              type, I can use `match` to create a one-way substitution. -}
+              if not (null retained'preds)
+                then throwError Context'Too'Weak
+                else do
+                  let matches'' = map (phs'matches subst) matches'
+                  let scheme'   = T'Forall skolems (qs :=> t)
+                  let method'   = Method scheme' bg{ alternatives = matches'' } cl'name dict'name
+                  return (method', deferred'preds)

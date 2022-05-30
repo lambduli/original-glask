@@ -72,4 +72,27 @@ module Main where
 ; c'fn _ = case 23 of
          { n -> n }
 
+-- weird experiments with monomorphism restriction
+----  
+----  ; eee hole = let { x = 1 + 1 } in x
+----  
+----  ; func hole = let { two = 1 + 1 }
+----                in (two, \ x -> x + two) -- :: (forall a . Num a => (a, a -> a))
+----  
+----  ; func' hole = let { two :: Num p => p
+----                      ; two = 1 + 1 }
+----                 in (two, \ x -> x + two) -- :: (forall a . Num a => (a, a -> a))
+----  
+----  ; func1 hole = let { one = 1 } in (one, one)
+----  
+----  -- ; baad' hole =  let { fn :: a -> b -> a
+----  --                     ; fn x y = x }
+----  --                 in (fn, fn)
+----  
+----  ; baad' hole =  let { fn x y = x }
+----                  in (fn, fn)
+----  
+----  ; baad1 hole =  let { fn = \ x y -> x + y }
+----                  in (fn, fn)
+
 }

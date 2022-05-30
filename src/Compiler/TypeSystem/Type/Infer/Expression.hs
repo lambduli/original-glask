@@ -26,7 +26,7 @@ import Compiler.TypeSystem.Type.Constants ( t'Bool, type'fn )
 
 import Compiler.TypeSystem.Type.Infer.Literal ( infer'lit )
 import Compiler.TypeSystem.Type.Infer.Pattern ( infer'pat, infer'pattern, check'pattern )
-import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Match ( infer'match, infer'matches )
+import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Match ( infer'match, tc'matches )
 import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Declaration ( infer'decls )
 
 import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env, inst'sigma, unify'fun, check'sigma, tc'rho, infer'rho, check'rho, subs'check, skolemise, generalize, quantify, qualify, instantiate, lookup'in'overloaded, unify'pair )
@@ -342,7 +342,7 @@ infer'expr (Ann expr sigma) expected = do
 
 infer'expr (Case expr matches) expected = do
   {-
-    if I use infer'matches - I can rely on the fact that each match only contains a single patter
+    if I use tc'matches - I can rely on the fact that each match only contains a single patter
       therefore the function type given by that function will be
       <pattern type> -> <result type>
 
@@ -355,7 +355,7 @@ infer'expr (Case expr matches) expected = do
   -- first infer the type of a motive
   (motive, preds'motive, type'motive) <- infer'rho expr
   -- if I am in Check-ing mode
-  -- I should propagate the type into infer'matches
+  -- I should propagate the type into tc'matches
   -- to do that, though, I need to construct the correct function type:
   -- from the motive'type to expected type
   -- if I am in infer mode
@@ -366,8 +366,8 @@ infer'expr (Case expr matches) expected = do
             Infer -> Infer
             Check ty -> Check $ type'motive `T'Fun` ty
 
-  -- now I can run the infer'matches
-  (matches', preds'matches, actual'match) <- infer'matches matches match'type
+  -- now I can run the tc'matches
+  (matches', preds'matches, actual'match) <- tc'matches matches match'type
 
   -- now if the `actual` is (Inferred t) I need to deconstruct that type and just take the result part
   -- I can do that using existing function unify'fun
