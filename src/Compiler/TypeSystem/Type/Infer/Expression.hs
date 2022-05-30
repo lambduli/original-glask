@@ -29,7 +29,7 @@ import Compiler.TypeSystem.Type.Infer.Pattern ( infer'pat, infer'pattern, check'
 import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Match ( infer'match, tc'matches )
 import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Declaration ( infer'decls )
 
-import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env, inst'sigma, unify'fun, check'sigma, tc'rho, infer'rho, check'rho, subs'check, skolemise, generalize, quantify, qualify, instantiate, lookup'in'overloaded, unify'pair )
+import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env, inst'sigma, unify'fun, check'sigma, infer'rho, check'rho, subs'check, skolemise, lookup'in'overloaded, unify'pair )
 import Compiler.TypeSystem.Expected ( Expected (Infer, Check) )
 import Compiler.TypeSystem.Actual ( Actual (Checked, Inferred) )
 import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'specify )
@@ -47,37 +47,48 @@ infer'expr (Var var'name) expected = do
                       Checked -> error "should never happen"
                       Inferred t -> t
 
-  -- TODO: HERE - the var might be overloaded constant, or it might be a method, or it might be one of mutually recrusive definitions
-  -- I need some way of knowing whether it's one of those
+  -- TODO: HERE - the var might be overloaded constant, or it might be a method,
+  -- or it might be one of mutually recrusive definitions I need some way of
+  -- knowing whether it's one of those
   m <- lookup'in'overloaded var'name
   expr' <- case m of
             Nothing -> -- OK, just do the normal thing
               return $ Var var'name
-            Just Overloaded -> do -- application of the overloaded variable to possibly many placeholders
-              -- so I need to know how many dictionaries the overloaded constant expects
-              -- where do I get this information?
-              -- from the sigma!
-              -- it will be in the shape: forall [x...] . (context) => type
-              -- and I need to know what the context is
-              -- depending on how many things are in the context, that many placeholder arguments
+            Just Overloaded -> do
+              -- application of the overloaded variable to possibly many
+              -- placeholders so I need to know how many dictionaries the
+              -- overloaded constant expects where do I get this information?
+              -- from the sigma! it will be in the shape: forall [x...] .
+              -- (context) => type and I need to know what the context is
+              -- depending on how many things are in the context, that many
+              -- placeholder arguments
 
               -- trik je, ze ja potrebuju vedet, do ceho se to jako instanciuje
-              -- no nejlepsi by asi tim padem bylo z inst'sigma vratit jeste jeden mapping
-              -- mapping z tech rigid typovejch promennejch do tech instanciovanejch
-              -- ja uz vracim `preds`, to jsou instanciovany predikaty, a jsou urcite z te sigmy,
-              -- pokud budou urcite v obou modech ve stejnym poradi, tak bych mohl pouzit proste to
-              -- a tohle by melo snad platit, v obou modech inst'sigma vede na volani instantiate, coz by snad melo vest na stejny poradi
-              -- v zasade je podle me klicovy akorat to, aby instantiate a inst'sigma a dalsi funkce dodrzely stejny poradi, jako je ten typ samotnej ulozenej v kontextu
+              -- no nejlepsi by asi tim padem bylo z inst'sigma vratit jeste
+              -- jeden mapping mapping z tech rigid typovejch promennejch do
+              -- tech instanciovanejch ja uz vracim `preds`, to jsou
+              -- instanciovany predikaty, a jsou urcite z te sigmy, pokud budou
+              -- urcite v obou modech ve stejnym poradi, tak bych mohl pouzit
+              -- proste to a tohle by melo snad platit, v obou modech inst'sigma
+              -- vede na volani instantiate, coz by snad melo vest na stejny
+              -- poradi v zasade je podle me klicovy akorat to, aby instantiate
+              -- a inst'sigma a dalsi funkce dodrzely stejny poradi, jako je ten
+              -- typ samotnej ulozenej v kontextu
               let placeholders  = map (\ (Is'In cl'name ty) -> Placeholder $ Placeholder.Dictionary cl'name ty) preds
                   application   = foldl App (Var var'name) placeholders
               return application
             Just (Method cl'name) -> do -- put the placeholder
-            -- I think that if it's a method placeholder the type should be something different
-            -- when I have something like     foo :: Foo a => a -> a
-            -- what I actually need is the `a` part, aka - the type which is qualified by the Foo predicate (assuming foo is from class Foo)
-            -- because when I am eliminating this method, having the    a -> a    type won't help me much
-            -- it's not like it is completely useless, but I will actually need to do the same "investigative work" only with worse clues
-            -- so now I need to find a predicate, which shares the name with the class name of this method
+            -- I think that if it's a method placeholder the type should be
+            -- something different when I have something like
+            --
+            -- foo :: Foo a => a -> a what I actually need is the `a` part, aka
+            -- - the type which is qualified by the Foo predicate (assuming foo
+            -- is from class Foo) because when I am eliminating this method,
+            -- having the a -> a type won't help me much it's not like it is
+            -- completely useless, but I will actually need to do the same
+            -- "investigative work" only with worse clues so now I need to find
+            -- a predicate, which shares the name with the class name of this
+            -- method
               case find (\ (Is'In c'n _) -> c'n == cl'name) preds of
                 Nothing -> do
                   throwError $ Unexpected ("Could not find a predicate with class'es name '" ++ cl'name ++ "' in the type of '" ++ var'name ++ "'")
@@ -103,13 +114,15 @@ infer'expr o@(Op op'name) expected = do
                       Checked -> error "should never happen"
                       Inferred t -> t
 
-  -- TODO: HERE - the var might be overloaded constant, or it might be a method, or it might be one of mutually recrusive definitions
-  -- I need some way of knowing whether it's one of those
+  -- TODO: HERE - the var might be overloaded constant, or it might be a method,
+  -- or it might be one of mutually recrusive definitions I need some way of
+  -- knowing whether it's one of those
   m <- lookup'in'overloaded op'name
   expr' <- case m of
             Nothing -> -- OK, just do the normal thing
               return $ Op op'name
-            Just Overloaded -> do -- application of the overloaded variable to possibly many placeholders
+            Just Overloaded -> do
+              -- application of the overloaded variable to possibly many placeholders
               -- so I need to know how many dictionaries the overloaded constant expects
               -- where do I get this information?
               -- from the sigma!
@@ -118,22 +131,29 @@ infer'expr o@(Op op'name) expected = do
               -- depending on how many things are in the context, that many placeholder arguments
 
               -- trik je, ze ja potrebuju vedet, do ceho se to jako instanciuje
-              -- no nejlepsi by asi tim padem bylo z inst'sigma vratit jeste jeden mapping
-              -- mapping z tech rigid typovejch promennejch do tech instanciovanejch
-              -- ja uz vracim `preds`, to jsou instanciovany predikaty, a jsou urcite z te sigmy,
-              -- pokud budou urcite v obou modech ve stejnym poradi, tak bych mohl pouzit proste to
-              -- a tohle by melo snad platit, v obou modech inst'sigma vede na volani instantiate, coz by snad melo vest na stejny poradi
-              -- v zasade je podle me klicovy akorat to, aby instantiate a inst'sigma a dalsi funkce dodrzely stejny poradi, jako je ten typ samotnej ulozenej v kontextu
+              -- no nejlepsi by asi tim padem bylo z inst'sigma vratit jeste
+              -- jeden mapping mapping z tech rigid typovejch promennejch do
+              -- tech instanciovanejch ja uz vracim `preds`, to jsou
+              -- instanciovany predikaty, a jsou urcite z te sigmy, pokud budou
+              -- urcite v obou modech ve stejnym poradi, tak bych mohl pouzit
+              -- proste to a tohle by melo snad platit, v obou modech inst'sigma
+              -- vede na volani instantiate, coz by snad melo vest na stejny
+              -- poradi v zasade je podle me klicovy akorat to, aby instantiate
+              -- a inst'sigma a dalsi funkce dodrzely stejny poradi, jako je ten
+              -- typ samotnej ulozenej v kontextu
               let placeholders  = map (\ (Is'In cl'name ty) -> Placeholder $ Placeholder.Dictionary cl'name ty) preds
                   application   = foldl App (Op op'name) placeholders
               return application
             Just (Method cl'name) -> do -- put the placeholder
             -- I think that if it's a method placeholder the type should be something different
             -- when I have something like     foo :: Foo a => a -> a
-            -- what I actually need is the `a` part, aka - the type which is qualified by the Foo predicate (assuming foo is from class Foo)
-            -- because when I am eliminating this method, having the    a -> a    type won't help me much
-            -- it's not like it is completely useless, but I will actually need to do the same "investigative work" only with worse clues
-            -- so now I need to find a predicate, which shares the name with the class name of this method
+            -- what I actually need is the `a` part, aka - the type which is
+            -- qualified by the Foo predicate (assuming foo is from class Foo)
+            -- because when I am eliminating this method, having the    a -> a
+            -- type won't help me much it's not like it is completely useless,
+            -- but I will actually need to do the same "investigative work" only
+            -- with worse clues so now I need to find a predicate, which shares
+            -- the name with the class name of this method
               case find (\ (Is'In c'n _) -> c'n == cl'name) preds of
                 Nothing -> do
                   throwError $ Unexpected ("Could not find a predicate with class'es name '" ++ cl'name ++ "' in the type of '" ++ op'name ++ "'")
@@ -216,7 +236,7 @@ infer'expr (If condition then' else') Infer = do
   
   (skolems, context, rho) <- skolemise rho'then
   
-  return (If condition' then'' else'', preds ++ preds'then ++ preds'else ++ preds' ++ preds'' {- ++ ctxt -} ++ context, Inferred rho {- Inferred oo -})
+  return (If condition' then'' else'', preds ++ preds'then ++ preds'else ++ preds' ++ preds'' ++ context, Inferred rho)
 
 infer'expr (If condition then' else') (Check rho) = do
   (cond', preds'cond) <- check'rho condition t'Bool
@@ -239,22 +259,24 @@ infer'expr (Ann expr sigma) expected = do
   (preds', actual') <- inst'sigma sigma' expected
   return (Ann expr' sigma, preds ++ preds', actual')
   -- so according the paper this is what should happen:
-  {-  Freshly instantiate the implicit type scheme given by the user.
-      That most likely means I will need to quantify the qualified type first.
-      Destructure the result (Qualified Type) into a list of qualifiers and a type.
+  {-  Freshly instantiate the implicit type scheme given by the user. That most
+      likely means I will need to quantify the qualified type first. Destructure
+      the result (Qualified Type) into a list of qualifiers and a type.
   -}
-  {-  Infer the type of the expression and unify it with the type-part of the previous step.
-      __ I am deriving this process from the part of the paper which infers a type for the annotated
-      __ binding group - that means there are Alternatives and there's a function *tiAlts*
-      __ which also takes a type as its argument. That type is then unified with the type of
-      __ a right hand side - for all alternatives. But I strongly suspect, it doesn't matter if
-      __ I pass that type in the *tiAlts* function or not - I can always unify all the RHS types with
-      __ it later. So I should be able to do the same here. As it doesn't seem to be used in *tiAlts*
-      __ for anything else.
+  {-  Infer the type of the expression and unify it with the type-part of the
+      previous step. __ I am deriving this process from the part of the paper
+      which infers a type for the annotated __ binding group - that means there
+      are Alternatives and there's a function *tiAlts* __ which also takes a
+      type as its argument. That type is then unified with the type of __ a
+      right hand side - for all alternatives. But I strongly suspect, it doesn't
+      matter if __ I pass that type in the *tiAlts* function or not - I can
+      always unify all the RHS types with __ it later. So I should be able to do
+      the same here. As it doesn't seem to be used in *tiAlts* __ for anything
+      else.
       
-      The unification produces a [Constraint Type]. Called Constraints.
-      It also produces [Predicate]. Called Predicates.
-      Then I should solve the Constraints and obtain the Substitution representing the solution.  -}
+      The unification produces a [Constraint Type]. Called Constraints. It also
+      produces [Predicate]. Called Predicates. Then I should solve the
+      Constraints and obtain the Substitution representing the solution.  -}
 
   {-  I shall apply the Substitution to the Qualifiers from the first step and get Qualifiers'.
       I shall also apply it to the Type from the first step and get Type'.
