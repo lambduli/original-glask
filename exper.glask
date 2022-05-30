@@ -95,4 +95,13 @@ module Main where
 ----  ; baad1 hole =  let { fn = \ x y -> x + y }
 ----                  in (fn, fn)
 
+
+-- I wanted to try this because in the infer'expl I have a question about this
+-- ; zoar x y = raoz y (x + x)
+-- ; raoz y x = zoar (char2num x) y
+-- 
+-- ; char2num :: Num a => Char -> a
+-- ; char2num = char2num
+
+
 }

@@ -42,20 +42,25 @@ import Compiler.TypeSystem.Expected ( Expected(Check) )
 -}
 {- Returning a [Constraint Type] might not be strictly necessary -}
 infer'expl :: Explicit -> Type'Check (Explicit, [Predicate])
-infer'expl e@(Explicit scheme bg@Bind'Group{ name = name, alternatives = matches }) = do
-  scheme' <- kind'specify scheme -- this is only needed when infer'expl is invoked on local declarations
-  
-  (skolems, qs, t) <- skolemise scheme'
+infer'expl (Explicit sigma bg@Bind'Group{ name = name, alternatives = matches }) = do
+  -- do the kind analysis for the sigma
+  -- in the process we also substitute kind meta variables with actual kinds of known types (and type classes)
+  sigma' <- kind'specify sigma
 
+  (skolems, qs, t) <- skolemise sigma'
   {-  Duvod proc pouzivam skolemise misto instantiate je jednoduchy. Jelikoz jde o typovou anotaci, musim skolemizovat.
       Otazka ale zustava - je skolemizace to jediny, co je treba udelat v tomhle miste jinak? Nebo bych mel zkontrolovat
       vic veci? Najdi si implementaci `infer'expr` pro Ann a porovnej s tim co se deje tam, neco podobnyho by se asi melo dit i tady si myslim.
   -}
+
   (matches', preds) <- check'matches matches t
 
   cs't <- get'constraints
+
   case run'solve cs't :: Either Error (Subst M'V Type) of
-    Left err -> throwError err
+    Left err -> do
+      throwError err
+
     Right subst -> do
       let qs' = apply subst qs
           t'  = apply subst t
@@ -68,26 +73,36 @@ infer'expl e@(Explicit scheme bg@Bind'Group{ name = name, alternatives = matches
                 that is the reason why this one must not quantify over it, - simply put - it is not yours to quantify over (and it might even cease to be a type variable later - defaulting)
                 one thing I am thinking about - could it happen that some implicit restricted thing would be inferred as Num (for example) from its own definition
                 but then someone else uses it in such a way that it implies other type class(es) so then it might not be able to be defaulted?
+
+                I tried it and it fails with unsatisfiable type class predicate/type context.
+                Though in my example there was no defaulting, but I think it would just fail in the defaulting.
        -}
           gs = Set.toList (free'vars t') \\ fs
       let sc' = close'over' (qs' :=> t')
+
+          -- not'entail c'env qs' pred = not <$> entail c'env qs' pred
+          
           not'entail pred = do
             -- not <$> entail c'env qs' pred -- this should be the same thing, but more succinctly written
             entailed <- entail c'env qs' pred
             return $ not entailed
-      let ps' = runIdentity $ runExceptT $ filterM not'entail (apply subst preds)
+      
+          ps' = runIdentity $ runExceptT $ filterM not'entail (apply subst preds)
+      
       case ps' of
-        Left err -> throwError err
+        Left err -> do
+          throwError err
+
         Right preds' -> do
           case runIdentity $ runExceptT $ split' c'env fs skolems gs preds' of
-            Left err -> throwError err
+            Left err -> do
+              throwError err
+
             Right (deferred'preds, retained'preds) -> do
-              {- TODO:  If I want to know exactly what user-denoted type
-              variable in the `scheme` does correspond to some non-variable
-              type, I can use `match` to create a one-way substitution. -}
               if not (null retained'preds)
               then do
                 throwError Context'Too'Weak
-              else
-                let scheme'' = T'Forall skolems (qs :=> t)
-                in return (Explicit scheme'' bg{ name = name, alternatives = matches' }, deferred'preds)
+              else do
+                -- because of the auto elaboration, we need to return a sigma type made from skolemised predicates and type
+                -- as well as elaborated list of matches -> matches'
+                return (Explicit (T'Forall skolems (qs :=> t)) bg{ name = name, alternatives = matches' }, deferred'preds)

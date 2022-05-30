@@ -569,7 +569,7 @@ check'sigma expr sigma = do
 
       if not $ null bad'vars
       then
-        throwError $ Unexpected "Type is not polymorphic enough!" -- \n| sigma: " ++ show sigma ++ " \n| sigma': " ++ show sigma' ++ "  \n| skolems: " ++ show skolems ++ " \n| free'all: " ++ show free'all ++ "\n| free'sigma: " ++ show free'sigma ++ "\n| skolemized: " ++ show rho
+        throwError $ Unexpected "Type is not polymorphic enough!"
       else do
         return (expr', preds ++ preds')
 
