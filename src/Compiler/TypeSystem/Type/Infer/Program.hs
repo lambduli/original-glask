@@ -9,10 +9,9 @@ import Control.Monad.Except ( runExceptT, MonadError(throwError) )
 import Control.Monad.Reader ( MonadReader(ask) )
 import Data.Functor.Identity ( Identity(runIdentity) )
 import Control.Monad.State ( MonadState(get) )
-import Control.Monad.Extra ( concatMapM )
 
 
-import Compiler.Counter ( Counter(Counter, counter), State (get'counter) )
+import Compiler.Counter ( Counter(Counter), State (get'counter) )
 
 import Compiler.Syntax.Declaration ( Constr'Decl(..), Data(..) )
 import Compiler.Syntax.Kind ( Kind(K'Star) )
@@ -32,16 +31,16 @@ import Compiler.TypeSystem.InferenceState ( Infer'State )
 import qualified Compiler.TypeSystem.InferenceState as I'State
 
 import Compiler.TypeSystem.Infer ( run'infer, Infer, Type'Check, get'constraints, add'overloads )
--- import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
-import Compiler.TypeSystem.Type.Infer.BindSection ( check'seq, infer'bind'section, infer'seq )
+
+import Compiler.TypeSystem.Type.Infer.BindSection ( check'seq, infer'bind'section )
 import Compiler.TypeSystem.Type.Infer.Method ( infer'method )
-import Compiler.TypeSystem.Kind.Infer.Type (infer'type)
+
 import Compiler.TypeSystem.Solver ( run'solve )
-import Compiler.TypeSystem.Solver.Substitution ( Subst (Sub), empty'subst )
-import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term (free'vars) )
+import Compiler.TypeSystem.Solver.Substitution ( Subst (Sub) )
+import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term )
 import Compiler.TypeSystem.Solver.Composable ( Composable(merge, compose) )
 import Compiler.TypeSystem.Utils.Infer ( default'subst, overload, merge'into't'env )
-import Compiler.TypeSystem.Utils.Class ( reduce, instances )
+import Compiler.TypeSystem.Utils.Class ( reduce )
 import Compiler.TypeSystem.ClassEnv ( Class'Env )
 
 import Compiler.TypeSystem.Kind.Infer.Program ( infer'kinds )
