@@ -343,7 +343,7 @@ split' cl'env fixed'vars skolems gs preds = do
   preds' <- reduce cl'env preds
   let (deffered'preds, retained'preds) = partition part' preds'
       part' pred = (all (`elem` fixed'vars) . free'vars $ pred) && not (any (`elem` skolems) (free'vars pred :: Set.Set T'V'))
-      fr'p = map free'vars preds' :: [Set.Set M'V]
+      -- fr'p = map free'vars preds' :: [Set.Set M'V]
   retained'preds' <- defaulted'preds cl'env (fixed'vars ++ gs) retained'preds
   return (deffered'preds, retained'preds \\ retained'preds')
 
