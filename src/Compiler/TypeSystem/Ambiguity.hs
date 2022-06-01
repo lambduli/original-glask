@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Compiler.TypeSystem.Ambiguity where
 
 
@@ -5,6 +7,7 @@ import Data.Set (difference, fromList, toList)
 import Data.List (filter)
 import Data.Foldable.Extra (allM)
 import Control.Monad (filterM)
+import Control.Monad.Except ( MonadError )
 
 import Compiler.Syntax.Name ( Name )
 import Compiler.Syntax.Predicate ( Predicate(..) )
@@ -12,8 +15,9 @@ import {-# SOURCE #-} Compiler.Syntax.Type ( Type(T'Meta), M'V )
 
 import Compiler.TypeSystem.ClassEnv ( Class'Env(defaults) )
 import Compiler.TypeSystem.Solver.Substitutable ( Term(free'vars) )
-import Compiler.TypeSystem.Solver.Solve ( Solve )
+-- import Compiler.TypeSystem.Solver.Solve ( Solve )
 import Compiler.TypeSystem.Utils.Class ( entail )
+import Compiler.TypeSystem.Error (Error)
 
 
 type Ambiguity = (M'V, [Predicate])
@@ -42,7 +46,7 @@ std'classes
           Now I have hopefully fixed it. But I need to rewrite it and remove the traces.
           While doing so - really carefully check that it's correct.
 -}
-candidates :: Class'Env -> Ambiguity -> Solve [Type]
+candidates :: MonadError Error m => Class'Env -> Ambiguity -> m [Type]
 candidates cl'env (v, qs) = do
   let is = [i | Is'In i t <- qs] -- all Class names from the constraints
   let ts = [t | Is'In i t <- qs] -- all types/parameters of the constraints
@@ -51,11 +55,11 @@ candidates cl'env (v, qs) = do
                   all (`elem` std'classes) is, -- all of them are standard classes
                   t' <- defaults cl'env]
   let
-    entails :: Type -> Solve Bool
+    entails :: MonadError Error m => Type -> m Bool
     entails t =
       let
         constraints :: [Predicate] 
         constraints = [Is'In i t | i <- is]
-      in allM (entail cl'env []) constraints
+      in return $ all (entail cl'env []) constraints
   filterM entails ts' -- [Is'In i t' | i <- is, t' <- aa]
   -- return $ if ok then ts' else []

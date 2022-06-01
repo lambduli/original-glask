@@ -67,30 +67,26 @@ infer'method (Method scheme bg@Bind'Group{ name = name, alternatives = matches }
       let fs = Set.toList $ free'vars $ apply subst t'env
           gs = Set.toList (free'vars t') \\ fs
       let sc' = close'over' (qs' :=> t')
-          not'entail pred = do
+          -- not'entail pred = do
             -- not <$> entail c'env qs' pred -- this should be the same thing, but more succinctly written
-            entailed <- entail c'env qs' pred
-            return $ not entailed
+            -- entailed <- entail c'env qs' pred
+            -- return $ not entailed
 
-      let ps' = runIdentity $ runExceptT $ filterM not'entail (apply subst preds)
-      
-      case ps' of
+      let ps' = filter (not . entail c'env qs') (apply subst preds)
+
+    -- Right preds' -> do
+      case runIdentity $ runExceptT $ split' c'env fs skolems gs ps' of
         Left err ->
           throwError err
 
-        Right preds' -> do
-          case runIdentity $ runExceptT $ split' c'env fs skolems gs preds' of
-            Left err ->
-              throwError err
-
-            Right (deferred'preds, retained'preds) -> do
-              {- TODO:  If I want to know exactly what user-denoted type
-              variable in the `scheme'` does correspond to some non-variable
-              type, I can use `match` to create a one-way substitution. -}
-              if not (null retained'preds)
-                then throwError Context'Too'Weak
-                else do
-                  let matches'' = map (phs'matches subst) matches'
-                  let scheme'   = T'Forall skolems (qs :=> t)
-                  let method'   = Method scheme' bg{ alternatives = matches'' } cl'name dict'name
-                  return (method', deferred'preds)
+        Right (deferred'preds, retained'preds) -> do
+          {- TODO:  If I want to know exactly what user-denoted type
+          variable in the `scheme'` does correspond to some non-variable
+          type, I can use `match` to create a one-way substitution. -}
+          if not (null retained'preds)
+            then throwError Context'Too'Weak
+            else do
+              let matches'' = map (phs'matches subst) matches'
+              let scheme'   = T'Forall skolems (qs :=> t)
+              let method'   = Method scheme' bg{ alternatives = matches'' } cl'name dict'name
+              return (method', deferred'preds)

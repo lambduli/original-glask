@@ -9,4 +9,4 @@ import Compiler.TypeSystem.Error
 
 
 -- | Constraint solver monad
-type Solve a = ExceptT Error Identity a
+-- type Solve a = ExceptT Error Identity a
