@@ -83,7 +83,6 @@ infer'expl (Explicit sigma bg@Bind'Group{ name = name, alternatives = matches })
             Because I always get those by removing all "other meta vars" from those of mine.
     -}
       gs = Set.toList (free'vars t') \\ fs
-  let sc' = close'over' (qs' :=> t')
       ps' = filter (not . entail c'env qs') (apply subst preds)
   
   (deferred'preds, retained'preds) <- split' c'env fs skolems gs ps' -- split'' c'env fs skolems gs ps'
