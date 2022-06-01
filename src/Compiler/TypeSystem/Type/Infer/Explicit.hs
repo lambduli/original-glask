@@ -86,7 +86,7 @@ infer'expl (Explicit sigma bg@Bind'Group{ name = name, alternatives = matches })
   let sc' = close'over' (qs' :=> t')
       ps' = filter (not . entail c'env qs') (apply subst preds)
   
-  (deferred'preds, retained'preds) <- split'' c'env fs skolems gs ps'
+  (deferred'preds, retained'preds) <- split' c'env fs skolems gs ps' -- split'' c'env fs skolems gs ps'
 
   if not (null retained'preds)
   then do
