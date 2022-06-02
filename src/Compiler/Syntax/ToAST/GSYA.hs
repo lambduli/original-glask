@@ -37,70 +37,6 @@ data State a  = State{ output :: Seq (Token a), op'stack :: [Token a], app'qu ::
 -- TODO: I need to pass the information about precedences, associativities and fixities
 class GSYA a where
   process :: [Token a] -> Translate [Token a]
-  process tokens = run tokens init
-    where
-      init :: State a
-      init = State{ output = empty, op'stack = [] }
-
-      run :: [Token a] -> State a -> Translate [Token a]
-      run [] State{ output = out, op'stack = op's }
-        = return $ reverse $ toList out ++ op's
-      
-      run (t1@(Term t) : rest) state@State{ output = out }
-        = run rest state{ output = out |> t1}
-      
-      run (op@Operator{ fixity = Prefix } : rest) state@State{ op'stack = op'stack }
-        = run rest state{ op'stack = op : op'stack }
-      
-      run (o1@Operator{ fixity = Infix, precedence = prec'o1, associativity = assoc'o1 } : rest) state
-        = go state >>= run rest
-          where
-            go :: State a -> Translate (State a)
-            go state@State{ op'stack = [] }
-              = return state{ op'stack = [o1] }
-            
-            go state@State{ op'stack = o2@Operator{ fixity = Postfix } : op'stack, output = out }
-              = go state{ output = out |> o2, op'stack = op'stack }
-            
-            go state@State{ op'stack = o2@Operator{ precedence = prec'o2 } : op'stack }
-              | prec'o2 < prec'o1 = return state{ op'stack = o1 : o2 : op'stack }
-            
-            go state@State{ op'stack = o2@Operator{ precedence = prec'o2 } : op'stack, output = out }
-              | prec'o2 > prec'o1 = go state{ output = out |> o2, op'stack = op'stack }
-            
-            go state@State{ op'stack = o2@Operator{ precedence = prec'o2, associativity = assoc'o2 } : op'stack, output = out }
-              | prec'o2 == prec'o1 = case (assoc'o1, assoc'o2) of
-                                      (None, None) -> throwError $ GSYA $ Mixing (to'op o1) (to'op o2)
-                                      (Left, Left) -> go state{ op'stack = op'stack, output = out |> o2 }
-                                      (Right, Right) -> return state{ op'stack = o1 : o2 : op'stack }
-                                      (_, _) -> throwError $ GSYA $ Mixing (to'op o1) (to'op o2)
-
-            go _ = error "Internal Error - GSYA - O1 is INFIX and there's something strange going on."
-
-      run (o1@Operator{ fixity = Postfix, precedence = prec'o1, associativity = assoc'o1 } : rest ) state
-        = go state >>= run rest
-          where
-            go :: State a -> Translate (State a)
-            go state@State{ op'stack = [] }
-              = return state{ op'stack = [o1] }
-            
-            go state@State{ op'stack = o2@Operator{ fixity = Postfix } : op'stack, output = out }
-              = go state{ output = out |> o2, op'stack = op'stack }
-            
-            go state@State{ op'stack = o2@Operator{ precedence = prec'o2 } : op'stack }
-              | prec'o2 < prec'o1 = return state{ op'stack = o1 : o2 : op'stack }
-            
-            go state@State{ op'stack = o2@Operator{ precedence = prec'o2 } : op'stack, output = out }
-              | prec'o2 > prec'o1 = go state{ output = out |> o2, op'stack = op'stack }
-            
-            go state@State{ op'stack = o2@Operator{ precedence = prec'o2, associativity = assoc'o2 } : op'stack, output = out }
-              | prec'o2 == prec'o1 = case (assoc'o1, assoc'o2) of
-                                      (None, None) -> throwError $ GSYA $ Mixing (to'op o1) (to'op o2)
-                                      (Left, Left) -> go state{ op'stack = op'stack, output = out |> o2 }
-                                      (Right, Right) -> return state{ op'stack = o1 : o2 : op'stack }
-                                      (_, _) -> throwError $ GSYA $ Mixing (to'op o1) (to'op o2)
-
-            go _ = error "Internal Error - GSYA - O1 is Postfix and there's something strange going on."
 
   to'token :: a -> Translate (Token a)
 
@@ -163,6 +99,75 @@ instance GSYA Term'Expr where
 
   disambiguate'minus (t1 : rest)
     = t1 : disambiguate'minus rest
+
+
+  process tokens = run tokens init
+    where
+      init :: State a
+      init = State{ output = empty, op'stack = [] }
+
+      -- run :: [Token a] -> State a -> Translate [Token a]
+      run :: [Token Term'Expr] -> State Term'Expr -> Translate [Token Term'Expr]
+      run [] State{ output = out, op'stack = op's }
+        = return $ reverse $ toList out ++ op's
+      
+      run (t1@(Term t) : rest) state@State{ output = out }
+        = run rest state{ output = out |> t1}
+      
+      run (op@Operator{ fixity = Prefix } : rest) state@State{ op'stack = op'stack }
+        = run rest state{ op'stack = op : op'stack }
+      
+      run (o1@Operator{ fixity = Infix, precedence = prec'o1, associativity = assoc'o1 } : rest) state
+        = go state >>= run rest
+          where
+            -- go :: State a -> Translate (State a)
+            go :: State Term'Expr -> Translate (State Term'Expr)
+            go state@State{ op'stack = [] }
+              = return state{ op'stack = [o1] }
+            
+            go state@State{ op'stack = o2@Operator{ fixity = Postfix } : op'stack, output = out }
+              = go state{ output = out |> o2, op'stack = op'stack }
+            
+            go state@State{ op'stack = o2@Operator{ precedence = prec'o2 } : op'stack }
+              | prec'o2 < prec'o1 = return state{ op'stack = o1 : o2 : op'stack }
+            
+            go state@State{ op'stack = o2@Operator{ precedence = prec'o2 } : op'stack, output = out }
+              | prec'o2 > prec'o1 = go state{ output = out |> o2, op'stack = op'stack }
+            
+            go state@State{ op'stack = o2@Operator{ precedence = prec'o2, associativity = assoc'o2 } : op'stack, output = out }
+              | prec'o2 == prec'o1 = case (assoc'o1, assoc'o2) of
+                                      (None, None) -> throwError $ GSYA $ Mixing (to'op o1) (to'op o2)
+                                      (Left, Left) -> go state{ op'stack = op'stack, output = out |> o2 }
+                                      (Right, Right) -> return state{ op'stack = o1 : o2 : op'stack }
+                                      (_, _) -> throwError $ GSYA $ Mixing (to'op o1) (to'op o2)
+
+            go _ = error "Internal Error - GSYA - O1 is INFIX and there's something strange going on."
+
+      run (o1@Operator{ fixity = Postfix, precedence = prec'o1, associativity = assoc'o1 } : rest ) state
+        = go state >>= run rest
+          where
+            -- go :: State a -> Translate (State a)
+            go :: State Term'Expr -> Translate (State Term'Expr)
+            go state@State{ op'stack = [] }
+              = return state{ op'stack = [o1] }
+            
+            go state@State{ op'stack = o2@Operator{ fixity = Postfix } : op'stack, output = out }
+              = go state{ output = out |> o2, op'stack = op'stack }
+            
+            go state@State{ op'stack = o2@Operator{ precedence = prec'o2 } : op'stack }
+              | prec'o2 < prec'o1 = return state{ op'stack = o1 : o2 : op'stack }
+            
+            go state@State{ op'stack = o2@Operator{ precedence = prec'o2 } : op'stack, output = out }
+              | prec'o2 > prec'o1 = go state{ output = out |> o2, op'stack = op'stack }
+            
+            go state@State{ op'stack = o2@Operator{ precedence = prec'o2, associativity = assoc'o2 } : op'stack, output = out }
+              | prec'o2 == prec'o1 = case (assoc'o1, assoc'o2) of
+                                      (None, None) -> throwError $ GSYA $ Mixing (to'op o1) (to'op o2)
+                                      (Left, Left) -> go state{ op'stack = op'stack, output = out |> o2 }
+                                      (Right, Right) -> return state{ op'stack = o1 : o2 : op'stack }
+                                      (_, _) -> throwError $ GSYA $ Mixing (to'op o1) (to'op o2)
+
+            go _ = error "Internal Error - GSYA - O1 is Postfix and there's something strange going on."
 
 
 
