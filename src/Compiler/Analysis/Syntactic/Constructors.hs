@@ -31,7 +31,7 @@ collect :: Term'Decl -> Maybe [(Name, Constr'Info)]
 collect (Data'Decl _ _ t'constr'decls)
   = Just $ map collect'' t'constr'decls
     where collect'' :: Term'Constr'Decl -> (Name, Constr'Info)
-          collect'' (Con'Decl name types) = (name, Constr name)
+          collect'' (Con'Decl name types) = (name, Constr name (length types))
           collect'' (Con'Record'Decl name field'assigns) = (name, Record { name = name, fields = map fst field'assigns })
 collect _
   = Nothing

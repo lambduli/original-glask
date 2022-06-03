@@ -1,5 +1,9 @@
 module Main where
-{ class Test a where
+{ class Num a
+; instance Num Int
+; instance Num Double
+  
+; class Test a where
   { test :: a -> a -> a }
 
 -- this used to break down for the let zzz
@@ -34,6 +38,11 @@ module Main where
 -- the important part is - the new split'
 -- should work even with scoped type variables
 
+
+-- used to not work (because I have not implemented it) but now it works (because I just did)
+-- ; data Rec a = Rec { x :: Int, y :: a }
+-- ; rec1 = Rec{ x = 23, y = 'a' }
+-- ; justX Rec{ x = x } = x
 
 
 }
