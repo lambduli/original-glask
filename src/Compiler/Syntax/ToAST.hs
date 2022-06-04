@@ -702,7 +702,7 @@ instance To'AST Term'Pat Pattern where
     pats <- to'ast t'pats
     return $ P'Con (tuple'name'for $ length t'pats) pats
     --             ^^^ or something like that
-      where tuple'name'for num = "(" ++ List.replicate num ',' ++ ")"
+      where tuple'name'for num = "(" ++ List.replicate (num - 1) ',' ++ ")"
 
   to'ast (Term'P'List t'pats) = do
     -- TODO: use P'Con Pattern constructor, create sequence like a : b : ... : z : []

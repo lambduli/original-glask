@@ -1,10 +1,32 @@
 module Main where
-{ class Num a
-; instance Num Int
-; instance Num Double
+{ class Num a where
+  { (-) :: a -> a -> a }
+
+; instance Num Int where
+  { (-) x y = int#- (x, y) }
+
+-- ; instance Num Double
+
+; data Pair a b = P a b
+
+; infixr 2 ||
+; infix 4 <=
+; infixl 6 -
+
+; data Bool = True | False
+; (||) :: Bool -> Bool -> Bool
+; (||) True _     = True
+; (||) _    True  = True
+; (||) _    _     = False
+
+; class Ord a where
+  { (<=) :: a -> a -> Bool }
+
+; instance Ord Int where
+  { (<=) x y = int#< (x, y) || int#== (x, y) }
   
-; class Test a where
-  { test :: a -> a -> a }
+-- ; class Test a where
+--   { test :: a -> a -> a }
 
 -- this used to break down for the let zzz
 -- because when predicates contain skolems, it needs to correctly split them too
@@ -18,11 +40,11 @@ module Main where
 -- this is the same problem
 --
 --
-; foo :: Test (m a) => m a -> m a -> ()
-; foo a a' =
-    let { zzz :: x -> x
-        ; zzz o = let { q = test a a' } in o }
-  in ()
+-- ; foo :: Test (m a) => m a -> m a -> ()
+-- ; foo a a' =
+--     let { zzz :: x -> x
+--         ; zzz o = let { q = test a a' } in o }
+--   in ()
 
 
 -- this whole file illustrates the limiations of my current "placeholder elimination" approach
@@ -43,6 +65,18 @@ module Main where
 -- ; data Rec a = Rec { x :: Int, y :: a }
 -- ; rec1 = Rec{ x = 23, y = 'a' }
 -- ; justX Rec{ x = x } = x
+
+
+
+-- ze souboru "tohle prozkoumej" na g drive
+-- ; foo :: (a, Int) -> Int
+--  ; foo (x, n)
+--      = if n <= 0
+--  	      then foo ('c', n - 1)
+--  	      else foo (True, n - 2)
+ 
+-- bar :: Bool -> p -- works with the anotation too
+; bar x = if x then bar x else bar x
 
 
 }
