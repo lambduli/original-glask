@@ -323,7 +323,8 @@ APat            ::  { Term'Pat }
                                                                       ; Just pat -> Term'P'As $1 pat } }
                 |   '(' ')'                                         { Term'P'Id $ Term'Id'Const "()" }
                 |   '[' ']'                                         { Term'P'Id $ Term'Id'Const "[]" }
-                |   '(' ',' NoneOrMany(',') ')'                     { Term'P'Id $ Term'Id'Const undefined }
+                |   '(' ',' ')'                                     { Term'P'Id $ Term'Id'Const "(,)" }
+                |   '(' ',' NoneOrMany(',') ')'                     { Term'P'Id $ Term'Id'Const $ error "cannot parse general tuple constructor in patterns" }
                 {- TODO: Figure out how to insert tuple constructor for arbitraryly sized tuples -}
                 -- IDEA: On Term level - let's have Tuple'Constr or something. And later on
                 -- during the semantic analysis and transformation step let's collect all tuple sizes
@@ -384,6 +385,8 @@ AExp            ::  { Term'Expr }
                 |   '(' Expression ')'                              { $2 }
                 |   '(' Expression ',' OneOrManySeparated(Expression) ')'
                                                                     { Term'E'Tuple ($2 : $4) }
+                |   '(' ',' ')'                                     { Term'E'Id $ Term'Id'Const "(,)" }
+                |   '(' ',' NoneOrMany(',') ')'                     { Term'E'Id $ Term'Id'Const $ error "(FIX, TUPLE expr)" }
                 |   '[' NoneOrManySeparated(Expression) ']'         { Term'E'List $2 }
                 {-  TODO: use foldl to construct Term'App with singleton lists -}
                 {-  It will be easier to find possible syntax errors like -}
@@ -525,7 +528,8 @@ GTyCon            ::  { Term'Type }
                   |   '(' ')'                                       { Term'T'Unit }
                   |   '['  ']'                                      { Term'T'Id $ Term'Id'Const "[]" }
                   |   '(' '->' ')'                                  { Term'T'Id $ Term'Id'Const "(->)" }
-                  |   '(' ',' NoneOrMany(',') ')'                   { Term'T'Id $ Term'Id'Const "(FIX, TUPLE)" }
+                  |   '(' ',' ')'                                   { Term'T'Id $ Term'Id'Const "(,)" }
+                  |   '(' ',' NoneOrMany(',') ')'                   { Term'T'Id $ Term'Id'Const $ error "(FIX, TUPLE)" }
 {-                TODO: figure out the Tuple types -}
 
 

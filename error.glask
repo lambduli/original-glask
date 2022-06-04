@@ -69,14 +69,15 @@ module Main where
 
 
 -- ze souboru "tohle prozkoumej" na g drive
+-- does not work without the type annotation
 -- ; foo :: (a, Int) -> Int
---  ; foo (x, n)
---      = if n <= 0
---  	      then foo ('c', n - 1)
---  	      else foo (True, n - 2)
- 
--- bar :: Bool -> p -- works with the anotation too
-; bar x = if x then bar x else bar x
+-- ; foo (x, n)
+--   = if n <= 0
+--     then foo ('c', n - 1)
+--     else foo (True, n - 2)
+
+-- ; bar :: Bool -> p -- works with the anotation too
+-- ; bar x = if x then bar x else bar x
 
 
 }
