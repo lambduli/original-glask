@@ -415,8 +415,10 @@ process'declarations declarations trans'env counter = do
 
       field'getters = map make'fields data'decls
 
+  let pair'constr = Implicit $ Bind'Group{ name = "(,)", alternatives = [Match{ patterns = [P'Var "x", P'Var "y"], rhs = Tuple [Var "x", Var "y"] }]}
 
-  let new'program = pr{ bind'section = (explicits ++ method'declarations ++ getters', implicits's ++ [extra'implicits] ++ field'getters), data'declarations = data'decls ++ data' }
+
+  let new'program = pr{ bind'section = (explicits ++ method'declarations ++ getters', implicits's ++ [extra'implicits] ++ field'getters ++ [[pair'constr]]), data'declarations = data'decls ++ data' }
   -- extra'implicits are the dictionaries themselves - variable binding with the right hand side being a construction of the dictionary (later it might be a function too)
   -- method'declarations are global bindings of methods with unique names
 
