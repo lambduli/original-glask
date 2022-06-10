@@ -179,10 +179,10 @@ in'hnf :: Predicate -> Bool
 in'hnf (Is'In class'name type') = hnf type'
   where
     hnf (T'Var' var) = True
-    hnf (T'Meta var) = True -- NOTE: I am not sure why this needs to be here, perhaps I need to check where the `in'hnf` is exactly used
+    hnf (T'Meta var) = True
     hnf (T'Con con) = False
     hnf (T'App type'l _) = hnf type'l
-    hnf (T'Tuple types) = True
+    hnf (T'Tuple types) = False -- NOTE: I think this should be False actually
     hnf (T'Forall tvs qual'type) = error "forall inside the predicate -- in'hnf" -- TODO: implement later
     --  TODO: I am not ever sure it needs to be implemented -- so far it seems like it can't really happen -- specificaly - having a forall inside the Predicate
 

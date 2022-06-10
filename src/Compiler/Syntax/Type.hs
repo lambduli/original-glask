@@ -103,7 +103,7 @@ instance Show Type where
     = "?τ=" ++ name
 
   show (T'Con (T'C name kind'))
-    = name
+    = name -- ++ "::" ++ show kind'
 
   show (T'Tuple types)
     = "(" ++ intercalate ", " (map show types) ++ ")"

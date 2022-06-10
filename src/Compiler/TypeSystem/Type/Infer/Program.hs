@@ -9,6 +9,7 @@ import Control.Monad.Except ( runExceptT, MonadError(throwError) )
 import Control.Monad.Reader ( MonadReader(ask) )
 import Data.Functor.Identity ( Identity(runIdentity) )
 import Control.Monad.State ( MonadState(get) )
+import Data.Bifunctor (Bifunctor(bimap, first, second))
 
 
 import Compiler.Counter ( Counter(Counter), State (get'counter) )
@@ -65,12 +66,17 @@ infer'whole'program program infer'env counter = do
       cl'env              = I'Env.class'env infer'env
       substituted'cl'env  = apply kind'subst cl'env
 
+      substituted'instances = map (bimap (second (apply kind'subst)) (\ (a, b, c) -> (a, apply kind'subst b, apply kind'subst c))) (I'Env.instances infer'env)
+      -- this line is ugly but it just does a simple things - instances is a pair with a two-ple and tri-ple
+      -- both elements need the substitution to happen on them, refactoring this code should be trivial
+
   let Program{ bind'section = (explicits, implicits'list), methods = methods } = program
       infer'env' = infer'env{ I'Env.kind'env = new'k'env
                             , I'Env.type'env = substituted't'env
                             , I'Env.constraint'env = new'class'env
                             , I'Env.kind'substitution = kind'subst
-                            , I'Env.class'env = substituted'cl'env }
+                            , I'Env.class'env = substituted'cl'env
+                            , I'Env.instances = substituted'instances }
                             -- NOTE: I need to put the kind substitution into the typing environment
                             --        when I later encounter any typing annotation (in the declaration or inline)
                             --        I first need to apply this substitution to it to fully specify the Kinds in it.

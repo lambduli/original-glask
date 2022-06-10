@@ -7,6 +7,12 @@ module Main where
 
 -- ; instance Num Double
 
+-- ; instance (Num a, Num b) => Num (a, b) where
+--   { (-) (a, b) (c, d) = (a - c, b - d) }
+
+; instance (Num a, Num b) => Num (Pair a b) where
+  { (-) (P a b) (P c d) = P (a - c) (b - d) }
+
 ; data Pair a b = P a b
 
 ; infixr 2 ||
@@ -79,5 +85,11 @@ module Main where
 -- ; bar :: Bool -> p -- works with the anotation too
 -- ; bar x = if x then bar x else bar x
 
+
+-- this does not work because elimination on tuples is not implemented yet
+-- ; func x = (x, x) - (x, x)
+
+-- just checking that it would work with user-tuples
+; func' x = P x x - P x x
 
 }

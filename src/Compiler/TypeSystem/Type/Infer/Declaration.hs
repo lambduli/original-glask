@@ -434,7 +434,8 @@ elim'expr assumps subst p@(Placeholder (Placeholder.Dictionary name ty)) = do
         Just p'name ->
           return $ Var p'name
         Nothing -> do
-          throwError $ Unexpected ("Can't find dictionary for " ++ show p)
+          env <- asks instance'env
+          throwError $ Unexpected ("Can't find dictionary for " ++ show p ++ "  |  env: " ++ show env)
     T'Tuple tys -> do
       -- I think - same as above?
       undefined

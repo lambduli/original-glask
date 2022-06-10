@@ -109,6 +109,11 @@ instance Unify Type M'V Type where
     | t'con'l == t'con'r = return empty'subst
     | otherwise = throwError $ Type'Unif'Mismatch l r
 
+  match (T'Tuple [a, b]) (T'Tuple [a', b']) = do
+    sub'a <- a `match` a'
+    sub'b <- b `match` b'
+    sub'a `merge` sub'b
+
   -- TODO: there's T'Tuple missing - I guess I expected I will make it into a user-defined Type so probably not need to handle it here then...
 
   -- TODO: can forall unify with anything? we will know after I read the rest of the PIART

@@ -160,7 +160,7 @@ lookup'instance :: (Name, Type) -> Type'Check (Name, [Predicate], Predicate)
 lookup'instance placeholder = do
   env <- asks instances
   case lookup placeholder env of
-    Nothing -> throwError $ Unexpected ("Can't find an instance for " ++ show placeholder)
+    Nothing -> throwError $ Unexpected ("Can't find an instance for " ++ show placeholder ++ " | env: " ++ show env)
     Just instance' -> return instance'
 
 {-  TODO: Here is a BIG TODO - I need to go over the paper THIH and see if I can replace all my
