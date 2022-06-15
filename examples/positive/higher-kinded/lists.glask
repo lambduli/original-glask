@@ -1,0 +1,15 @@
+module Main where
+{ class Num a
+; instance Num Int
+
+; class Fractional a
+; instance Fractional Double
+
+
+data Maybe a = Nothing | Just a
+
+; tail :: [a] -> Maybe [a]
+; tail [] = Nothing
+; tail (a : as) = Just as
+
+}

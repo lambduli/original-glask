@@ -1,0 +1,12 @@
+module Main where
+{ class Num a
+; instance Num Int
+
+; class Fractional a
+; instance Fractional Double
+
+
+; works :: (forall . Maybe) Int
+; works = Just 23
+
+}

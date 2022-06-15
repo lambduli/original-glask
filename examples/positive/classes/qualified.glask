@@ -1,0 +1,12 @@
+module Main where
+{ class Num a
+; instance Num Int
+
+; class Fractional a
+; instance Fractional Double
+
+-- the instance context MUST be here
+; instance Num a => Constant (Wrap a) where
+  { vaval = Wrap 23 }
+
+}

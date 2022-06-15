@@ -1,0 +1,23 @@
+module Main where
+{ class Num a
+; instance Num Int
+
+; class Fractional a
+; instance Fractional Double
+
+
+-- TESTING KIND INFERENCE WITHIN EXPLICIT ANNOTATIONS
+; class Higher m where
+  { pure :: a -> m a }
+  
+; data AlsoHigher m = Also (m Int)
+
+
+; illegal :: Higher m => m -> a -> a                                -- this is rejected - because `m` can't be both * and * -> *
+; illegal = illegal }
+
+
+; also'illegal :: AlsoHigher x -> x -> Int                          -- this is rejected - because `x` can't be both * and * -> *
+; also'illegal = also'illegal
+
+}

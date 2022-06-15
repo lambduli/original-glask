@@ -1,0 +1,17 @@
+module Main where
+{ class Num a
+; instance Num Int
+
+; class Fractional a
+; instance Fractional Double
+
+
+
+-- Now I want to try to create a malformed class section
+; class A m where
+  { x :: m a } -- this should assert that A's type parameter must be * -> *
+
+; class B a where
+  { y :: A a => a } -- this should break it -- A was used with `b` which obviously has kind *
+
+}

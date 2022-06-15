@@ -3,7 +3,7 @@ module Main where
 ; infixl 6 *
 ; infixr 0 $
 ; postfix 9 !
-; prefix 3 |]
+; prefix 3 ||>
 ; prefix 9 |>
 ; postfix 0 `terminate`
 ; prefixr 0 `print`
@@ -57,9 +57,9 @@ module Main where
 ; fn' a = a
 ; even'more = `print` fn' a'
 ; post' = a' + b' `terminate`
-; (|]) a = a
+; (||>) a = a
 ; (|>) a = a
-; eee = |> |] a' + b'
+; eee = |> ||> a' + b'
 
 
 ; pat'test (a :: Int) = a

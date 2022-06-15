@@ -1,0 +1,14 @@
+module Main where
+{ class Num a
+; instance Num Int
+
+; class Fractional a
+; instance Fractional Double
+
+
+-- ; data Record m a = Rec { a :: Int, b :: Maybe a } -- tohle z nejakyho duvodu priradi `m`ku kind (? -> ?)
+-- ; data Record m a = Rec { a :: Int, b :: Maybe a, c :: m a } -- tady je v poradky ze `m` :: (* -> *)
+
+; data Record m a = Rec { a :: Int, b :: Maybe a, c :: m a } -- tady je v poradky ze `m` :: (* -> *)
+
+}
