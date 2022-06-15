@@ -217,7 +217,6 @@ instance To'AST Term'Expr Expression where
     expr <- to'ast t'expr
     return $ Let decls expr
 
-  -- TODO: refactor - higher-rank
   to'ast (Term'E'Ann t'expr (t'preds, t'type)) = do
     let 
         free'in'preds :: Set.Set Term'Id
@@ -734,7 +733,7 @@ instance To'AST Term'Pat Pattern where
                 let ftvs = free'vars type' :: Set.Set T'V'
                 if not $ null ftvs
                   then throwError $ Illegal "type annotations for patterns must be closed 1"
-                  else return type'
+                  else return $ T'Forall [] ([] :=> type')
 
     return $ P'Ann pattern' sigma
 
