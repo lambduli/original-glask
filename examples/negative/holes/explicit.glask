@@ -1,0 +1,20 @@
+module Main where
+{
+data Bool = True | False
+
+; one :: x -> x
+; one x = if True then x else _
+
+
+; fun x = x
+
+; two :: x -> x
+; two x = if True then x else fun _
+
+
+; three :: x -> x
+; three x = if True then x else _ x
+
+
+
+}

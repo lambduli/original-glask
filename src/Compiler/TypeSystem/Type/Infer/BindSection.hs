@@ -36,6 +36,10 @@ infer'bind'section (es, iss) = do
   results <- merge'into't'env (as' ++ as'') (mapM infer'expl es)
   let preds'  = concat [ preds | (_, preds) <- results ]
       expls'  = [ ex | (ex, _) <- results ]
+  -- NOTE: This is an ugly hot fix
+  -- to make typed holes within annotated bindings work
+  -- it connects the skolem in the typed hole with the concrete assumption that introduced it
+  let as' = map (\ (Explicit sigma Bind'Group{ name = n }) -> (n, sigma)) expls'
   return ((expls', iss'), ps ++ preds', as' ++ as'')
 
 

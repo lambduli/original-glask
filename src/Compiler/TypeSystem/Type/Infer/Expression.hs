@@ -7,6 +7,8 @@ module Compiler.TypeSystem.Type.Infer.Expression where
 import Control.Monad ( foldM )
 import Control.Monad.Except ( MonadError(throwError) )
 import Data.Foldable ( find )
+import Control.Monad.State ( MonadState(put, get) )
+
 
 
 import Compiler.Counter ( fresh )
@@ -29,11 +31,12 @@ import Compiler.TypeSystem.Type.Infer.Pattern ( infer'pat, infer'pattern, check'
 import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Match ( infer'match, tc'matches )
 import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Declaration ( infer'decls )
 
-import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env, inst'sigma, unify'fun, check'sigma, infer'rho, check'rho, subs'check, skolemise, lookup'in'overloaded, unify'pair )
+import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env, inst'sigma, unify'fun, check'sigma, infer'rho, check'rho, subs'check, skolemise, lookup'in'overloaded, unify'pair, fresh'meta )
 import Compiler.TypeSystem.Expected ( Expected (Infer, Check) )
 import Compiler.TypeSystem.Actual ( Actual (Checked, Inferred) )
 import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'specify )
-import Compiler.TypeSystem.Error ( Error(Unexpected, Typed'Hole) )
+import Compiler.TypeSystem.Error ( Error(Unexpected, Typed'Holes) )
+import Compiler.TypeSystem.InferenceState (Infer'State(holes))
 
 
 infer'expr :: Expression -> Expected Rho'Type -> Type'Check (Expression, [Predicate], Actual Rho'Type)
@@ -406,8 +409,18 @@ infer'expr (Case expr matches) expected = do
   -- now I just return everything I have collected
   return (Case motive matches, preds'motive ++ preds'matches, actual'result)
 
-infer'expr (Hole name) expected = do
-  throwError $ Typed'Hole name expected
+infer'expr (Hole name) Infer = do
+  meta'var <- fresh'meta
+  state <- get
+  let holes' = (name, meta'var) : holes state
+  put $ state{ holes = holes' }
+  return (Hole name, [], Inferred meta'var)
+
+infer'expr (Hole name) (Check t) = do
+  state <- get
+  let holes' = (name, t) : holes state
+  put $ state{ holes = holes' }
+  return (Hole name, [], Checked)
 
 
 infer'expr (Placeholder _) expected = do

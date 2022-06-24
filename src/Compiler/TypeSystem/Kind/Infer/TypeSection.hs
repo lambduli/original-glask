@@ -110,7 +110,7 @@ kind'specify'annotated explicits = do
   infer'env <- ask
   infer'state <- get
   let counter         = get'counter infer'state
-      k'infer'state'  = Infer'State{ counter = counter, constraints = [], instances = [], overloaded = [] }
+      k'infer'state'  = Infer'State{ counter = counter, constraints = [], instances = [], overloaded = [], holes = [] }
 
   case run'infer infer'env (infer'annotated explicits) k'infer'state' of
     Left err ->

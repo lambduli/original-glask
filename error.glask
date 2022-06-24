@@ -92,4 +92,15 @@ module Main where
 -- just checking that it would work with user-tuples
 ; func' x = P x x - P x x
 
+
+
+
+-- ; holy :: Int -> a -> a
+-- ; holy i a = if True then a else _
+
+-- ; holy1 i a = if True then a else _
+
+-- ; holy2 :: Int -> a -> a
+; holy2 i a = i - _
+
 }

@@ -38,7 +38,7 @@ read'type input t'env t'state = do
 
 infer'kind :: Type -> Infer'Env -> Counter -> Either Error (Kind, Counter)
 infer'kind type' i'env counter = do
-  let k'i'state = Infer'State{ counter = counter, constraints = [], I'State.overloaded = [], I'State.instances = [] }
+  let k'i'state = Infer'State{ counter = counter, constraints = [], I'State.overloaded = [], I'State.instances = [], I'State.holes = [] }
 
   (kind, k'i'state') <- run'infer i'env (infer'type' type') k'i'state
 

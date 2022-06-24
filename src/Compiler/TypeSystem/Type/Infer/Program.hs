@@ -5,7 +5,7 @@ module Compiler.TypeSystem.Type.Infer.Program where
 import Data.Maybe ( mapMaybe )
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-import Control.Monad.Except ( runExceptT, MonadError(throwError) )
+import Control.Monad.Except ( runExceptT, MonadError(throwError), unless )
 import Control.Monad.Reader ( MonadReader(ask) )
 import Data.Functor.Identity ( Identity(runIdentity) )
 import Control.Monad.State ( MonadState(get) )
@@ -23,12 +23,12 @@ import Compiler.Syntax.BindGroup ( Bind'Group(..) )
 import qualified Compiler.Syntax.Overloaded as Overloaded
 
 
-import Compiler.TypeSystem.Error ( Error )
+import Compiler.TypeSystem.Error ( Error (Typed'Holes) )
 import Compiler.TypeSystem.Program ( Program(..) )
 import Compiler.TypeSystem.Binding ( Explicit(Explicit), Method (Method) )
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env, Kind'Env, Type'Env, Constraint'Env )
 import qualified Compiler.TypeSystem.InferenceEnv as I'Env
-import Compiler.TypeSystem.InferenceState ( Infer'State )
+import Compiler.TypeSystem.InferenceState ( Infer'State (holes) )
 import qualified Compiler.TypeSystem.InferenceState as I'State
 
 import Compiler.TypeSystem.Infer ( run'infer, Infer, Type'Check, get'constraints, add'overloads )
@@ -51,7 +51,7 @@ import Compiler.TypeSystem.Type.Infer.Declaration ( eliminate, eliminate'methods
 
 infer'whole'program :: Program -> Infer'Env -> Counter -> Either Error (Program, Type'Env, Kind'Env, Constraint'Env, Counter, Class'Env, Infer'State Type)
 infer'whole'program program infer'env counter = do
-  let k'infer'state = I'State.Infer'State{ I'State.counter = counter, I'State.constraints = [], I'State.overloaded = [], I'State.instances = [] }
+  let k'infer'state = I'State.Infer'State{ I'State.counter = counter, I'State.constraints = [], I'State.overloaded = [], I'State.instances = [], I'State.holes = [] }
 
   ((k'env, class'env', kind'subst), k'infer'state') <- run'infer infer'env (infer'kinds program ) k'infer'state
 
@@ -62,7 +62,7 @@ infer'whole'program program infer'env counter = do
   let new'k'env         = k'env `Map.union` base'k'env
       new'class'env     = class'env' `Map.union` base'cl'env
       substituted't'env = apply kind'subst (I'Env.type'env infer'env)
-      
+
       cl'env              = I'Env.class'env infer'env
       substituted'cl'env  = apply kind'subst cl'env
 
@@ -98,7 +98,7 @@ infer'whole'program program infer'env counter = do
 
   let counter' = get'counter k'infer'state'''
   -- NOTE: the reason why I am taking the stuff from the inference environment is because I need to put it in the state, but the state only comes to existence here, and so I need to do that
-      t'infer'state = I'State.Infer'State{ I'State.counter = counter', I'State.constraints = [], I'State.instances = I'Env.instances infer'env', I'State.overloaded = I'Env.overloaded infer'env' }
+      t'infer'state = I'State.Infer'State{ I'State.counter = counter', I'State.constraints = [], I'State.instances = I'Env.instances infer'env', I'State.overloaded = I'Env.overloaded infer'env', I'State.holes = [] }
 
   ((t'env, program''), t'infer'state') <- run'infer infer'env' (infer'types program') t'infer'state
 
@@ -150,7 +150,7 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
   --            So do I need the retained predicates to figure out ambiguities?
   --            If there are no ambiguities, do I get an empty list in `preds`?
   -- TODO:  Investigate. I want to know if it's going to be empty, if I only write declarations which are not ambiguous.
-  
+
   cs't <- get'constraints
   case run'solve cs't :: Either Error (Subst M'V Type) of
     Left err -> throwError err
@@ -178,8 +178,10 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
                       properly'close (name, sigma@(T'Forall tvs qual'type)) =
                         let mapping = map (\ (T'V' name kind) -> (Tau name kind, T'Var' (T'V' name kind)) ) tvs
                             sub = Sub $ Map.fromList mapping
+                            -- sub = Sub Map.empty :: Subst M'V Type
                             sigma' = apply sub sigma
-                        in ((name, sigma'), sub)
+                            
+                        in if (sigma /= sigma') then (error $ show (sigma') ++ "  |  " ++ show sigma ++ " =/= " ++ show sigma') else ((name, sigma'), sub)
                       properly'close _ = error "unexpected: assumption from local declaration is not forall"
                       {-  IMPORTANT NOTE: The idea behind properly close is interesting and important one.
                                           I have a sigma type - meaning it has already been decided which variables it should quantify over.
@@ -190,9 +192,25 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
 
                       assum'applied = apply sub assumptions
                       (assum'closed, substs) = unzip $ map properly'close assum'applied
-                      composed'substs = foldl compose sub substs -- I think this should work, compose does not require all of them to agree
+                      composed'substs = foldl (flip compose) sub  substs -- I think this should work, compose does not require all of them to agree
+                      closing'sub = foldl compose (Sub Map.empty) substs
                       -- more importantly, it has to compose with the original substitution, I was missing that, and it didn't work
-                      
+                      -- NOTE: Turns out it does not really work that well. The issue is that compose uses left biased union
+                      -- this means that when composing two substitutions that do not agree, we get inconsistency
+                      -- IMPORTANT: I think it would be better to first apply the normal substitution and
+                      -- then the composution of the closing ones (that composition should be safe)
+
+                  -- TODO: handle typed holes
+                  -- first apply the substitution on all typed holes
+                  -- but also the properly'closing substitution - that one
+                  state <- get
+                  let holes' = apply closing'sub $ apply sub (holes state)
+                  -- error $ show holes'
+                  unless (null holes') (throwError $ Typed'Holes holes' assum'closed)
+                  -- TODO: I should actually only fail when the type within the typed hole is fully specified - no meta variables
+                  -- then I can report the most precise info
+
+                    -- NOTE: If it does not fail, I don't need to put the holes' back in - because there are none
                   -- TODO: I need to call eliminate in the bind group too, give it the correct substitution and assumptions
                   bg'' <- eliminate composed'substs assum'closed bg'
 
