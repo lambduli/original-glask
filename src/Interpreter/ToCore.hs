@@ -17,6 +17,7 @@ import Interpreter.Core ( Core(..), Binding(..), Match(..) )
 import Interpreter.Error ( Evaluation'Error(Non'Exhaustive) )
 import Compiler.TypeSystem.BindSection (Bind'Section)
 import Compiler.TypeSystem.Binding (Explicit(Explicit), Implicit (Implicit))
+import Data.List (mapAccumR)
 
 
 to'core :: AST.Expression -> Core
@@ -161,6 +162,7 @@ bind'group'to'core AST.Bind'Group{ AST.name = name, AST.alternatives = [AST.Matc
   -- NOTE: If there are no patterns, and only single equation, it is a variable declaration
   --      I then only produce a Binding, for the name and the right hand side
   = Binding{ name = name, lambda = to'core rhs }
+
 bind'group'to'core AST.Bind'Group{ AST.name = name, AST.alternatives = matches }
   = Binding{ name = name, lambda = lambda }
     -- TODO: strategy for translating a full bindgroup into a lambda
@@ -172,40 +174,43 @@ bind'group'to'core AST.Bind'Group{ AST.name = name, AST.alternatives = matches }
     -- foo = \ x -> \ y -> case x of
     --                       <P A 1> -> case y of
     --                                    <P A 2> -> <E A>
-    --                                    _ -> error# Non'Exhaustive
+    --                                    _ -> case x of
+    --                                            SPLITPOINT $1
+    -- SPLITPOINT #1:
     --                       <P B 1> -> case y of 
     --                                    <P B 2> -> <E B>
     --                                    _ -> error# Non'Exhaustive
     --                       _ -> error# Non'Exhaustive
     --
+    -- this is kinda involved and ineffient
+    -- but I don't mind
+    -- there is a lot of repetition
+
+
     -- So I think I am going to approach it like this:
     -- I can basically use the same infrastructure as for the lambda
     -- only difference is, that the top level expression, needs to 
-    
-    where lambda  = foldr Abs case' vars
+
+    where lambda  = foldr Abs case' (first'var : vars)
           -- first I need to assign each pattern a unique variable name
           -- 
           (AST.Match{ AST.patterns = patterns } : _) = matches
-          vars    = take (length patterns) letters
+          first'var : vars = take (length patterns) letters
           -- now I can use that each time a handle'match is called
+          
+          -- error boundary for the absolute bottom of the pattern matching
+          failing'match = Match{ patterns = [P'Wild], rhs = Error Non'Exhaustive }
+          
+          (_, matches') = mapAccumR handle'match [failing'match] matches
 
-          matches' = map handle'match matches
-          -- now a Map those matches' to just the first branch in each case
-          -- since I don't allow top level patterns, this should be safe
-          -- but I also don't allow local level - only patterns, so this kinda sucks
-          -- 
-          just'first'ones = map (\ (Case _ (m: ms)) -> m) matches'
           -- now I compose all those matches into a large case and also add one error boundary
-          (first'var : _) = vars
-          case' = Case (Var first'var) (just'first'ones ++ [Match{ patterns = [P'Wild], rhs = Error Non'Exhaustive}])
+          case' = Case (Var first'var) (matches' ++ [failing'match]) -- I need to add failing'match because when accumulating-folding
+          -- it is just an accumulator, it is never actually put inside the list of matches -- at its end
 
 
-          handle'match :: AST.Match -> Core -- Case expression
-          handle'match AST.Match{ AST.patterns = patterns, AST.rhs = rhs }
+          handle'match :: [Match] -> AST.Match -> ([Match], Match) -- Case expression
+          handle'match eqs'below AST.Match{ AST.patterns = first'pattern : patterns, AST.rhs = rhs }
             = let vars'patterns = zip vars patterns
-                  -- I think I can now basicaly do the same thing as above
-                  -- a build a case expression
-
                   rhs'  = to'core rhs
 
                   case' = build'case vars'patterns rhs'
@@ -214,10 +219,57 @@ bind'group'to'core AST.Bind'Group{ AST.name = name, AST.alternatives = matches }
                   build'case pairs expr = foldr build' expr pairs
                     where
                       build' (n, p) e = let the'match       = Match{ patterns = [p], rhs = e }
-                                            error'boundary  = Match{ patterns = [P'Wild], rhs = Error Non'Exhaustive }
-                                        in  Case (Var n) [the'match, error'boundary]
+                                            boundary'       = Match{ patterns = [P'Wild], rhs = Case (Var first'var) eqs'below {- [eqs'below, failing'match] -}}
+                                        in  Case (Var n) [the'match, boundary']
 
-              in  case'
+                  complete'match = Match{ patterns = [first'pattern], rhs = case' }
+                  -- new'below = Match{  }
+
+              in (complete'match : eqs'below, complete'match)
+
+          handle'match _ AST.Match{ AST.patterns = [] }
+            = error "This should never happen #231"
+
+
+
+
+
+    -- where lambda  = foldr Abs case' vars
+    --       -- first I need to assign each pattern a unique variable name
+    --       -- 
+    --       (AST.Match{ AST.patterns = patterns } : _) = matches
+    --       vars    = take (length patterns) letters
+    --       -- now I can use that each time a handle'match is called
+
+    --       matches' = map handle'match matches
+    --       -- now a Map those matches' to just the first branch in each case
+    --       -- since I don't allow top level patterns, this should be safe
+    --       -- but I also don't allow local level - only patterns, so this kinda sucks
+    --       -- 
+    --       just'first'ones = map (\ (Case _ (m: ms)) -> m) matches'
+    --       -- now I compose all those matches into a large case and also add one error boundary
+    --       (first'var : _) = vars
+    --       case' = Case (Var first'var) (just'first'ones ++ [Match{ patterns = [P'Wild], rhs = Error Non'Exhaustive}])
+
+
+    --       handle'match :: AST.Match -> Core -- Case expression
+    --       handle'match AST.Match{ AST.patterns = patterns, AST.rhs = rhs }
+    --         = let vars'patterns = zip vars patterns
+    --               -- I think I can now basicaly do the same thing as above
+    --               -- a build a case expression
+
+    --               rhs'  = to'core rhs
+
+    --               case' = build'case vars'patterns rhs'
+
+    --               build'case :: [(Name, Pattern)] -> Core -> Core
+    --               build'case pairs expr = foldr build' expr pairs
+    --                 where
+    --                   build' (n, p) e = let the'match       = Match{ patterns = [p], rhs = e }
+    --                                         error'boundary  = Match{ patterns = [P'Wild], rhs = Error Non'Exhaustive }
+    --                                     in  Case (Var n) [the'match] -- , error'boundary]
+
+    --           in  case'
 
 
 is'prim'op :: Name -> Bool

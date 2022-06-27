@@ -8,4 +8,4 @@ import Interpreter.Address ( Address )
 
 
 newtype Promise = Promise Address
-  deriving (Show)
+  deriving (Show, Eq)

@@ -16,7 +16,7 @@ data Value
   | Operator Name
   | Closure Name Core Environment
   | Data Name [Promise] -- Name of the Constr and list of arguments
-  deriving (Show)
+  deriving (Show, Eq)
 
 -- instance Show Value where
 --   show (Literal literal)
