@@ -142,6 +142,10 @@ spec = do
       r <- eval'within "2 + 3" file
       r `shouldBe` Right (Literal (Lit'Int 5))
 
+    let file = "./examples/positive/evaluate/lazy.glask"
+    it file $ do
+      r <- eval'within "length (take 4 endless'list)" file
+      r `shouldBe` Right (Literal (Lit'Int 4))
 
 
 

@@ -16,6 +16,9 @@ module Main where
 ; instance Fractional Double
 
 
+; data List a = Nil | Cons a (List a)
+
+
 ; endless'list = 23 : endless'list
 
 ; normal'list = [1,2,3,4]
@@ -25,12 +28,16 @@ module Main where
 ; take 0 _ = []
 ; take n (a : as) = a : take (n - 1) as
 
+
+-- NOTE: the following is just for me, ignore
+-- START ingoring
+--
 -- take 1 [1]
-
 -- let { take :: Int -> [a] -> Char ; take _ [] = 'a' ; take 0 _ = 'b' ; take n (a : as) = 'c' } in 'o'
-
-
 -- let { test 'a' 'b' = 'y' ; test 'c' 'd' = 'z' ; test 'r' 't' = 'h' } in test 'r' 't'
+--
+-- STOP ignoring
+
 
 ; data Bool = True | False
 
@@ -39,7 +46,7 @@ module Main where
 
 ; head (x : _) = x
 
-
+; inf = Cons 0 inf
 ; program1 = take 2 endless'list
 
 

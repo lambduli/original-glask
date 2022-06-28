@@ -34,3 +34,7 @@ module Main where
 
 
 }
+
+let { zeros = 0 : (trace# zeros) } in case zeros of { a : as -> True }
+
+let { zeros = 0 : zeros } in case zeros of { a : as -> True }

@@ -2,7 +2,7 @@ module Interpreter.Evaluate where
 
 
 import qualified Data.Map.Strict as Map
-import Control.Monad.State ( State, get, put, runState )
+import Control.Monad.State ( State, get, put )
 import Control.Monad.Extra ( concatMapM )
 
 
@@ -366,8 +366,6 @@ eval (Intro tag cores) env = do
 
   -- now I just need to construct the data
   let promises = map Promise addresses
-
-  values <- mapM force promises
 
   return $! Right $! Data tag promises
 

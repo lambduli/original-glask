@@ -198,6 +198,15 @@ repl (program@Program{ environment = environment, store = store }, i'env@Infer'E
               putStrLn $ "Desugared:\n" ++ show expr'
               repl (program{ store = store }, i'env, trans'env, counter'''', infer'state)
 
+    -- COMMAND :p(rint)
+    ':' : 'f' : promise'number -> do
+      let number = read promise'number :: Int
+      -- putStrLn $ show store
+      putStrLn $ show $ store Map.! number
+
+
+      repl (program, i'env, trans'env, counter, infer'state)
+
 
     _ -> do
       -- here the evaluation will happen
