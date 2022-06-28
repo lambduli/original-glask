@@ -7,9 +7,9 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified Data.List as List
 
-import Data.Sequence ( unzipWith )
-import Data.List (intersperse, replicate, find)
-import Data.Maybe ( mapMaybe )
+import Data.Sequence ( unzipWith, replicate )
+import Data.List (intersperse, find)
+import Data.Maybe ( mapMaybe, fromMaybe )
 import Control.Monad.Trans.Reader ( asks, local )
 import Control.Monad.Except ( when, replicateM, MonadError(throwError) )
 import Control.Monad.State ( when, replicateM )
@@ -217,7 +217,6 @@ instance To'AST Term'Expr Expression where
     expr <- to'ast t'expr
     return $ Let decls expr
 
-  -- TODO: refactor - higher-rank
   to'ast (Term'E'Ann t'expr (t'preds, t'type)) = do
     let 
         free'in'preds :: Set.Set Term'Id
@@ -283,7 +282,7 @@ instance To'AST Term'Expr Expression where
         throwError $ Not'In'Scope'Data name
 
       -- so the constructor name belongs to the positional constructor
-      Just (Constr _) -> do
+      Just (Constr _ _) -> do
         if null field'assigns -- Constr {} <-- this is awkward but generally allowed
         then return $ Const name -- Constr <-- I will alow it
         else throwError $ Wrong'Fields name $ map fst field'assigns -- error <-- trying to invoke a non-record data-constructor as a record one
@@ -327,7 +326,7 @@ instance To'AST Term'Expr Expression where
   -}
     constr'info <- look'for'constr field'assigns t'expr
     case constr'info of
-      Constr _ -> error "Unexpected behaviour: function look'for'constr returned `Constr _` instead of Record{}"
+      Constr _ _ -> error "Unexpected behaviour: function look'for'constr returned `Constr _` instead of Record{}"
       Record{ CE.name = name, fields = fields } -> do
         -- now I can actually desugar the expression
         -- we begin with something like: expr{ field_1 = val_1, ..., field_n = val_n }
@@ -381,7 +380,7 @@ look'for'constr field'assigns t'expr = do
     case field'env Map.!? field'name of
       Nothing ->
         throwError $ Not'In'Scope'Field field'name
-      Just (Constr _) ->
+      Just (Constr _ _) ->
         error "Unexpected behaviour: the lookup for the constructor with a specific field returned an ordinary constructor without fields."
       Just constr@Record{ fields = fields } -> do
         -- I can now iterate over all the field names in the `field'assigns`
@@ -656,13 +655,53 @@ instance To'AST Term'Pat Pattern where
     {-  This will be translated into a (P'Con Name [Pattern]).
         For such desugar I need to have a Constructor Analysis information ready.
     -}
-    error "Not implemented: Labeled pattern --> AST"
+    -- first check that the constructor `name` is actually declared
+    constr'env <- asks Trans'Env.constructors
+    case constr'env Map.!? name of
+      Nothing ->
+        throwError $ Not'In'Scope'Data name
+
+      -- so the constructor name belongs to the positional constructor
+      Just (Constr _ arity) -> do
+        if null t'fields -- Constr {} <-- this is awkward but generally allowed
+        then do
+          -- all wildcards
+          let patts = List.replicate arity P'Wild
+          return $ P'Con name patts -- Constr <-- I will alow it
+        else throwError $ Wrong'Fields name $ map fst t'fields -- error <-- trying to invoke a non-record data-constructor as a record one
+
+      -- this is the right shape
+      Just Record{ fields = fields } -> do
+        {-  I need to go over t'fields and check that each of them is actual field of the current constructor. -}
+        {-  That is - to check that the code is not trying to use any field which is not technically a field of the constructor. -}
+        let wrong'fields = filter (not . flip elem fields) $ map fst t'fields
+        {-  All the field names from `field'assigns` which are NOT in the `fields` --> those are the `wrong'fields` -}
+        
+        -- {-  I need to check that all the declared fields are initialized. -}
+        -- {-  In Haskell failing to initialize all fields will raise a Warning, I am going to be more restrictive and raise an Error. -}
+        -- let 
+        --     only'field'names = map fst field'assigns
+        --     uninitialized'fields = filter (not . flip elem only'field'names) fields
+        -- {-  all the fields that are not in the `field'assigns` --> those are the uninitialized'fields -}
+
+        if not . null $ wrong'fields
+        then throwError $ Wrong'Fields name wrong'fields
+        -- else if not $ null uninitialized'fields
+          -- then throwError $ Uninitialized'Fields name uninitialized'fields
+        else  do
+          -- just do the desugaring finally
+          -- I can go over all the fields from the constructor
+          -- and replace them with the pattern given in the t'fields
+          -- or wildcard pattern
+          let t'patterns = map (fromMaybe Term'P'Wild . (`lookup` t'fields)) fields
+          patts <- to'ast t'patterns :: Translate [Pattern]
+          return $ P'Con name patts
 
   to'ast (Term'P'Tuple t'pats) = do
     pats <- to'ast t'pats
     return $ P'Con (tuple'name'for $ length t'pats) pats
     --             ^^^ or something like that
-      where tuple'name'for num = "(" ++ replicate num ',' ++ ")"
+      where tuple'name'for num = "(" ++ List.replicate (num - 1) ',' ++ ")"
 
   to'ast (Term'P'List t'pats) = do
     -- TODO: use P'Con Pattern constructor, create sequence like a : b : ... : z : []
@@ -694,7 +733,7 @@ instance To'AST Term'Pat Pattern where
                 let ftvs = free'vars type' :: Set.Set T'V'
                 if not $ null ftvs
                   then throwError $ Illegal "type annotations for patterns must be closed 1"
-                  else return type'
+                  else return $ T'Forall [] ([] :=> type')
 
     return $ P'Ann pattern' sigma
 

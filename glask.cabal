@@ -201,6 +201,7 @@ test-suite glask-test
   other-modules:
       LexerSpec
       ParserSpec
+      ExamplesSpec
       Paths_glask
   hs-source-dirs:
       test

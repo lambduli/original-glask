@@ -23,6 +23,6 @@ type Constr'Env = Map.Map Name Constr'Info
   can be used interchangeably even by the user.
   The positional order corresponds to the order in which the fields were given. -}
 data Constr'Info
-  = Constr Name
+  = Constr Name Int -- name and arity
   | Record { name :: Name, fields :: [Name] }
   deriving (Show)

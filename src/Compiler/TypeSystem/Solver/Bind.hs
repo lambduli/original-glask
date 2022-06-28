@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Compiler.TypeSystem.Solver.Bind where
 
@@ -13,7 +14,7 @@ import {-# SOURCE #-} Compiler.Syntax.Type ( T'V'(..), Type(..), M'V(..) )
 
 import Compiler.TypeSystem.Error ( Error(..) )
 
-import Compiler.TypeSystem.Solver.Solve ( Solve )
+-- import Compiler.TypeSystem.Solver.Solve ( Solve )
 import Compiler.TypeSystem.Solver.Substitution ( empty'subst, Subst(..) )
 import Compiler.TypeSystem.Solver.Occurs ( Occurs(occurs'in) )
 import Compiler.TypeSystem.Solver.InvolvesPoly ( involves'poly )
@@ -21,7 +22,7 @@ import Compiler.TypeSystem.Solver.Lift ( Lift(lift) )
 
 
 class Bind k a where
-  bind :: k -> a -> Solve (Subst k a)
+  bind :: MonadError Error m => k -> a -> m (Subst k a)
 
 
 instance Bind M'V Type where

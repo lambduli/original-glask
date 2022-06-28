@@ -31,7 +31,7 @@ import Compiler.TypeSystem.Infer ( Infer, run'infer, Type'Check, Kind'Check, add
 import Compiler.TypeSystem.InferenceEnv ( Infer'Env(Infer'Env, type'env, kind'env, constraint'env, overloaded, instance'env, instances), Type'Env )
 import Compiler.TypeSystem.ClassEnv ( Class'Env )
 import Compiler.TypeSystem.Ambiguity ( ambiguities, candidates, Ambiguity )
-import Compiler.TypeSystem.Solver.Solve ( Solve )
+-- import Compiler.TypeSystem.Solver.Solve ( Solve )
 import Compiler.TypeSystem.Solver.Substitution ( Subst(..) )
 import Compiler.TypeSystem.Utils.Class ( reduce )
 import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
@@ -160,7 +160,7 @@ lookup'instance :: (Name, Type) -> Type'Check (Name, [Predicate], Predicate)
 lookup'instance placeholder = do
   env <- asks instances
   case lookup placeholder env of
-    Nothing -> throwError $ Unexpected ("Can't find an instance for " ++ show placeholder)
+    Nothing -> throwError $ Unexpected ("Can't find an instance for " ++ show placeholder ++ " | env: " ++ show env)
     Just instance' -> return instance'
 
 {-  TODO: Here is a BIG TODO - I need to go over the paper THIH and see if I can replace all my
@@ -320,7 +320,7 @@ preds - predicates to split
 
 -- ten prvni list jsou volny "meta" promenny ktery jsou volny v celem typing contextu
 -- ten druhej list, jsou volny "meta" promenny, ktery jsou volny v typu, ale nejsou volny v typovem contextu, takze tyhle budou generalizovany
-split :: Class'Env -> [M'V] -> [M'V] -> [Predicate] -> Solve ([Predicate], [Predicate])
+split :: MonadError Error m => Class'Env -> [M'V] -> [M'V] -> [Predicate] -> m ([Predicate], [Predicate])
 split cl'env fixed'vars gs preds = do
   preds' <- reduce cl'env preds
   let (deffered'preds, retained'preds) = partition (all (`elem` fixed'vars) . free'vars) preds'
@@ -338,7 +338,7 @@ split cl'env fixed'vars gs preds = do
           one interesting thing occured to me now - 
           maybe I could change this split' to take one more argument - a list of skolems (I get those from call to `skolemise`)
           and it will check against that list explicitly -}
-split' :: Class'Env -> [M'V] -> [T'V'] -> [M'V] -> [Predicate] -> Solve ([Predicate], [Predicate])
+split' :: MonadError Error m => Class'Env -> [M'V] -> [T'V'] -> [M'V] -> [Predicate] -> m ([Predicate], [Predicate])
 split' cl'env fixed'vars skolems gs preds = do
   preds' <- reduce cl'env preds
   let (deffered'preds, retained'preds) = partition part' preds'
@@ -348,7 +348,7 @@ split' cl'env fixed'vars skolems gs preds = do
   return (deffered'preds, retained'preds \\ retained'preds')
 
 
-with'defaults :: ([Ambiguity] -> [Type] -> a) -> Class'Env -> [M'V] -> [Predicate] -> Solve a
+with'defaults :: MonadError Error m => ([Ambiguity] -> [Type] -> a) -> Class'Env -> [M'V] -> [Predicate] -> m a
 with'defaults fn cl'env vars preds = do
   let vps = ambiguities cl'env vars preds
   tss <- mapM (candidates cl'env) vps
@@ -358,11 +358,11 @@ with'defaults fn cl'env vars preds = do
     else return $ fn vps $ map head tss
 
 
-defaulted'preds :: Class'Env -> [M'V] -> [Predicate] -> Solve [Predicate]
+defaulted'preds :: MonadError Error m => Class'Env -> [M'V] -> [Predicate] -> m [Predicate]
 defaulted'preds = with'defaults (\ vps ts -> concatMap snd vps)
 
 
-default'subst :: Class'Env -> [M'V] -> [Predicate] -> Solve (Subst M'V Type)
+default'subst :: MonadError Error m => Class'Env -> [M'V] -> [Predicate] -> m (Subst M'V Type)
 default'subst cl'env vars preds = do
   pairs <- with'defaults (zip . map fst) cl'env vars preds
 

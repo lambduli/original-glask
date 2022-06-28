@@ -2,11 +2,11 @@ module Compiler.TypeSystem.Type.Infer.Declaration where
 
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
-import Control.Monad.Except ( runExceptT, MonadError(throwError) )
+import Control.Monad.Except ( runExceptT, MonadError(throwError), unless, when )
 import Control.Monad.Reader ( MonadReader(ask) )
 import Control.Monad.Trans.Reader ( asks, local )
 import Data.Functor.Identity ( Identity(runIdentity) )
--- import Control.Monad.State ( MonadState(get) )
+import Control.Monad.State ( MonadState(put, get) )
 
 
 import Compiler.Counter ( fresh )
@@ -46,6 +46,8 @@ import Compiler.TypeSystem.Utils.Class ( reduce )
 import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term (free'vars) )
 import Compiler.TypeSystem.Utils.Infer ( default'subst, add'dicts, lookup'dict, lookup'instance )
 import Compiler.TypeSystem.Solver.Composable ( Composable(merge) )
+import Compiler.TypeSystem.InferenceState
+
 
 
 {-  TODO: I inteded to use this function to infer list of declarations like `let` blocks.
@@ -171,6 +173,21 @@ infer'types :: Bind'Section -> Type'Check (Bind'Section, [Predicate], [Assumptio
 infer'types bg = do
   (bg', preds, assumptions) <- infer'bind'section bg
 
+  -- Question: Why am I properly'closing here?
+  -- why isn't that done at the level of infer'impls?
+  -- what is the step that can only be done here?
+  -- the key is the solving
+  -- because only here I solve the constraints and get the substitution
+  -- it might be because I apply the substitution to those aigma types and change something in them?
+  -- they should be sigma types though, they should not change? or should they?
+  -- what I mean is - the parts that are quantified over - those quantified variables should not change right?
+  -- I just solve it and apply the substitution, that can't be it
+  -- literally, if the forall quantifies over two variables that are solved to be a one things, I won't fix that here
+  -- so what is the reason why it can't be done sooner?
+
+  -- I think I remember the problem to be with predicates
+  -- I think it might happen that predicates will contain meta-variable or skolem (not sure) which later turns out to be something else?
+  -- I really don't know now, is that actually even possible? because I am not doing anything to handle that here am I?
   let properly'close :: (Name, Sigma'Type) -> (Name, Sigma'Type)
       properly'close (name, sigma@(T'Forall tvs qual'type)) =
         let mapping = map (\ (T'V' name kind) -> (Tau name kind, T'Var' (T'V' name kind)) ) tvs
@@ -196,7 +213,7 @@ infer'types bg = do
   case run'solve cs't :: Either Error (Subst M'V Type) of
     Left err -> throwError err
     Right subst -> do
-      Infer'Env{ type'env = t'env, class'env = c'env } <- ask
+      -- Infer'Env{ type'env = t'env, class'env = c'env } <- ask
       -- I am applying the substitution to the new version of bind group with placeholders
       -- the next step should be eliminating the placeholders
       -- that is - add extra parameters to functions which are qualified
@@ -212,6 +229,22 @@ infer'types bg = do
       -- probably
       -- so I need a fully substituted typing context/assumptions about all the bindings now
       let assumptions' = apply subst assumptions
+
+      -- TODO: handle typed holes
+      -- first apply the substitution on all typed holes
+      -- but also the properly'closing substitution - that one
+      -- I am going to pretend like the closing subst is not necessary
+      -- if holes are broken, here is the place to check first therefore
+      state <- get
+      let holes' = apply subst (holes state)
+      when  (not $ null holes') (throwError $ Typed'Holes holes' assumptions')
+      -- TODO: I should actually only fail when the type within the typed hole is fully specified - no meta variables
+      -- then I can report the most precise info
+      
+      -- NOTE: If it does not fail, I don't need to put the holes' back in - because there are none
+
+
+
       eliminated <- eliminate subst assumptions' bg'
       return (eliminated, preds, map properly'close assumptions')
       -- TODO: NOTE
@@ -434,7 +467,8 @@ elim'expr assumps subst p@(Placeholder (Placeholder.Dictionary name ty)) = do
         Just p'name ->
           return $ Var p'name
         Nothing -> do
-          throwError $ Unexpected ("Can't find dictionary for " ++ show p)
+          env <- asks instance'env
+          throwError $ Unexpected ("Can't find dictionary for " ++ show p ++ "  |  env: " ++ show env)
     T'Tuple tys -> do
       -- I think - same as above?
       undefined

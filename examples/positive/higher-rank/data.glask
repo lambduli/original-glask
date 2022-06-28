@@ -1,0 +1,23 @@
+module Main where
+{ class Num a
+; instance Num Int
+
+; class Fractional a
+; instance Fractional Double
+
+-- define a data type taking a higher-rank value
+
+; data Higher a = H (forall x . x -> a -> x)
+
+
+; fn :: forall x . x -> Int -> x
+; fn = fn
+
+; higher :: Higher Int
+; higher = H fn
+
+-- alternatively without the type annotation
+
+; higher' = H fn
+
+}

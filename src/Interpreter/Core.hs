@@ -21,6 +21,7 @@ data Core
   | Tuple [Core]
   | Let [Binding] Core
   | Error Evaluation'Error -- errors like inexhaustive pattern matching
+  deriving (Eq)
 
 
 instance Show Core where
@@ -57,8 +58,8 @@ instance Show Core where
 
 
 data Binding = Binding { name :: Name, lambda :: Core }
-  deriving (Show)
+  deriving (Show, Eq)
 
 
 data Match = Match { patterns :: [Pattern], rhs :: Core }
-  deriving (Show)
+  deriving (Show, Eq)

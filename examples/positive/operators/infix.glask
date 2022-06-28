@@ -1,0 +1,23 @@
+module Main where
+{ class Num a
+; instance Num Int
+
+; class Fractional a
+; instance Fractional Double
+
+
+; infixl 5 +
+; infixl 6 *
+
+; (+) :: Int -> Int -> Int
+; (+) x y = x
+
+; (*) :: Int -> Int -> Int
+; (*) x y = x
+
+
+
+
+; program = 1 + 2 * 3
+
+}

@@ -39,7 +39,7 @@ kind'specify sigma = do
   infer'env <- ask
   infer'state <- get
   let counter       = get'counter infer'state
-      infer'state'  = Infer'State{ counter = counter, constraints = [], instances = [], overloaded = [] }
+      infer'state'  = Infer'State{ counter = counter, constraints = [], instances = [], overloaded = [], holes = [] }
 
   case run'infer infer'env (kind'infer'sigma sigma) infer'state' of
     Left err ->
@@ -62,6 +62,12 @@ kind'infer'sigma sigma = do
     Left error -> throwError error
     Right subst -> do
       let sigma'@(T'Forall tvs _) = apply subst sigma
+
+      -- NOTE: This was for debugging purposes. It should remind me that I need to make sure that sigma is indeed sigma.
+      -- (sigma', tvs) <- case apply subst sigma of
+      --                                 x@(T'Forall t's qual) -> return (x, t's)
+      --                                 x -> throwError $ Unexpected ("for some reason I was given " ++ show x)
+
 
       let defaulting'mapping  = make'default $ map (\ (T'V' _ k) -> k) tvs
           defaulting'subst    = Sub $ Map.fromList defaulting'mapping

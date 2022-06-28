@@ -1,0 +1,22 @@
+module Main where
+{ class Num a
+; instance Num Int
+
+; class Fractional a
+; instance Fractional Double
+
+-- define a data type taking a higher-rank value
+
+; data Higher a = H (forall x . x -> a -> x)
+
+
+; fn :: forall x . x -> Int -> x
+; fn = fn
+
+-- this function pattern matches on vaues of `Higher a`
+-- and doing so introduces a function with higher-rank type into the context
+
+; higher'match :: Higher a -> a -> b -> c -> (b, c)
+; higher'match (H fn) a b c = (fn b a, fn c a)
+
+}

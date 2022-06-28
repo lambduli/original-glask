@@ -1,0 +1,57 @@
+module Main where
+{ infixl 5 -
+; infixl 5 +
+; class Num a where
+  { (-) :: a -> a -> a
+  ; (+) :: a -> a -> a }
+
+; instance Num Int where
+  { (-) x y = int#- (x, y)
+  ; (+) x y = int#+ (x, y) }
+
+
+
+; class Fractional a
+
+; instance Fractional Double
+
+
+; data List a = Nil | Cons a (List a)
+
+
+; endless'list = 23 : endless'list
+
+; normal'list = [1,2,3,4]
+
+; take :: Int -> [a] -> [a]
+; take _ [] = []
+; take 0 _ = []
+; take n (a : as) = a : take (n - 1) as
+
+
+-- NOTE: the following is just for me, ignore
+-- START ingoring
+--
+-- take 1 [1]
+-- let { take :: Int -> [a] -> Char ; take _ [] = 'a' ; take 0 _ = 'b' ; take n (a : as) = 'c' } in 'o'
+-- let { test 'a' 'b' = 'y' ; test 'c' 'd' = 'z' ; test 'r' 't' = 'h' } in test 'r' 't'
+--
+-- STOP ignoring
+
+
+; data Bool = True | False
+
+; test 0 _ = []
+
+
+; head (x : _) = x
+
+; inf = Cons 0 inf
+; program1 = take 2 endless'list
+
+
+; length :: [a] -> Int
+; length [] = 0
+; length (x : xs) = 1 + length xs
+
+}

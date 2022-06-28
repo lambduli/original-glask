@@ -1,0 +1,15 @@
+module Main where
+{ class Num a
+
+; instance Num Int
+
+; class Fractional a
+
+; instance Fractional Double
+
+
+; zeros = 0 : zeros
+
+; data Bool = False | True
+
+}

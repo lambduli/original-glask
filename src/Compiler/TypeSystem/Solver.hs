@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Compiler.TypeSystem.Solver where
 
@@ -7,11 +8,12 @@ module Compiler.TypeSystem.Solver where
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Data.Functor.Identity ( Identity(runIdentity) )
-import Control.Monad.Except ( runExceptT )
+import Control.Monad.Except ( runExceptT, MonadError )
+
 
 import Compiler.TypeSystem.Error ( Error )
 import Compiler.TypeSystem.Constraint ( Constraint(..) )
-import Compiler.TypeSystem.Solver.Solve ( Solve )
+-- import Compiler.TypeSystem.Solver.Solve ( Solve )
 import Compiler.TypeSystem.Solver.Substitution ( empty'subst, Subst )
 import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(..) )
 import Compiler.TypeSystem.Solver.Composable ( Composable(compose) )
@@ -33,7 +35,7 @@ type Unifier k a = (Subst k a, [Constraint a])
 
 
 -- Unification solver
-solver :: (Ord k, Substitutable k a a, Unify a k a, Composable k a) => Unifier k a -> Solve (Subst k a)
+solver :: (Ord k, Substitutable k a a, Unify a k a, Composable k a, MonadError Error m) => Unifier k a -> m (Subst k a)
 solver (subst, constraints) =
   case constraints of
     [] -> return subst

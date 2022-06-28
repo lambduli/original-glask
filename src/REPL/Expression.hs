@@ -108,7 +108,7 @@ read'expr input trans'env trans'state = do
 infer'type :: Expression -> Infer'Env -> Counter -> Either Error (Sigma'Type, Expression, Counter)
 infer'type expr i'env counter = do
   -- ([Predicate], Type, [Constraint Type], [Constraint Kind])
-  let t'i'state = Infer'State{ I'State.counter = counter, constraints = [], I'State.overloaded = [], I'State.instances = [] }
+  let t'i'state = Infer'State{ I'State.counter = counter, constraints = [], I'State.overloaded = [], I'State.instances = [], I'State.holes = [] }
   ((preds, actual, cs't, expr'), i'state') <- run'infer i'env (infer'expr' expr Infer) t'i'state
 
   -- TODO: refactor later (get rid of the pattern matching, possibly by calling function which actually returns type instead of Actual)
@@ -117,6 +117,8 @@ infer'type expr i'env counter = do
               _           -> Left $ Unexpected "Internal Error - infer'type in the REPL" 
 
   subst <- run'solve cs't  :: Either Error (Subst M'V Type)
+
+  -- TODO: Now I need to take care of the holes
 
   let Infer'Env{ type'env = t'env, class'env = c'env } = i'env
 
@@ -183,7 +185,7 @@ infer'type expr i'env counter = do
 infer'expr'type :: Expression -> Infer'Env -> Counter -> Either Error (Sigma'Type, Expression, Counter)
 infer'expr'type expr i'env counter = do
   -- ([Predicate], Type, [Constraint Type], [Constraint Kind])
-  let t'i'state = Infer'State{ I'State.counter = counter, constraints = [], I'State.overloaded = [], I'State.instances = [] }
+  let t'i'state = Infer'State{ I'State.counter = counter, constraints = [], I'State.overloaded = [], I'State.instances = [], I'State.holes = [] }
   ((preds, actual, cs't, expr'), i'state') <- run'infer i'env (infer'expr' expr Infer) t'i'state
 
   -- TODO: refactor later (get rid of the pattern matching, possibly by calling function which actually returns type instead of Actual)
@@ -213,6 +215,8 @@ infer'expr'type expr i'env counter = do
   let s' = def'subst
 
   subst' <- runIdentity $ runExceptT (subst `merge` s')
+
+  -- TODO: Now I need to take care of the holes
 
   let scheme = close'over $ apply subst rs :=> apply subst type'
 

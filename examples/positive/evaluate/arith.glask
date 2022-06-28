@@ -1,0 +1,15 @@
+module Main where
+{ infixl 5 +
+
+; class Num a where
+  { (+) :: a -> a -> a }
+
+; instance Num Int where
+  { (+) x y = int#+ (x, y) }
+
+
+-- this example test
+
+-- 2 + 3
+
+}

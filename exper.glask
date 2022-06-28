@@ -103,5 +103,14 @@ module Main where
 -- ; char2num :: Num a => Char -> a
 -- ; char2num = char2num
 
+-- stil works fine - it finds the error
+-- ; class Woo a
+-- 
+-- -- ; broken :: a -> a -> a
+-- ; broken :: Woo a => a -> a
+-- ; broken a = a
+-- 
+-- ; woo x = broken True
+
 
 }

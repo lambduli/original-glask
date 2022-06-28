@@ -16,7 +16,8 @@ import Compiler.TypeSystem.Constraint ( Constraint )
 data Infer'State a = Infer'State  { counter :: Counter
                                   , constraints :: [Constraint a]
                                   , overloaded :: [(Name, Overloaded)]
-                                  , instances :: [((Name, Type), (Name, [Predicate], Predicate))] }
+                                  , instances :: [((Name, Type), (Name, [Predicate], Predicate))]
+                                  , holes :: [(Name, Type)] }
       deriving (Show)
 
 

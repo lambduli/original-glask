@@ -1,5 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Compiler.TypeSystem.Solver.Composable where
@@ -17,7 +18,7 @@ import Compiler.TypeSystem.Error ( Error(Unexpected) )
 
 import Compiler.TypeSystem.Solver.Substitution ( Subst(..) )
 import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(..) )
-import Compiler.TypeSystem.Solver.Solve ( Solve )
+-- import Compiler.TypeSystem.Solver.Solve ( Solve )
 import Compiler.TypeSystem.Solver.Lift ( Lift(..) )
 
 
@@ -30,7 +31,7 @@ class Composable k v where
   -- I know this code looks terrible
   -- but there is a good reason to have it look like that (lot's of constraints and scoped types)
   -- TODO: explain in greater detail how it works both from evaluation and type level viewpoint
-  merge :: (Ord k, Substitutable k v v, Lift k v, Eq v) => Subst k v -> Subst k v -> Solve (Subst k v)
+  merge :: (Ord k, Substitutable k v v, Lift k v, Eq v, MonadError Error m) => Subst k v -> Subst k v -> m (Subst k v)
   s1@(Sub sub'l) `merge` s2@(Sub sub'r)
     = if agree
       then return $ Sub $ sub'l `Map.union` sub'r

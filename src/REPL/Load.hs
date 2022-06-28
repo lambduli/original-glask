@@ -398,8 +398,27 @@ process'declarations declarations trans'env counter = do
       (data', getterss) = unzip $ map make'class classes
       getters' = concat getterss
 
+  
+  -- TODO: now I need to generate field getters for all records
+  let make'fields :: Data -> [Implicit]
+      make'fields Data{ constructors = con'decls } = concatMap make'fields' con'decls
 
-  let new'program = pr{ bind'section = (explicits ++ method'declarations ++ getters', implicits's ++ [extra'implicits]), data'declarations = data'decls ++ data' }
+      make'fields' :: Constr'Decl -> [Implicit]
+      make'fields' (Con'Decl _ _) = []
+      make'fields' (Con'Record'Decl con'name pairs)
+        = let the'name = "x"
+              the'body = Var the'name
+              patterns = replicate (length pairs) P'Wild -- only wildcards
+              matches = map (\ indx -> let (front, _ : rear) = splitAt indx patterns in Match{ patterns = [P'Con con'name $ front ++ [P'Var the'name] ++ rear], rhs = the'body }) [0 .. length pairs - 1]
+              getters = map (\ (match, n) -> Implicit $ Bind'Group{ name = n, alternatives = [match] }) $ zip matches $ map fst pairs
+          in getters
+
+      field'getters = map make'fields data'decls
+
+  let pair'constr = Implicit $ Bind'Group{ name = "(,)", alternatives = [Match{ patterns = [P'Var "x", P'Var "y"], rhs = Tuple [Var "x", Var "y"] }]}
+
+
+  let new'program = pr{ bind'section = (explicits ++ method'declarations ++ getters', implicits's ++ [extra'implicits] ++ field'getters ++ [[pair'constr]]), data'declarations = data'decls ++ data' }
   -- extra'implicits are the dictionaries themselves - variable binding with the right hand side being a construction of the dictionary (later it might be a function too)
   -- method'declarations are global bindings of methods with unique names
 

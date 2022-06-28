@@ -2,7 +2,7 @@ module Interpreter.Error where
 
 import Compiler.Syntax.Name ( Name )
 
-import Interpreter.Value ( Value )
+import {-# SOURCE #-} Interpreter.Value ( Value )
 
 
 data Evaluation'Error
@@ -15,6 +15,7 @@ data Evaluation'Error
   | Division'By'Zero Int
   | Unexpected String
   | Non'Exhaustive
+  deriving (Eq)
 
 
 instance Show Evaluation'Error where

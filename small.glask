@@ -1,5 +1,7 @@
 module Main where
-{ class Num a
+{ infixl 5 +
+;  class Num a where
+   { (+) :: a -> a -> a }
 
 ; instance Num Int
 ; instance Num Double
@@ -32,3 +34,7 @@ module Main where
 
 
 }
+
+let { zeros = 0 : (trace# zeros) } in case zeros of { a : as -> True }
+
+let { zeros = 0 : zeros } in case zeros of { a : as -> True }

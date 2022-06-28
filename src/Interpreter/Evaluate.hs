@@ -2,7 +2,7 @@ module Interpreter.Evaluate where
 
 
 import qualified Data.Map.Strict as Map
-import Control.Monad.State ( State, get, put, runState )
+import Control.Monad.State ( State, get, put )
 import Control.Monad.Extra ( concatMapM )
 
 
@@ -367,8 +367,6 @@ eval (Intro tag cores) env = do
   -- now I just need to construct the data
   let promises = map Promise addresses
 
-  values <- mapM force promises
-
   return $! Right $! Data tag promises
 
 eval (Error err) env = do
@@ -411,6 +409,22 @@ do'prim'op "int#+" (Data "(,)" [first'p, second'p]) = do
     (Left err, _) -> return (Left err)
     (_, Left err) -> return (Left err)
     _ -> return (Left (Unexpected "Evaluation Error: Primitive Operation 'int#+' applied to something bad"))
+
+do'prim'op "int#-" (Data "(,)" [first'p, second'p]) = do
+  -- I force both promises to get the exact integers
+  r'fst <- force first'p
+  r'snd <- force second'p
+  -- now I pattern match on them and expect both of them to be literals
+  case (r'fst, r'snd) of
+    (Right (Literal (Lit'Int i)), Right (Literal (Lit'Int e))) -> do
+      -- now I just add those together and return the result as a value
+      let diff = i - e
+      return (Right (Literal (Lit'Int diff)))
+    (Left err, _) -> return (Left err)
+    (_, Left err) -> return (Left err)
+    _ -> return (Left (Unexpected "Evaluation Error: Primitive Operation 'int#+' applied to something bad"))
+
+
 
 do'prim'op "trace#" anything = do
   let result = trace ("... tracing " ++ show anything) anything

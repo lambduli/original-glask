@@ -1,0 +1,240 @@
+module Main where
+{ 
+  class Num a
+
+; instance Num Int
+; instance Num Double
+
+
+; class Fractional a
+
+; instance Fractional Double
+
+
+; class Constant a where
+  { vaval :: a }
+
+; instance Constant Int where
+  { vaval = 23 }
+
+; tail :: [a] -> Maybe [a]
+; tail [] = Nothing
+; tail (a : as) = Just as
+
+
+; data Wrap a = Wrap a
+
+-- INTERESTING - if the `Num a` part is not here on the following line, it will fail to deduce what the `a` / `23` is
+-- same as ghc, that is interesting - it makes sense I guess, but it suprised me a little
+-- well, come to think of it - it isn't suprising at all
+-- you say, you define Constant for all `Wrap a`
+-- and then assign a specific numeric value to the value-part for `a`
+-- it only makes sense that this instance should not work for (Wrap Bool) then
+-- because that would very much not be compatible
+; instance Num a => Constant (Wrap a) where
+  { vaval = Wrap 23 }
+
+
+
+; data String = String [Char]
+
+; class Show a where
+  { show :: a -> String }
+
+
+; data Bool = True | False
+ 
+
+-- ; data Malformed = One a -- this is incorrect
+
+; data Phantom a = Ph
+
+; data Maybe a = Nothing | Just a
+
+; data Test m a = Constr (m a)
+
+-- ; data Record m a = Rec { a :: Int, b :: Maybe a } -- tohle z nejakyho duvodu priradi `m`ku kind (? -> ?)
+-- ; data Record m a = Rec { a :: Int, b :: Maybe a, c :: m a } -- tady je v poradky ze `m` :: (* -> *)
+; data Record m a = Rec { a :: Int, b :: Maybe a, c :: m a } -- tady je v poradky ze `m` :: (* -> *)
+
+
+-- Now I want to try to create a malformed class section
+-- ; class A m where
+--   { x :: m a } -- this should assert that A's type parameter must be * -> *
+-- ; class B a where
+--   { y :: A a => a } -- this should break it -- A was used with `b` which obviously has kind *
+
+
+-- Now I want to try to create a method which abstracts over some type variables involved in Class Constraints and Type constructors
+; class Z a where
+  { zzz :: Higher a => b -> b -- this should make the (a :: * -> *)
+  ; xxx :: b -> Test a b } -- this should make the (a :: * -> *, b :: *)
+-- THIS WORKS NOW
+
+
+--  NOW I WANT TO TRY SOME MALFORMED TYPE ANNOTATIONS
+-- ; malformed :: forall . Maybe -- this indeed fails to type check - the right side of the `.` has not a kind *
+-- ; malformed = malformed
+-- THIS FAILS BECAUSE (forall . Maybe) IS NOT UNIFIABLE WITH Maybe
+-- IT NO LONGER FAILS
+; fails :: (forall . Maybe) Int
+; fails = Just 23
+-- THIS SHOULD ALSO FAIL
+-- ; data Ex = Ex (forall . Maybe)
+
+
+
+-- TESTING KIND INFERENCE WITHIN EXPLICIT ANNOTATIONS
+; class Higher m where
+  { pure :: a -> m a }
+-- ; data AlsoHigher m = Also (m Int)
+-- ; illegal :: Higher m => m -> a -> a -- this is rejected - because `m` can't be both * and * -> *
+-- ; illegal = illegal
+
+-- ; also'illegal :: AlsoHigher x -> x -> Int -- this is rejected - because `x` can't be both * and * -> *
+-- ; also'illegal = also'illegal
+
+
+
+; class () => Foo a where
+  {
+  foo :: (a -> b) -> a -> b
+  -- ; foo x y = x
+  ; bar :: (a -> b a) -> a -> b a
+  }
+
+
+-- ; instance (Show a) => Baz ([] a) where
+-- { baz = 23 :: a }
+  
+-- ; type Foo = Int -- Type Aliases/Synonym expansion is not implemented yet
+  
+; int = 23 -- I have fixed the bug manifesting for this declaration
+; double = 23.7
+
+; expl :: Double
+; expl = 23
+
+; lambda = \ a b c -> c
+
+; the'what _ = lambda 1 2 3
+
+; fn :: a -> b -> c -> c
+; fn = \ a b c -> c
+
+
+; undefined = undefined
+
+; oog :: m a -> (a -> b) -> m b
+; oog = undefined
+
+
+; require :: Num a => a -> a
+; require = \ x -> x
+
+; ok = require 23
+
+-- ; not'ok = require 'a'
+
+
+
+; expl'forall :: forall m a b . (a -> m b) -> a -> m b
+; expl'forall = \ fn a -> fn a
+
+
+-- FOR SOME REASON THIS DOESN'T WORK
+-- IT WORKS NOW
+; broken :: Maybe Int
+; broken = Just 23
+
+
+-- TRYING EXPLICIT UNWRAPPING OF EMPTY FORALLS
+-- types like `forall . Int` should be equal to `Int`
+; unwrapped :: (forall . Maybe) Int
+; unwrapped = Just 23
+
+; a :: forall a . a -> Maybe a
+; a = \ a -> Just a
+
+; b :: Show a => a -> String
+; b = \ a -> show a
+
+; c :: Show a => forall b . a -> b -> String
+; c = c
+
+
+--  TESTING CLASS CONSTRAINT INFERENCE
+--  this doesn't work
+--  maybe because the serialize is a restricted binding
+--  the same example also doesn't work in the ghc
+--  it works in ghc with {-# LANGUAGE NoMonomorphismRestriction #-}
+-- ; serialize = \ a'thing -> show a'thing
+-- this should work just fine (in the future when I have implemented the parsing completely)
+-- serialize' a'thing = show a'thing
+
+
+
+-- NOW I WANT TO TEST VARIOUS TYPES
+; a1 :: Show a => forall b . a -> b -> String
+; a1 = a1
+
+; a2 :: Show a => a -> String
+; a2 = a2
+
+; a3 :: forall a . a -> Maybe a
+; a3 = \ a -> Just a
+
+; a4 :: forall a b . a -> b -> a
+; a4 = \ a b -> a
+
+; a5 :: forall . Maybe Int
+; a5 = Just 23
+
+-- I WANT TO TEST THE BIND GROUP MERGING
+-- I should be able to write a function binding with multiple equations just fine.
+; many'eqs = \ a b -> a
+; many'eqs = \ a b -> b
+
+; testing :: Int
+; testing = 23
+
+-- ; test' :: Maybe a -> Maybe Int
+; test' = let { loc :: Int -> Maybe a -> Maybe Int
+              ; loc = \ i ma -> Just i }
+          in loc 23
+
+; test'' = test' Nothing
+
+-- I NEED TO TEST WHAT HAPPENS IF I DONT REDUCE THE CONTEXTS OF LOCAL BINDING'S ANNOTATIONS
+-- ; local = let { fa :: }
+
+-- THIS BEHAVES THE WAY I EXPECTED
+-- try - 1) removing Show a from foo'local
+--     - 2) removing the annotation altogether
+--     - 3) removing the Show m from fa
+--     - 4) removing the inner annotation altogether
+-- compare with GHC
+-- THIS IS BROKEN (ON PURPOSE)
+-- ; foo'local :: Show a => a -> b -> String
+-- ; foo'local = let { fa :: Show m => m -> m -> String
+--                   ; fa = \ m n -> show m }
+--               in  fa
+
+
+-- THIS MUST FAIL - BECAUSE WE ARE WIDENING THE POLY TYPE
+-- ; more'general :: a -> b -> Bool
+-- ; more'general = less'general
+-- 
+-- ; less'general :: a -> a -> Bool
+-- ; less'general = undefined
+-- AS MUST THIS
+-- ; foo'broken :: a -> b -> Bool
+-- ; foo'broken = let  { fa :: m -> m -> Bool
+--                     ; fa = \ m n -> True }
+--                 in  fa
+--
+
+
+; identifier = identifier
+
+}

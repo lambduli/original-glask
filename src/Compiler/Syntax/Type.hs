@@ -98,12 +98,13 @@ from type safety standpoint. And how far we can get to the cliff before falling.
 instance Show Type where
   show (T'Var' (T'V' name kind'))
     = name
+    -- = "(!" ++ name ++ " :: " ++ show kind' ++ ")"
 
   show (T'Meta (Tau name kind'))
-    = "?τ=" ++ name
+    = "(?τ=" ++ name ++ " :: " ++ show kind' ++ ")"
 
   show (T'Con (T'C name kind'))
-    = name
+    = name -- ++ "::" ++ show kind'
 
   show (T'Tuple types)
     = "(" ++ intercalate ", " (map show types) ++ ")"

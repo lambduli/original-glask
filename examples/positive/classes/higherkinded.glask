@@ -1,0 +1,21 @@
+module Main where
+{ class Num a
+; instance Num Int
+
+; class Fractional a
+; instance Fractional Double
+
+
+; data Test m a = Constr (m a)
+
+; class Higher m where
+  { pure :: a -> m a }
+
+-- Now I want to try to create a method which abstracts over some type variables involved in Class Constraints and Type constructors
+
+; class Z a where
+  { zzz :: Higher a => b -> b                       -- this should make the (a :: * -> *)
+  ; xxx :: b -> Test a b }                          -- this should make the (a :: * -> *, b :: *)
+
+
+}

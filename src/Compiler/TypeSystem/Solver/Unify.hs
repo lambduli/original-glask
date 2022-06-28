@@ -6,6 +6,7 @@ module Compiler.TypeSystem.Solver.Unify where
 
 
 import Control.Monad.Except ( MonadError(throwError) )
+import Control.Monad ( liftM2 )
 
 import Compiler.Syntax.Kind ( Kind(..) )
 import Compiler.Syntax.Predicate ( Predicate(..) )
@@ -15,7 +16,7 @@ import {-# SOURCE #-} Compiler.Syntax.Type ( T'V', Type(..), M'V(..) )
 import Compiler.TypeSystem.Error ( Error(..) )
 import Compiler.TypeSystem.Solver.Substitution ( empty'subst, Subst )
 import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply) )
-import Compiler.TypeSystem.Solver.Solve ( Solve )
+-- import Compiler.TypeSystem.Solver.Solve ( Solve )
 import Compiler.TypeSystem.Solver.Bind ( Bind(bind) )
 import Compiler.TypeSystem.Solver.Composable ( Composable(merge, compose) )
 import Compiler.Syntax.HasKind ( HasKind(kind) )
@@ -35,8 +36,8 @@ import Compiler.Syntax.HasKind ( HasKind(kind) )
         as is the case of the Predicate - unifying two predicates produces a Substitution of TVar Type
 -}
 class Unify a k x where
-  unify :: a -> a -> Solve (Subst k x)
-  match :: a -> a -> Solve (Subst k x) -- only one-way-going unification
+  unify :: (MonadError Error m) => a -> a -> m (Subst k x)
+  match :: MonadError Error m => a -> a -> m (Subst k x) -- only one-way-going unification
 
 
 -- -- TODO: try to find a way to get rid of (the need for) this class and method
@@ -107,6 +108,11 @@ instance Unify Type M'V Type where
   match l@(T'Con t'con'l) r@(T'Con t'con'r)
     | t'con'l == t'con'r = return empty'subst
     | otherwise = throwError $ Type'Unif'Mismatch l r
+
+  match (T'Tuple [a, b]) (T'Tuple [a', b']) = do
+    sub'a <- a `match` a'
+    sub'b <- b `match` b'
+    sub'a `merge` sub'b
 
   -- TODO: there's T'Tuple missing - I guess I expected I will make it into a user-defined Type so probably not need to handle it here then...
 
@@ -230,14 +236,14 @@ instance Unify Predicate M'V Type where
   {- NOTE: The duplicity in the implementation of `lift` is really bothersome. -}
   unify = lift unify
     where
-      lift :: (Type -> Type -> Solve (Subst M'V Type)) -> Predicate -> Predicate -> Solve (Subst M'V Type)
+      lift :: (MonadError Error m) => (Type -> Type -> m (Subst M'V Type)) -> Predicate -> Predicate -> m (Subst M'V Type)
       lift fn (Is'In name'l type'l) (Is'In name'r type'r)
         | name'l == name'r  = fn type'l type'r
         | otherwise         = throwError $ Unexpected $ "Unification Error: Type Classes `" ++ name'l ++ "` and `" ++ name'r ++ "` differ and can not be unified."
 
   match = lift match
     where
-      lift :: (Type -> Type -> Solve (Subst M'V Type)) -> Predicate -> Predicate -> Solve (Subst M'V Type)
+      lift :: MonadError Error m => (Type -> Type -> m (Subst M'V Type)) -> Predicate -> Predicate -> m (Subst M'V Type)
       lift fn (Is'In name'l type'l) (Is'In name'r type'r)
         | name'l == name'r  = fn type'l type'r
         | otherwise         = throwError $ Unexpected $ "Unification Error: Type Classes `" ++ name'l ++ "` and `" ++ name'r ++ "` differ and can not be unified."

@@ -23,7 +23,7 @@ data Error
   | Signature'Too'General Type Type
   | Context'Too'Weak
   | Impredicative M'V Type -- Error reported when predicativity assumption is to be broken. (Unifying type variable with sigma type.)
-  | Typed'Hole Name (Expected Type)
+  | Typed'Holes [(Name, Type)] [(Name, Type)] -- first are holes, second are assumptions
 
   | Unexpected String -- this is just temporary helper constructor for me to debug stuff ... mostly
   deriving (Eq)
@@ -69,8 +69,9 @@ instance Show Error where
   show (Impredicative t'var type')
     = "Impredicative type - type variable '" ++ show t'var ++ "' can't be unified with the poly type '" ++ show type' ++ "'."
 
-  show (Typed'Hole name expected)
-    = "Found a hole '" ++ name ++ "' :: " ++ show expected ++ " -- TODO: relevant bindings, type in infer mode and so on..."
+  show (Typed'Holes holes assumptions)
+    = "Found holes: " ++ show holes ++ "  |  " ++ show assumptions
+    -- = "Found a hole '" ++ name ++ "' :: " ++ show expected ++ " -- TODO: relevant bindings, type in infer mode and so on..."
 
 
   show (Unexpected s)

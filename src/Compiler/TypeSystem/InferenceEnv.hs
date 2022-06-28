@@ -70,5 +70,6 @@ init't'env = Map.fromList
   , ("()",        T'Forall []                                   $ [] :=> unit'type)
   , (":",         T'Forall [T'V' "a" K'Star]                    $ [] :=> (T'Var' (T'V' "a" K'Star) `type'fn` (type'list'of (T'Var' (T'V' "a" K'Star)) `type'fn` type'list'of (T'Var' (T'V' "a" K'Star)))))
   , ("[]",        T'Forall [T'V' "a" K'Star]                    $ [] :=> type'list'of (T'Var' (T'V' "a" K'Star)))
+  , ("(,)",       T'Forall [T'V' "a" K'Star, T'V' "b" K'Star]   $ [] :=> (T'Var' (T'V' "a" K'Star) `type'fn` (T'Var' (T'V' "b" K'Star) `type'fn` T'Tuple [T'Var' $ T'V' "a" K'Star, T'Var' $ T'V' "b" K'Star])))
   ]
 -- TODO: revise the list in the future

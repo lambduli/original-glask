@@ -28,6 +28,7 @@ import Compiler.TypeSystem.Type.Infer.Match ( check'matches )
 import Compiler.TypeSystem.Kind.Infer.Type ( infer'type )
 import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'infer'sigma, kind'specify )
 import Compiler.TypeSystem.Expected ( Expected(Check) )
+import Compiler.TypeSystem.ClassEnv (Class'Env(Class'Env))
 
 
 {-  Description:
@@ -82,34 +83,17 @@ infer'expl (Explicit sigma bg@Bind'Group{ name = name, alternatives = matches })
             Because I always get those by removing all "other meta vars" from those of mine.
     -}
       gs = Set.toList (free'vars t') \\ fs
-  let sc' = close'over' (qs' :=> t')
-
-      -- not'entail c'env qs' pred = not <$> entail c'env qs' pred
-      
-      not'entail pred = do
-        -- not <$> entail c'env qs' pred -- this should be the same thing, but more succinctly written
-        entailed <- entail c'env qs' pred
-        return $ not entailed
+      ps' = filter (not . entail c'env qs') (apply subst preds)
   
-      ps' = runIdentity $ runExceptT $ filterM not'entail (apply subst preds)
-  
-  case ps' of
-    Left err -> do
-      throwError err
+  (deferred'preds, retained'preds) <- split' c'env fs skolems gs ps' -- split'' c'env fs skolems gs ps'
 
-    Right preds' -> do
-      case runIdentity $ runExceptT $ split' c'env fs skolems gs preds' of
-        Left err -> do
-          throwError err
-
-        Right (deferred'preds, retained'preds) -> do
-          if not (null retained'preds)
-          then do
-            throwError Context'Too'Weak
-          else do
-            -- because of the auto elaboration, we need to return a sigma type made from skolemised predicates and type
-            -- as well as elaborated list of matches -> matches'
-            return (Explicit (T'Forall skolems (qs :=> t)) bg{ name = name, alternatives = matches' }, deferred'preds)
+  if not (null retained'preds)
+  then do
+    throwError Context'Too'Weak
+  else do
+    -- because of the elaboration/elimination, we need to return a sigma type made from skolemised predicates and type
+    -- as well as elaborated list of matches -> matches'
+    return (Explicit (T'Forall skolems (qs :=> t)) bg{ name = name, alternatives = matches' }, deferred'preds)
 
 
 get'subst :: Type'Check (Subst M'V Type)
@@ -122,3 +106,20 @@ get'subst = do
 
     Right subst -> do
       return subst
+
+
+-- lift :: Either Error a -> Type'Check a
+-- lift preds = do
+--   case preds of
+--     Left err -> do
+--       throwError err
+    
+--     Right preds -> do
+--       return preds
+
+split'' :: Class'Env -> [M'V] -> [T'V'] -> [M'V] -> [Predicate] -> Type'Check ([Predicate], [Predicate])
+split'' c'env fs skolems gs preds'
+  = case runIdentity $ runExceptT $ split' c'env fs skolems gs preds' of
+    Left err -> throwError err
+    Right pair -> return pair
+    
