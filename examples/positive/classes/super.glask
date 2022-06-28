@@ -1,0 +1,41 @@
+-- -- -- This file is part of the automatec test suite.
+-- -- -- But it can not be loaded by the REPL, because placeholders for sub-classes are not implemented yet.
+-- -- -- It can be type checked, though.
+
+module Main where
+{ class Num a
+; instance Num Int
+
+; class Fractional a
+; instance Fractional Double
+
+; class Super a where
+  { super'm :: a -> a }
+
+; class Middle a where
+  { middle'm :: a -> a }
+
+; class Center a where
+  { center'm :: a -> a }
+
+; class (Center a, Middle a) => Bottom a where
+  { bottom'm :: a -> a }
+
+
+; instance Bottom Int where
+  { bottom'm x = middle'm (super'm x) }
+
+; instance Middle Int where
+  { middle'm x = x }
+
+; instance Center Int where
+  { center'm x = x }
+
+; instance Super Int where
+  { super'm x = x }
+
+-- -- -- the example above is currently for a motivation
+-- -- -- my semantic analysis does not check all the requirements for class declarations
+-- -- -- ideally, if any instance (except Bottom) is missing, I would like to get an error, when constructing Bottom
+
+}

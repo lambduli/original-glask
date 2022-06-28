@@ -1,0 +1,13 @@
+module Main where
+{ class Num a
+; instance Num Int
+
+; class Fractional a
+; instance Fractional Double
+
+-- define a higher-rank function
+
+; apply :: (forall x . x -> x) -> a -> b -> (a, b)
+; apply f x y = (f x, f y)
+
+}

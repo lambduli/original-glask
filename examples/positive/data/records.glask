@@ -5,6 +5,7 @@ module Main where
 ; class Fractional a
 ; instance Fractional Double
 
+; data Maybe a = Nothing | Just a
 
 -- ; data Record m a = Rec { a :: Int, b :: Maybe a } -- tohle z nejakyho duvodu priradi `m`ku kind (? -> ?)
 -- ; data Record m a = Rec { a :: Int, b :: Maybe a, c :: m a } -- tady je v poradky ze `m` :: (* -> *)

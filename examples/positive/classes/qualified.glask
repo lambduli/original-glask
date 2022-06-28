@@ -5,7 +5,17 @@ module Main where
 ; class Fractional a
 ; instance Fractional Double
 
+
+; data Wrap a = Wrap a
+
+; class Constant a where
+  { vaval :: a }
+
+-- ; instance Constant Int where
+--   { vaval = 23 }
+
 -- the instance context MUST be here
+
 ; instance Num a => Constant (Wrap a) where
   { vaval = Wrap 23 }
 

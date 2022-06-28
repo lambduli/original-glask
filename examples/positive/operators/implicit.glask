@@ -1,0 +1,45 @@
+module Main where
+{ class Num a
+; instance Num Int
+
+; class Fractional a
+; instance Fractional Double
+
+
+; prefixr 0 |>
+
+; postfixr 0 ?
+
+; infixl 5 +
+
+; infixl 5 -
+
+
+; (-) :: Int -> Int -> Int
+; (-) x y = x
+
+; (+) :: Int -> Int -> Int
+; (+) x y = x
+
+
+; (|>) :: Int -> Int
+; (|>) x = x
+
+
+; (!) :: Int -> Int
+; (!) x = x
+
+; (?) :: Int -> Int
+; (?) x = x
+
+; x :: Int
+; y :: Int
+; z :: Int
+
+; x = x
+; y = y
+; z = z
+
+; program = x + |> y ? - z
+
+}

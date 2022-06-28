@@ -1,0 +1,26 @@
+module Main where
+{ class Num a
+; instance Num Int
+
+; class Fractional a
+; instance Fractional Double
+
+
+; prefixl 7 |>
+; postfixl 7 ?
+
+
+; data Bool = False | True
+
+; (|>) :: Int -> Bool
+; (|>) i = True
+
+; (?) :: Bool -> Char
+; (?) b = 'a'
+
+
+
+
+; program = |> 23 ?
+
+}

@@ -5,8 +5,10 @@ module Main where
 ; class Fractional a
 ; instance Fractional Double
 
+; data Maybe a = Nothing | Just a
 
 ; works :: (forall . Maybe) Int
 ; works = Just 23
+
 
 }
