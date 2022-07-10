@@ -1,0 +1,27 @@
+{ infixl 5 +
+; infixl 5 *
+
+; class Num a where
+  { (+) :: a -> a -> a
+  ; (*) :: a -> a -> a }
+
+; instance Num Int where
+  { (+) x y = int#+ (x, y)
+  ; (*) x y = int#* (x, y) }
+
+-- ; hmmm = 23 + 42
+
+; instance Num Double where
+  { (+) x y = double#+ (x, y)
+  ; (*) x y = double#* (x, y) }
+
+; data Bool = True | False
+
+-- ; a' :: Int -- with this annotation, even b' has type Int
+; a' = 23
+; b' = 42
+
+; sum = a' + b'
+
+
+}

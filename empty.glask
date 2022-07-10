@@ -1,4 +1,3 @@
-module Main where
 { class Num a
 
 ; instance Num Int

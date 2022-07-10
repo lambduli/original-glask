@@ -1,4 +1,3 @@
-module Main where
 { infixl 5 +
 ; infixl 6 *
 ; infixr 0 $
@@ -12,7 +11,10 @@ module Main where
   { (+) :: a -> a -> a
   ; (*) :: a -> a -> a }
 
-; instance Num Int
+; instance Num Int where
+  { (+) a b = int#+ (a,b)
+  ; (*) a b = int#* (a,b) }
+
 ; instance Num Double
 
 ; class Fractional a where
@@ -53,13 +55,23 @@ module Main where
 ; print a = String
 ; terminate :: a -> String
 ; terminate a = String
-; interesting = `print` a' + b'
+-- ; interesting = `print` a' + b'
 ; fn' a = a
+
 ; even'more = `print` fn' a'
 ; post' = a' + b' `terminate`
+
+; (||>) :: a -> a
 ; (||>) a = a
+
+; (|>) :: a -> a
 ; (|>) a = a
+
 ; eee = |> ||> a' + b'
+
+; strange' = a' + b'
+
+
 
 
 ; pat'test (a :: Int) = a
