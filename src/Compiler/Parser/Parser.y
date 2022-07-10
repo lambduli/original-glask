@@ -101,6 +101,7 @@ Program         ::  { [Term'Decl] }
 
 Module          ::  { [Term'Decl] }
                 :   module conid where Layout(Declaration)          { concat $4 }
+                |   Layout(Declaration)                             { concat $1 }
 
 
 Declaration     ::  { [Term'Decl] }

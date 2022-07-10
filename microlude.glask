@@ -1,4 +1,3 @@
-module Main where
 { infix 4 ==
 ; infixl 5 +
 ; infixl 6 *

@@ -1,6 +1,4 @@
-module Main where
-{ 
-  class Num a
+{ class Num a
 
 ; instance Num Int
 ; instance Num Double
