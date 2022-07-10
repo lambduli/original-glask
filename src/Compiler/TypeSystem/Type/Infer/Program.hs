@@ -168,11 +168,15 @@ infer'types prg@Program{ bind'section = bg, methods = methods, method'annotation
               throwError err
 
             Right s' -> do
-              case runIdentity $ runExceptT (s' `merge` subst) of
-                Left err -> do
-                  throwError err
+              case s' `compose` subst of  -- runIdentity $ runExceptT (s' `merge` subst) of
+                -- Left err -> do
+                --   throwError err
+                --
+                -- This was really embarassing moment. I think I wanted to get more safety and instead I introduced a massive bug into the system.
+                -- I have a feeling, that the properly'closing (maybe some part of it) might have been influenced (caused) by this mistake. I am not sure though.
 
-                Right subst' -> do
+                -- Right subst' -> do
+                subst' -> do
                   let sub = subst'
                   let properly'close :: (Name, Sigma'Type) -> ((Name, Sigma'Type), Subst M'V Type)
                       properly'close (name, sigma@(T'Forall tvs qual'type)) =
