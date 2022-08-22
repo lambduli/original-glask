@@ -332,7 +332,7 @@ APat            ::  { Term'Pat }
                 -- and insert corresponding type constructors to the typying environment or wherever.
                 |   conid '{' NoneOrManySeparated(FPat) '}'         { Term'P'Labeled $1 $3 }
                 |   Literal                                         { Term'P'Lit $1 }
-                |   string                                          { Term'P'App ((Term'P'Id $ Term'Id'Const "[]") : map (Term'P'Lit . Lit'Char) $1) }
+                |   string                                          { Term'P'List (map (Term'P'Lit . Lit'Char) $1) }
                 |   '_'                                             { Term'P'Wild }
                 |   '(' Pattern ')'                                 { $2 }
                 |   '(' Pattern ',' OneOrManySeparated(Pattern) ')' { Term'P'Tuple ($2 : $4) }
@@ -382,7 +382,7 @@ AExp            ::  { Term'Expr }
                 :   varid                                           { Term'E'Id $ Term'Id'Var $1 }
                 |   conid                                           { Term'E'Id $ Term'Id'Const $1 }
                 |   Literal                                         { Term'E'Lit $1 }
-                |   string                                          { Term'E'App ((Term'E'Id $ Term'Id'Const "[]") : map (Term'E'Lit . Lit'Char) $1) }
+                |   string                                          { Term'E'List (map (Term'E'Lit . Lit'Char) $1) }
                 |   '(' Expression ')'                              { $2 }
                 |   '(' Expression ',' OneOrManySeparated(Expression) ')'
                                                                     { Term'E'Tuple ($2 : $4) }
