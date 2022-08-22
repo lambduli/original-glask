@@ -54,6 +54,11 @@ data Token
   | Tok'Left'Brace Position     -- {
   | Tok'Right'Brace Position    -- }
 
+  -- virtual layout tokens
+  | Tok'V'Open Position
+  | Tok'V'Close Position
+  | Tok'V'Semicolon Position
+
   -- literals
   | Tok'Int Int Position
   | Tok'Double Double Position

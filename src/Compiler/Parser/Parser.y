@@ -543,6 +543,7 @@ NoneOrMany(tok)
 Layout(tok)
                 :   '{' LayoutInside(tok)                           { $2 }
 
+
 LayoutInside(tok)
                 :   tok '}'                                         { [$1] }
                 |   tok ';' LayoutInside(tok)                       { $1 : $3 }
