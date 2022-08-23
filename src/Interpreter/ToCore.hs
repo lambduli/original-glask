@@ -104,8 +104,8 @@ to'core (AST.Case motive'e matches'e)
 to'core (AST.Hole name)
   = error $ "To'Core transformation: found hole '" ++ name ++ "'"
 
-to'core (AST.Placeholder _)
-  = error "To'Core transformation: found placeholder"
+to'core (AST.Placeholder ph)
+  = error $ "To'Core transformation: found placeholder = " ++ show ph 
 
 
 section'to'core :: Bind'Section -> [Binding]
@@ -278,6 +278,7 @@ is'prim'op name = elem name prim'ops
                     , "int#<"
                     , "int#>"
                     , "int#+"
+                    , "int#show"
                     , "double#+"
                     , "int#*"
                     , "double#*"

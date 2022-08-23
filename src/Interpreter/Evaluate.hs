@@ -4,6 +4,7 @@ module Interpreter.Evaluate where
 import qualified Data.Map.Strict as Map
 import Control.Monad.State ( State, get, put )
 import Control.Monad.Extra ( concatMapM )
+import Data.Foldable ( foldrM )
 
 
 import Compiler.Syntax.Name ( Name )
@@ -297,8 +298,8 @@ eval (Case motive matches) env = do
         = return (Right (OK []))
       pattern'match'prim'op prim'op (P'Ann pattern _)
         = pattern'match'prim'op prim'op pattern
-      pattern'match'prim'op _ _
-        = return $ Left (Unexpected "pattern match failed, this is not an error, just a lazy/bad design :D")
+      pattern'match'prim'op a b
+        = return $ Left (Unexpected $ "pattern match failed, this is not an error, just a lazy/bad design :D | a= " ++ show a ++ " | b= " ++ show b )
 
 
       pattern'match'lit :: Literal -> Pattern -> Machine'State (Pattern'Match'Result [(Name, Either Promise Value)])
@@ -424,6 +425,110 @@ do'prim'op "int#-" (Data "(,)" [first'p, second'p]) = do
     (_, Left err) -> return (Left err)
     _ -> return (Left (Unexpected "Evaluation Error: Primitive Operation 'int#+' applied to something bad"))
 
+do'prim'op "int#*" (Data "(,)" [first'p, second'p]) = do
+  -- I force both promises to get the exact integers
+  r'fst <- force first'p
+  r'snd <- force second'p
+  -- now I pattern match on them and expect both of them to be literals
+  case (r'fst, r'snd) of
+    (Right (Literal (Lit'Int i)), Right (Literal (Lit'Int e))) -> do
+      -- now I just add those together and return the result as a value
+      let sum = i * e
+      return (Right (Literal (Lit'Int sum)))
+    (Left err, _) -> return (Left err)
+    (_, Left err) -> return (Left err)
+    _ -> return (Left (Unexpected "Evaluation Error: Primitive Operation 'int#*' applied to something bad"))
+
+do'prim'op "int#/" (Data "(,)" [first'p, second'p]) = do
+  -- I force both promises to get the exact integers
+  r'fst <- force first'p
+  r'snd <- force second'p
+  -- now I pattern match on them and expect both of them to be literals
+  case (r'fst, r'snd) of
+    (Right (Literal (Lit'Int i)), Right (Literal (Lit'Int e))) -> do
+      -- now I just add those together and return the result as a value
+      let sum = i `div` e
+      return (Right (Literal (Lit'Int sum)))
+    (Left err, _) -> return (Left err)
+    (_, Left err) -> return (Left err)
+    _ -> return (Left (Unexpected "Evaluation Error: Primitive Operation 'int#/' applied to something bad"))
+
+do'prim'op "int#<" (Data "(,)" [first'p, second'p]) = do
+  -- I force both promises to get the exact integers
+  r'fst <- force first'p
+  r'snd <- force second'p
+  -- now I pattern match on them and expect both of them to be literals
+  case (r'fst, r'snd) of
+    (Right (Literal (Lit'Int i)), Right (Literal (Lit'Int e))) -> do
+      -- now I just add those together and return the result as a value
+      return (Right (if i < e then Data "True" [] else Data "False" []))
+    (Left err, _) -> return (Left err)
+    (_, Left err) -> return (Left err)
+    _ -> return (Left (Unexpected "Evaluation Error: Primitive Operation 'int#<' applied to something bad"))
+
+do'prim'op "int#>" (Data "(,)" [first'p, second'p]) = do
+  -- I force both promises to get the exact integers
+  r'fst <- force first'p
+  r'snd <- force second'p
+  -- now I pattern match on them and expect both of them to be literals
+  case (r'fst, r'snd) of
+    (Right (Literal (Lit'Int i)), Right (Literal (Lit'Int e))) -> do
+      -- now I just add those together and return the result as a value
+      return (Right (if i > e then Data "True" [] else Data "False" []))
+    (Left err, _) -> return (Left err)
+    (_, Left err) -> return (Left err)
+    _ -> return (Left (Unexpected "Evaluation Error: Primitive Operation 'int#>' applied to something bad"))
+
+do'prim'op "int#==" (Data "(,)" [first'p, second'p]) = do
+  -- I force both promises to get the exact integers
+  r'fst <- force first'p
+  r'snd <- force second'p
+  -- now I pattern match on them and expect both of them to be literals
+  case (r'fst, r'snd) of
+    (Right (Literal (Lit'Int i)), Right (Literal (Lit'Int e))) -> do
+      -- now I just add those together and return the result as a value
+      return (Right (if i == e then Data "True" [] else Data "False" []))
+    (Left err, _) -> return (Left err)
+    (_, Left err) -> return (Left err)
+    _ -> return (Left (Unexpected "Evaluation Error: Primitive Operation 'int#==' applied to something bad"))
+
+do'prim'op "int#show" (Literal (Lit'Int int)) = do
+  let str = show int
+
+  val <- foldrM (\ char val -> do
+                store <- get
+                let head'addr = Map.size store
+                let tail'addr = head'addr + 1
+                let head'sus = Right (Literal (Lit'Char char))
+                let tail'sus = Right val
+                let store' = Map.insert head'addr head'sus store
+                let store'' = Map.insert tail'addr tail'sus store'
+                let head = Promise head'addr
+                let tail = Promise tail'addr
+
+                put store''
+
+                return (Data ":" [head, tail])
+              )
+              (Data "[]" [])
+              str
+  return (Right val)
+
+  -- let pairs :: [(Int, Either (Core, Environment) Value)]
+  --     pairs = zip addresses suspensions
+
+  -- -- now I need to put all of those into the store
+  -- let mini'store = Map.fromList ((tail'addr, suspension'tail) : pairs)
+  -- let new'store = store `Map.union` mini'store
+  -- put new'store
+
+  -- -- now I just need to construct the data
+  -- let prom'tail = Promise tail'addr
+  -- let promises = map Promise addresses
+
+  -- let res = foldr (\ head tail -> Data ":" [head, tail]) prom'tail promises
+
+  -- return (Right res)
 
 
 do'prim'op "trace#" anything = do
@@ -433,3 +538,51 @@ do'prim'op "trace#" anything = do
 
 do'prim'op name val = do
   return (Left (Unexpected $ "Uh oh ... this primitive operation ('" ++ name ++ "') is not implemented yet. (" ++ show val ++ ")"))
+
+
+
+-- this function expects the value in question to be a list of characters
+-- but of course, they can be 
+data'to'string :: Value -> Environment -> Machine'State String
+data'to'string dat@(Data ":" [_, _]) _ = do
+  -- the key is to force all the promises in the list and get a character literal each time
+  -- this can then be all chained together to form an actual string in Haskell
+
+  let reduce (Data ":" [prom'head, prom'tail]) = do
+        res'head <- force prom'head -- this needs to be a literal
+        res'tail <- force prom'tail -- this needs to be a data
+        case (res'head, res'tail) of
+          (Left err, _) -> return (Left err)
+          (_, Left err) -> return (Left err)
+          (Right (Literal (Lit'Char ch)), Right (Data "[]" [])) ->
+            -- this is what is nice
+            return (Right [ch])
+          (Right (Literal (Lit'Char ch)), Right d@(Data ":" [_, _])) -> do
+            -- this is also nice
+            -- let's reduce the `d` and get the string
+            strin'res <- reduce d
+            case strin'res of
+              Left err -> return (Left err)
+              Right s -> return (Right (ch : s))
+              -- and this is done
+          (Right a, Right b) -> return (Left (Unexpected $ "Weird - when serializing, I got a data, that is not a list of characters. " ++ show a ++ " || " ++ show b))
+      reduce _ = return (Left (Unexpected "Weird - when serializing, I got something that is not a list."))
+
+  res <- reduce dat
+  case res of
+    Left err -> return (Left err)
+    Right str -> return (Right str)
+
+
+  -- foldM (\ (Right str) prom ->  do
+  --           res <- force prom
+  --           case res of
+  --             Left err -> return (Left err)
+  --             Right (Literal (Lit'Char ch)) -> return (Right (str ++ [ch]))
+  --             Right smth -> return (Left (Unexpected $ "Weird - when serializing the value, I got a list containing this " ++ show smth))
+  --         )
+  --         (Right "") promises
+
+data'to'string (Data "[]" []) _ = return (Right "")
+
+data'to'string x env = return (Left (Unexpected $ "Weird - when serializing, I dodn't get a list at all. " ++ show x))

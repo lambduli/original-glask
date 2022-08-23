@@ -26,7 +26,7 @@ import qualified Compiler.Syntax.Overloaded as Overloaded
 import Compiler.TypeSystem.Error ( Error (Typed'Holes) )
 import Compiler.TypeSystem.Program ( Program(..) )
 import Compiler.TypeSystem.Binding ( Explicit(Explicit), Method (Method) )
-import Compiler.TypeSystem.InferenceEnv ( Infer'Env, Kind'Env, Type'Env, Constraint'Env )
+import Compiler.TypeSystem.InferenceEnv ( Infer'Env, Kind'Env, Type'Env, Constraint'Env, Instances )
 import qualified Compiler.TypeSystem.InferenceEnv as I'Env
 import Compiler.TypeSystem.InferenceState ( Infer'State (holes) )
 import qualified Compiler.TypeSystem.InferenceState as I'State
@@ -47,9 +47,10 @@ import Compiler.TypeSystem.ClassEnv ( Class'Env )
 import Compiler.TypeSystem.Kind.Infer.Program ( infer'kinds )
 import Compiler.TypeSystem.Kind.Infer.TypeSection ( infer'annotated, infer'methods )
 import Compiler.TypeSystem.Type.Infer.Declaration ( eliminate, eliminate'methods )
+import Debug.Trace (trace)
 
 
-infer'whole'program :: Program -> Infer'Env -> Counter -> Either Error (Program, Type'Env, Kind'Env, Constraint'Env, Counter, Class'Env, Infer'State Type)
+infer'whole'program :: Program -> Infer'Env -> Counter -> Either Error (Program, Type'Env, Kind'Env, Constraint'Env, Counter, Class'Env, Infer'State Type, [((Name, Type), Name)])
 infer'whole'program program infer'env counter = do
   let k'infer'state = I'State.Infer'State{ I'State.counter = counter, I'State.constraints = [], I'State.overloaded = [], I'State.instances = [], I'State.holes = [] }
 
@@ -66,6 +67,9 @@ infer'whole'program program infer'env counter = do
       cl'env              = I'Env.class'env infer'env
       substituted'cl'env  = apply kind'subst cl'env
 
+      inst'env              = I'Env.instance'env infer'env
+      substituted'inst'env  = map (first $ second $ apply kind'subst) inst'env
+
       substituted'instances = map (bimap (second (apply kind'subst)) (\ (a, b, c) -> (a, apply kind'subst b, apply kind'subst c))) (I'Env.instances infer'env)
       -- this line is ugly but it just does a simple things - instances is a pair with a two-ple and tri-ple
       -- both elements need the substitution to happen on them, refactoring this code should be trivial
@@ -76,7 +80,8 @@ infer'whole'program program infer'env counter = do
                             , I'Env.constraint'env = new'class'env
                             , I'Env.kind'substitution = kind'subst
                             , I'Env.class'env = substituted'cl'env
-                            , I'Env.instances = substituted'instances }
+                            , I'Env.instances = substituted'instances
+                            , I'Env.instance'env = substituted'inst'env }
                             -- NOTE: I need to put the kind substitution into the typing environment
                             --        when I later encounter any typing annotation (in the declaration or inline)
                             --        I first need to apply this substitution to it to fully specify the Kinds in it.
@@ -98,7 +103,7 @@ infer'whole'program program infer'env counter = do
 
   let counter' = get'counter k'infer'state'''
   -- NOTE: the reason why I am taking the stuff from the inference environment is because I need to put it in the state, but the state only comes to existence here, and so I need to do that
-      t'infer'state = I'State.Infer'State{ I'State.counter = counter', I'State.constraints = [], I'State.instances = I'Env.instances infer'env', I'State.overloaded = I'Env.overloaded infer'env', I'State.holes = [] }
+      t'infer'state = I'State.Infer'State{ I'State.counter = counter', I'State.constraints = [], I'State.instances = substituted'instances, I'State.overloaded = I'Env.overloaded infer'env', I'State.holes = [] }
 
   ((t'env, program''), t'infer'state') <- run'infer infer'env' (infer'types program') t'infer'state
 
@@ -113,7 +118,7 @@ infer'whole'program program infer'env counter = do
 
       Same works for class'env.
   -}
-  return (program'', new't'env, new'k'env, new'class'env, counter'', substituted'cl'env, t'infer'state')
+  return (program'', new't'env, new'k'env, new'class'env, counter'', substituted'cl'env, t'infer'state', substituted'inst'env)
 
 
 infer'types :: Program -> Type'Check (Type'Env, Program)

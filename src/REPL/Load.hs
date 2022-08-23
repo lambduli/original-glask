@@ -352,7 +352,7 @@ process'declarations declarations trans'env counter = do
   -- (Type'Env, [Constraint Kind])
   -- (t'env, k'constr) <- run'infer infer'env (infer'program program)
 
-  (program', t'env', k'env', c'env, cnt, cl'env, infer'state) <- infer'whole'program program infer'env counter
+  (program', t'env', k'env', c'env, cnt, cl'env, infer'state, instance'env') <- infer'whole'program program infer'env counter
 
 
   -- TODO: I also need to do the Kind inference, probably even before type inference
@@ -433,5 +433,4 @@ process'declarations declarations trans'env counter = do
   -- and this I have
   -- Class { class'name :: Name, class'param :: T'V', class'supers :: [Predicate], class'declarations :: [Declaration] }
 
-
-  return (new'program, infer'env{ type'env = t'env', kind'env = k'env', constraint'env = c'env, class'env = cl'env }, trans'env, cnt, infer'state)
+  return (new'program, infer'env{ type'env = t'env', kind'env = k'env', constraint'env = c'env, class'env = cl'env, instance'env = instance'env' }, trans'env, cnt, infer'state)

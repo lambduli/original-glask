@@ -24,8 +24,10 @@ data Infer'Env = Infer'Env  { kind'env :: Kind'Env
                             , kind'substitution :: Subst Name Kind
                             , instance'env :: [((Name, Type), Name)] -- (Name, Type) is the kind of information in the placeholder, like Num Int, or Eq []
                             , overloaded :: [(Name, Overloaded)]
-                            , instances :: [((Name, Type), (Name, [Predicate], Predicate))] }
+                            , instances :: Instances }
   deriving (Show)
+
+type Instances = [((Name, Type), (Name, [Predicate], Predicate))]
 
 
 type Constraint'Env = Map.Map Name Kind -- This environment assigns each type class-name a Kind for its single type parameter
@@ -58,6 +60,7 @@ init't'env = Map.fromList
   , ("int#<",     T'Forall [T'V' "a" K'Star]                    $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Bool))
   , ("int#>",     T'Forall [T'V' "a" K'Star]                    $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Bool))  
   , ("int#+",     T'Forall []                                   $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
+  , ("int#show",  T'Forall []                                   $ [] :=> (t'Int `type'fn` type'list'of (T'Con (T'C "Char" K'Star))))
   , ("double#+",  T'Forall []                                   $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))
   , ("int#*",     T'Forall []                                   $ [] :=> (T'Tuple [t'Int, t'Int] `type'fn` t'Int))
   , ("double#*",  T'Forall []                                   $ [] :=> (T'Tuple [t'Double, t'Double] `type'fn` t'Double))

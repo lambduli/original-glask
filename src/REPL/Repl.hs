@@ -39,7 +39,7 @@ import Compiler.TypeSystem.InferenceEnv ( Infer'Env )
 import Compiler.TypeSystem.InferenceEnv as I'Env
 
 
-import Interpreter.Evaluate ( eval )
+import Interpreter.Evaluate ( eval, data'to'string )
 import Interpreter.ToCore ( to'core )
 
 
@@ -215,7 +215,7 @@ repl (program@Program{ environment = environment, store = store }, i'env@Infer'E
       -- evaluate it within the env and store
       -- 
       -- read'expr :: String -> Translate'Env -> Translate'State -> Either Semantic'Error (Expression, Translate'State)
-      case read'expr line trans'env counter of
+      case read'expr ("show (" ++ line ++ ")") trans'env counter of
         Left trans'err -> do
           putStrLn $ "Error: " ++ show trans'err
         Right (expr, counter''') -> do
@@ -230,7 +230,7 @@ repl (program@Program{ environment = environment, store = store }, i'env@Infer'E
           -- NOTE: before I run the infer'type, I need to modify the i'env
           -- I need to add all overloads and instances form the previous state into it
           let inf'env = i'env{ I'Env.instances = I'State.instances infer'state, I'Env.overloaded = I'State.overloaded infer'state }
-          -- putStrLn $ "|takze jak teda vypada inf'env? " ++ show inf'env ++ "|\n|\n|\n"
+          -- putStrLn $ "|takze jak teda vypada inf'env instance'env? " ++ show (I'Env.instance'env inf'env) ++ "|\n|\n|\n"
           -- putStrLn $ "\n\n\n\n\n\n\n\n\n\n............. i'env: " ++ show i'env ++ "\n\n\n\n\n\n\n"
 
           let error'or'scheme = infer'expr'type expr inf'env counter'''
@@ -239,7 +239,7 @@ repl (program@Program{ environment = environment, store = store }, i'env@Infer'E
             Left err -> do
               putStrLn $ "Type Error: " ++ show err
               -- loop
-              repl (program, i'env, trans'env, counter''', infer'state)
+              repl (program, inf'env, trans'env, counter''', infer'state)
             Right (_, expr', counter'''') -> do
               let core'expr = to'core expr'
               -- putStrLn $ "Elaborated Expression: " ++ show expr'
@@ -249,10 +249,14 @@ repl (program@Program{ environment = environment, store = store }, i'env@Infer'E
                 Left eval'err -> do
                   putStrLn $ "Evaluation Error: " ++ show eval'err
                 Right value -> do
-                  let hacky'serialized = show value
-                  putStrLn "Evaluated to: "
-                  putStrLn hacky'serialized
+                  -- putStrLn "just Show: "
+                  -- putStrLn (show value)
+                  let (result, store'') = runState (data'to'string value environment) store'
+                  case result of
+                    Left err -> print err
+                    Right serialized -> do
+                      -- putStrLn "Evaluated to: "
+                      putStrLn $ "          " ++ serialized
                   
-                  repl (program{ store = store' }, i'env, trans'env, counter'''', infer'state)
+                      repl (program{ store = store'' }, inf'env, trans'env, counter'''', infer'state)
                   -- putStrLn "<expression evaluation is not implemented yet>"
-
