@@ -1,0 +1,274 @@
+{ infixl 5 +
+; infixl 6 *
+; infixl 6 -
+; infixr 0 $
+; infix 4 ==
+; infixl 9 `App`
+; infixr 3 `and`
+; infixr 5 ++
+; infix 4 <
+; infix 4 >
+
+; undefined = undefined
+
+; class Num a where
+  { (+) :: a -> a -> a
+  ; (*) :: a -> a -> a
+  ; (-) :: a -> a -> a }
+
+; instance Num Int where
+  { (+) x y = int#+(x, y)
+  ; (*) x y = int#*(x, y)
+  ; (-) x y = int#-(x, y) }
+
+; instance Num Double -- incomplete instance, but whatever
+
+; class Eq a where
+  { (==) :: a -> a -> Bool }
+
+; instance Eq Int where
+  { (==) x y = int#== (x, y) }
+
+
+; class Fractional a
+
+; instance Fractional Double
+
+; data Bool = True | False
+
+; and :: Bool -> Bool -> Bool
+; and True r = r
+; and False _ = False
+
+; not :: Bool -> Bool
+; not True = False
+; not False = True
+
+; data Pair a b = Pair a b
+
+
+; ($) :: (a -> b) -> a -> b
+; ($) fn e = fn e
+-- alternatively
+-- ; ($) fn = fn
+
+; class Ord a where
+  { (<) :: a -> a -> Bool
+  ; (>) :: a -> a -> Bool }
+
+; instance Ord Int where
+  { (<) x y = int#< (x, y)
+  ; (>) x y = int#> (x, y) }
+
+; class Show a where
+  { show :: a -> [Char]
+  ; show'list :: [a] -> [Char] }
+
+; instance Show a => Show [a] where
+  { show items = show'list items
+  ; show'list = undefined }
+
+; instance (Show a, Show b) => Show (Pair a b) where
+  { show (Pair x y) = "(" ++ show x ++ ", " ++ show y ++ ")"
+  ; show'list = undefined }
+
+; instance Show Bool where
+  { show True = "True"
+  ; show False = "False"
+  ; show'list bools = "[" ++ concat'map'with ", " show bools ++ "]" }
+
+; instance Show Char where
+  { show ch = [ch]
+  ; show'list [] = ""
+  ; show'list (ch : chs) = show ch ++ show'list chs }
+
+; instance Show Int where
+  { show n = int#show n
+  ; show'list bools = "[" ++ concat'map'with ", " show bools ++ "]" }
+  -- ; show'list [] = ""
+  -- ; show'list (ch : chs) = show ch ++ show'list chs }
+  -- THIS IS BUGGY, IT CAUSES SOME WEIRD ERROR - it leaves some placeholder in the AST
+  -- ; show'list ints
+  --   = let { show'list' [] = ""
+  --         ; show'list' (int : ints) = show int ++ show'list' ints }
+  --     in show'list' ints }
+
+-- --  ; show'list ints
+-- --    = let { show'list' [] = []
+-- --          ; show'list' (int : ints) = show int ++ ", " ++ show'list' ints }
+-- --      in '[' : show'list' ints }
+
+
+
+-- some infinite lists examples
+
+; inf'list = 23 : inf'list
+
+; head (a : as) = a
+; drop 0 ls = ls
+; drop n (a : as) = drop (n - 1) as
+; (++) :: [a] -> [a] -> [a]
+; (++) [] ls = ls
+; (++) as [] = as
+; (++) (a : as) bs = a : as ++ bs
+
+-- concat'map'with ", " show bools
+; concat'map'with :: [b] -> (a -> [b]) -> [a] -> [b]
+; concat'map'with _ _ [] = []
+; concat'map'with separator mapping (a : [])
+  = mapping a 
+; concat'map'with separator mapping (a : as)
+  = let { a'  = mapping a
+        ; as' = concat'map'with separator mapping as
+        ; all = a' ++ separator ++ as' }
+    in  all
+
+
+
+
+
+
+
+
+
+-- sanity check again
+; so'what = show (Var 23)
+
+-- Lambda Calculus 
+
+; data Expr = Var Int
+            | Abs Expr
+            | App Expr Expr
+
+; instance Eq Expr where
+  { (==) (Var l) (Var l') = l == l'
+  ; (==) (Abs left) (Abs right) = left == right
+  ; (==) (m `App` n) (o `App` p) = m == o `and` (n == p)
+  ; (==) _ _ = False }
+
+; instance Show Expr where
+  { show (Var n) = "(Var " ++ show n ++ ")" 
+  ; show (Abs expr) = "(Abs " ++ show expr ++ ")"
+  ; show (left `App` right) = "(" ++ show left ++ " " ++ show right ++ ")"
+  
+  ; show'list = undefined }
+
+
+-- -- SOME NUMBERS
+; zero  = Abs (Abs (Var 1))   -- \ s . \ z . z
+; one   = Abs (Abs ((Var 2) `App` (Var 1)))   -- \ s . \ z . s z
+; two   = suc `App` one
+; three = suc `App` two
+; four  = suc `App` three
+-- ; five  = suc `App` four
+
+--
+-- FACTORIAL
+--
+-- Y := (λ f . (λ x . f (x x)) (λ x . f (x x)))
+; xx  = (Var 1) `App` (Var 1)   -- (x x)
+; f   = Var 2                   -- f
+; xf  = Abs (f `App` xx)        -- (λ x . f (x x))
+; y   = Abs (xf `App` xf)       -- (λ f . (λ x . f (x x)) (λ x . f (x x)))
+
+-- ZERO := (λ n .  n            (λ x . (λ t f . f))             (λ t  f .  t))
+; iszero = (Abs ( (Var 1) `App` (Abs (Abs (Abs (Var 1)))) `App` (Abs (Abs (Var 2))) ))
+
+
+-- TIMES := (λ  x    y    s    z  .   x             (y s) z)
+; times       = Abs (Abs (Abs (Abs  ((Var 4) `App` ((Var 3) `App` (Var 2)) `App` (Var 1) )) ))
+
+-- PRED := (λ x s z . x[3] (λ f g . g[1] (f[2] s[4])) (λ g . z[2]) (λ u . u[1]))
+; pred  =  (Abs (Abs (Abs ((Var 3) `App` (Abs (Abs (Var 1 `App` ((Var 2) `App` (Var 4))))) `App` (Abs (Var 2)) `App` (Abs (Var 1))))))
+
+-- ; pred  = Abs (Abs (Abs ( (Var 3) `App` fg `App` g `App` (Abs (Var 1)) )))
+-- ; fg    = Abs (Abs ( (Var 1) `App` ((Var 2) `App` (Var 4)) ))   -- (λ f g . g (f s))
+-- ; g     = Abs (Var 2)                                           -- (λ g . z)
+
+
+-- SUC := (λ n s z . s (n s z))
+; suc = Abs (Abs (Abs ( (Var 2) `App` ((Var 3) `App` (Var 2) `App` (Var 1)) )))
+
+-- R := (λ f n . ISZERO n 1 (TIMES n (f (PRED n))))
+; r     = Abs (Abs if')                             -- \ f . \ n . ...
+; if'   = iszero `App` (Var 1) `App` one `App` else'  -- ISZERO n 1 ...
+; else' = times `App` (Var 1) `App` rec             -- TIMES n ...
+; rec   = (Var 2) `App` sub1                        -- f ...
+; sub1  = pred `App` (Var 1)                        -- (PRED n)
+
+
+-- Y R 0
+; yr0 = y `App` r `App` zero
+; yr1 = y `App` r `App` one
+; yr2 = y `App` r `App` two
+; yr3 = y `App` r `App` three
+; yr4 = y `App` r `App` four
+-- ; yr5 = y `App` r `App` five
+
+
+
+
+-- attempts to reach the normal form of the lambda expression
+; normalize :: Expr -> Pair Int Expr
+; normalize expr = normalize' 0 expr
+
+; normalize' :: Int -> Expr -> Pair Int Expr
+; normalize' steps expr = if not (normal'form expr)
+                          then normalize' (steps + 1) (normal'step expr)
+                          else Pair steps expr
+
+
+-- checks the expression for being in the normal form
+; normal'form :: Expr -> Bool
+; normal'form (Var _) = True
+; normal'form (Abs expr) = normal'form expr
+; normal'form ((Abs expr) `App` _) = False
+; normal'form (left `App` right) = normal'form left `and` normal'form right
+
+
+-- finds a beta redex and does a single step in the normal evaluation strategy
+; normal'step :: Expr -> Expr
+; normal'step (Abs body) = Abs (normal'step body)
+; normal'step ((Abs body) `App` arg) = beta 1 body arg
+; normal'step (left `App` right) =  if normal'form left
+                                    then left `App` normal'step right
+                                    else normal'step left `App` right
+
+
+-- does a beta reduction
+; beta :: Int -> Expr -> Expr -> Expr
+; beta l (Var l') arg = if l == l' 
+                        then increment 0 (l - 1) arg
+                        else  if l' > l
+                              then (Var (l' - 1))
+                              else (Var l')
+; beta l (Abs expr) arg = Abs $ beta (l + 1) expr arg
+; beta l (left `App` right) arg = beta l left arg `App` beta l right arg
+
+
+; increment :: Int -> Int -> Expr -> Expr
+; increment l offset (Var i) = if i > l then Var (offset + i) else (Var i) -- if (free var) then adjust the nesting else nothing
+; increment l offset (Abs exp) = Abs (increment (l + 1) offset exp)
+; increment l offset (left `App` right) = increment l offset left `App` increment l offset right
+
+
+
+
+
+
+
+
+--
+-- End of Lambda Calculus
+--
+
+
+
+-- "native" factorial
+
+
+; factorial :: Int -> Int
+; factorial 0 = 1
+; factorial n = n * factorial (n - 1)
+
+}
