@@ -63,9 +63,13 @@ instance Substitutable T'V' Type Type where
   apply s (T'Tuple types)
     = T'Tuple $ map (apply s) types
 
-  apply s f1@(T'Forall tvs q't)
+  apply (Sub s) f1@(T'Forall tvs q't)
+    = let s'    = Map.filterWithKey (\ tv _ -> notElem tv tvs) s
+          subst = Sub s'
+      in  T'Forall tvs $ apply subst q't
   -- I can safely ifnore quantified variables, I am only going to be replacing M'V and those can't be closed under the forall
-    = T'Forall tvs $ apply s q't
+  -- THIS IS NOT EVEN TRUE!
+    -- = T'Forall tvs $ apply s q't
 
 
 instance Substitutable M'V Type Type where
