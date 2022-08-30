@@ -1,4 +1,11 @@
-{ class Num a
+{ infixr 5 ++
+
+; (++) :: [a] -> [a] -> [a]
+; (++) [] ls = ls
+; (++) as [] = as
+; (++) (a : as) bs = a : as ++ bs
+  
+; class Num a
 
 ; instance Num Int
 
@@ -6,9 +13,76 @@
 
 ; instance Fractional Double
 
+; undefined = undefined
 
-; zeros = 0 : zeros
+; concat'map'with :: [b] -> (a -> [b]) -> [a] -> [b]
+; concat'map'with _ _ [] = []
+; concat'map'with separator mapping (a : [])
+  = mapping a 
+; concat'map'with separator mapping (a : as)
+  = let { a'  = mapping a
+        ; as' = concat'map'with separator mapping as
+        ; all = a' ++ separator ++ as' }
+    in  all
+
+
+
+; class Show a where
+  { show :: a -> [Char]
+  ; show'list :: [a] -> [Char] }
+
+; instance Show a => Show [a] where
+  { show items = show'list items
+  ; show'list = undefined }
+
+; instance Show Bool where
+  { show True = "True"
+  ; show False = "False"
+  ; show'list bools = "[" ++ concat'map'with ", " show bools ++ "]" }
+
+; instance Show Char where
+  { show ch = [ch]
+  ; show'list [] = ""
+  ; show'list (ch : chs) = show ch ++ show'list chs }
+
+; instance Show Int where
+  { show n = int#show n
+  ; show'list bools = "[" ++ concat'map'with ", " show bools ++ "]" }
+
+
+-- ; zeros = 0 : zeros
 
 ; data Bool = False | True
+
+-- ; data Pair a b = Pair a b
+-- 
+-- ; f' :: forall a b . (forall a . a -> a) -> (a, b) -> (a, b)
+-- ; f' g (x, y) = ((g x), (g y))
+
+
+; fst :: (a, b) -> a
+; fst (a, b) = a
+
+
+; class Foo a where
+  { foo :: a -> a }
+
+; instance Foo Int where
+  { foo x = 1 }
+
+; instance Foo Char where
+  { foo _ = 'a' }
+
+
+; f' :: (Char -> Char) -> Char -> Char
+; f' g c = g c
+; a'' = f' foo 'a'
+
+; f'' :: (Foo a, Foo b) => (forall a . Foo a => a -> a) -> (a, b) -> (a, b)
+; f'' g (x, y) = ((g x), (g y))
+
+; y'' = f'' foo (42 :: Int, 'z')
+
+-- ; x'' = f'' (\ x -> foo x) (23 :: Int, 'b')
 
 }

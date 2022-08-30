@@ -21,5 +21,5 @@ main = do
 
 module'to'load :: [String] -> String
 module'to'load ("proto" : _) = "protolude.glask"
-module'to'load ("p" : file'name : _) = file'name
+module'to'load (file'name : _) = file'name
 module'to'load _ = "prelude.glask"

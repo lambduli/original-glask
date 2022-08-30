@@ -47,7 +47,6 @@ import Compiler.TypeSystem.ClassEnv ( Class'Env )
 import Compiler.TypeSystem.Kind.Infer.Program ( infer'kinds )
 import Compiler.TypeSystem.Kind.Infer.TypeSection ( infer'annotated, infer'methods )
 import Compiler.TypeSystem.Type.Infer.Declaration ( eliminate, eliminate'methods )
-import Debug.Trace (trace)
 
 
 infer'whole'program :: Program -> Infer'Env -> Counter -> Either Error (Program, Type'Env, Kind'Env, Constraint'Env, Counter, Class'Env, Infer'State Type, [((Name, Type), Name)])

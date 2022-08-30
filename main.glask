@@ -90,8 +90,15 @@
   -- THIS IS BUGGY, IT CAUSES SOME WEIRD ERROR - it leaves some placeholder in the AST
   -- ; show'list ints
   --   = let { show'list' [] = ""
-  --         ; show'list' (int : ints) = show int ++ show'list' ints }
+  --         ; show'list' (int : ints) = show (int :: Int) ++ show'list' ints }
   --     in show'list' ints }
+
+; show'list'' :: [Int] -> [Char]
+; show'list'' ints
+    = let { show'list' :: Show a => [a] -> [Char]
+          ; show'list' [] = ""
+          ; show'list' (int : ints') = show int ++ show'list' ints' }
+      in show'list' ints
 
 -- --  ; show'list ints
 -- --    = let { show'list' [] = []
@@ -124,17 +131,16 @@
     in  all
 
 
+; fst :: (a, b) -> a
+; fst (a, _) = a
+
+; snd :: (a, b) -> b
+; snd (_, b) = b
 
 
 
 
-
-
-
--- sanity check again
-; so'what = show (Var 23)
-
--- Lambda Calculus 
+-- Lambda Calculus
 
 ; data Expr = Var Int
             | Abs Expr
@@ -147,9 +153,10 @@
   ; (==) _ _ = False }
 
 ; instance Show Expr where
-  { show (Var n) = "(Var " ++ show n ++ ")" 
-  ; show (Abs expr) = "(Abs " ++ show expr ++ ")"
-  ; show (left `App` right) = "(" ++ show left ++ " " ++ show right ++ ")"
+  { show (Var n) = show n
+  ; show (Abs expr) = "(λ . " ++ show expr ++ ")"
+  ; show (left `App` right@(_ `App` _)) = show left ++ " (" ++ show right ++ ")"
+  ; show (left `App` right) = show left ++ " " ++ show right
   
   ; show'list = undefined }
 
@@ -157,10 +164,10 @@
 -- -- SOME NUMBERS
 ; zero  = Abs (Abs (Var 1))   -- \ s . \ z . z
 ; one   = Abs (Abs ((Var 2) `App` (Var 1)))   -- \ s . \ z . s z
-; two   = suc `App` one
-; three = suc `App` two
-; four  = suc `App` three
--- ; five  = suc `App` four
+; two   = normalize $ suc `App` one
+; three = normalize $ suc `App` two
+; four  = normalize $ suc `App` three
+-- ; five  = normalize $ suc `App` four
 
 --
 -- FACTORIAL
@@ -190,7 +197,7 @@
 ; suc = Abs (Abs (Abs ( (Var 2) `App` ((Var 3) `App` (Var 2) `App` (Var 1)) )))
 
 -- R := (λ f n . ISZERO n 1 (TIMES n (f (PRED n))))
-; r     = Abs (Abs if')                             -- \ f . \ n . ...
+; fact  = Abs (Abs if')                             -- \ f . \ n . ...
 ; if'   = iszero `App` (Var 1) `App` one `App` else'  -- ISZERO n 1 ...
 ; else' = times `App` (Var 1) `App` rec             -- TIMES n ...
 ; rec   = (Var 2) `App` sub1                        -- f ...
@@ -198,24 +205,28 @@
 
 
 -- Y R 0
-; yr0 = y `App` r `App` zero
-; yr1 = y `App` r `App` one
-; yr2 = y `App` r `App` two
-; yr3 = y `App` r `App` three
-; yr4 = y `App` r `App` four
+; yr0 = y `App` fact `App` zero
+; yr1 = y `App` fact `App` one
+; yr2 = y `App` fact `App` two
+; yr3 = y `App` fact `App` three
+; yr4 = y `App` fact `App` four
 -- ; yr5 = y `App` r `App` five
 
 
 
 
 -- attempts to reach the normal form of the lambda expression
-; normalize :: Expr -> Pair Int Expr
-; normalize expr = normalize' 0 expr
+; normalize :: Expr -> Expr
+; normalize expr = if not (normal'form expr)
+                          then normalize (normal'step expr)
+                          else expr
 
-; normalize' :: Int -> Expr -> Pair Int Expr
-; normalize' steps expr = if not (normal'form expr)
-                          then normalize' (steps + 1) (normal'step expr)
-                          else Pair steps expr
+-- tried, wasn't faster
+-- ; evaluate :: Expr -> Expr
+-- ; evaluate v@(Var _) = v
+-- ; evaluate (Abs body) = Abs (evaluate body)
+-- ; evaluate ((Abs body) `App` arg) = beta 1 body arg
+-- ; evaluate (left `App` right) = evaluate (evaluate left `App` right)
 
 
 -- checks the expression for being in the normal form
@@ -270,5 +281,33 @@
 ; factorial :: Int -> Int
 ; factorial 0 = 1
 ; factorial n = n * factorial (n - 1)
+
+--
+-- Question from the oponent
+--
+
+-- let { f' :: (forall a . a -> a) -> (a, b) -> (a, b)
+--              ; f' g (x, y) = ((g x), (g y)) } in f' (\ i -> i) (23, True)
+
+; f' :: (forall a . a -> a) -> (a, b) -> (a, b)
+; f' g (x, y) = ((g x), (g y))
+
+; class Foo a where
+  { foo :: a -> a }
+
+; instance Foo Int where
+  { foo x = x + 1 }
+
+; instance Foo Char where
+  { foo _ = 'x' }
+
+; f'' :: (Foo a, Foo b) => (forall a . Foo a => a -> a) -> (a, b) -> (a, b)
+; f'' g (x, y) = ((g x), (g y))
+
+; x'' = f'' (\ x -> foo x) (23 :: Int, 'a')
+; y'' = f'' foo (42 :: Int, 'z')
+
+
+
 
 }

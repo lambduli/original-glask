@@ -37,6 +37,7 @@ import Compiler.TypeSystem.Actual ( Actual (Checked, Inferred) )
 import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'specify )
 import Compiler.TypeSystem.Error ( Error(Unexpected, Typed'Holes) )
 import Compiler.TypeSystem.InferenceState (Infer'State(holes))
+import Debug.Trace (trace)
 
 
 infer'expr :: Expression -> Expected Rho'Type -> Type'Check (Expression, [Predicate], Actual Rho'Type)
@@ -50,6 +51,7 @@ infer'expr (Var var'name) expected = do
                       Checked -> error "should never happen"
                       Inferred t -> t
 
+  let oo = if var'name == "foo" then trace ("variable = " ++ var'name ++ "  \n|  sigma= " ++ show sigma ++ "\n|  preds = " ++ show preds ++ "\n|  ty= " ++ show ty ++ "\n|  expected= " ++ show expected) var'name else var'name
   -- TODO: HERE - the var might be overloaded constant, or it might be a method,
   -- or it might be one of mutually recrusive definitions I need some way of
   -- knowing whether it's one of those

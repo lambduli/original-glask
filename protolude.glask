@@ -110,11 +110,15 @@
 
 ; data Pair x y = Pair x y
 
-; aaa :: Bool -> Maybe Bool -> Char
+-- ; aaa :: Bool -> Maybe Bool -> Char
+-- ; aaa = \ b m'b -> 'Y'
+
+; aaa :: b -> Maybe Bool -> Char
 ; aaa = \ b m'b -> 'Y'
 
 ; rank' :: forall b c . (forall x . x -> x) -> b -> c -> Char
-; rank' = \ fn b c -> (aaa (fn True)) (fn (Just False))
+-- ; rank' = \ fn b c -> (aaa (fn True)) (fn (Just False))
+; rank' = \ fn b c -> (aaa (fn b)) (fn (Just False))
 
 ; data A = A
 ; data B = B

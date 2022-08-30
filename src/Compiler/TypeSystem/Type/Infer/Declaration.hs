@@ -47,6 +47,7 @@ import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term (fr
 import Compiler.TypeSystem.Utils.Infer ( default'subst, add'dicts, lookup'dict, lookup'instance )
 import Compiler.TypeSystem.Solver.Composable ( Composable(merge) )
 import Compiler.TypeSystem.InferenceState
+import Debug.Trace (trace)
 
 
 
@@ -324,7 +325,11 @@ elim'impl subst assumptions (Implicit Bind'Group{ name = n, alternatives = alts 
 elim'expl :: Subst M'V Type -> [(Name, Sigma'Type)] -> Explicit -> Type'Check Explicit
 elim'expl subst assumptions (Explicit sigma Bind'Group{ name = n, alternatives = alts }) = do
   alts' <- mapM (elim'match subst assumptions sigma) alts
-  return $ Explicit sigma (Bind'Group{ name = n, alternatives = alts' })
+  let r = Explicit sigma (Bind'Group{ name = n, alternatives = alts' })
+
+  let oo = if n == "" then trace ("<elim>  ") r else r
+
+  return r
 -- the point is, alts is a list of Matches
 -- so I need to eliminate that too
 
@@ -589,6 +594,7 @@ elim'expr assumps subst p@(Placeholder (Placeholder.Dictionary name ty)) = do
       throwError $ Unexpected "Can not find a dictionary for a forall type - this shouldn't happen, something must be broken."
 
 elim'expr assumps subst (Placeholder (Placeholder.Method name ty cl'name)) = do
+  -- let oo = trace ("elim method\nname= " ++ name ++ "\nty= " ++ show ty ++ "\ncl'name= " ++ cl'name ++ "\ntype'= " ++ show (apply subst ty) ++ "\n\n") ty
   let type' = apply subst ty
   -- this placeholder represents a method to be selected from a dictionary
   -- this means I will need to produce the dictionary too
