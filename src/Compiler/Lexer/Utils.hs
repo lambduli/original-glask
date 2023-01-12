@@ -1,14 +1,17 @@
 module Compiler.Lexer.Utils where
 
 
-import Control.Monad.State
+import Control.Monad.State ( MonadState(get, put), evalState, runState )
 import Codec.Binary.UTF8.String (encode)
 
 
 import Compiler.Lexer.LexerState
-import Compiler.Lexer.Position
-import Compiler.Lexer.Token
-import Data.Word
+    ( Parse'State(Parse'State, done, lex'start'code, string'buffer,
+                  pending'position, input),
+      AlexInput(..), Parser, initial'state )
+import Compiler.Lexer.Position ( Position(Position, column, line) )
+import Compiler.Lexer.Token ( Token(Tok'String, Tok'Char) )
+import Data.Word ( Word8 )
 
 
 type Number'Of'Chars'Matched = Int

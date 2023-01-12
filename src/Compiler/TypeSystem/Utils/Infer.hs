@@ -10,7 +10,7 @@ import qualified Data.Set as Set
 import Data.List ( partition, (\\), zipWith )
 import Data.Bifunctor ( Bifunctor(second) )
 
-import Control.Monad.Reader ( asks, MonadReader(local) )
+import Control.Monad.Reader ( asks, MonadReader(local, ask) )
 import Control.Monad.Except ( MonadError(throwError) )
 
 
@@ -28,12 +28,12 @@ import Compiler.Syntax.Match ( Match )
 
 import Compiler.TypeSystem.Error ( Error(Unexpected, Unbound'Var, Unbound'Type'Var) )
 import Compiler.TypeSystem.Infer ( Infer, run'infer, Type'Check, Kind'Check, add'constraints, get'constraints )
-import Compiler.TypeSystem.InferenceEnv ( Infer'Env(Infer'Env, type'env, kind'env, constraint'env, overloaded, instance'env, instances), Type'Env )
+import Compiler.TypeSystem.InferenceEnv ( Infer'Env(Infer'Env, type'env, kind'env, constraint'env, overloaded, instance'env, instances, class'env), Type'Env )
 import Compiler.TypeSystem.ClassEnv ( Class'Env )
 import Compiler.TypeSystem.Ambiguity ( ambiguities, candidates, Ambiguity )
 -- import Compiler.TypeSystem.Solver.Solve ( Solve )
 import Compiler.TypeSystem.Solver.Substitution ( Subst(..) )
-import Compiler.TypeSystem.Utils.Class ( reduce )
+import Compiler.TypeSystem.Utils.Class ( reduce, entail )
 import Compiler.TypeSystem.Constraint ( Constraint(Unify) )
 import Compiler.TypeSystem.Solver.Substitutable ( Substitutable(apply), Term(free'vars) )
 import Compiler.TypeSystem.Type.Constants ( type'fn )
@@ -567,11 +567,56 @@ check'sigma expr sigma = do
 
       let bad'vars  = filter (`elem` free'all) skolems
 
+
+      -- NOTE: This is pretty much an experiment to get rid of the bug where the type system allows type annotations and application of higher-rank function type
+      -- to cause loosening the type of an expression.
+      -- EXAMPLES:
+      -- TODO: ADD THOSE
+
+      -- maybe I should deal with the outer context only if the sigma is really a sigma
+      -- because if it is just some rho type then it does not really make sense to do all this
+      -- because:
+      -- skolemise for a rho type returns an empty list of predicates - which makes total sense
+      -- but that empty set of predicates can not entail possible set of predicates raised from the expression
+      -- EXAMPLE:
+      -- ; an'example :: Show a => a -> [Char]
+      -- ; an'example a = show a ++ "."
+      -- where the issue is with (++)'s type ((++) :: [a] -> [a] -> [a]) ;
+      -- namely the part where the argument type (sigma or rather rho, really)
+      -- being [a]
+      -- can not really produce a context that would entail the context of the expression (show a)
+      -- which is (Show a') where (a') is the type of (a)
+      -- so I am moving this whole expriment behind a check that (sigma) really is a Forall-ed type
+      case sigma of
+        T'Forall _ _ -> do
+          Infer'Env{ class'env = c'env } <- ask
+          let outer'context = apply subst preds   -- this context must not be weaker than the one that has been produced by the actual checking the expression
+              inner'context = apply subst preds'  -- this is the inner context from the expression
+              
+          outer'reduced <- reduce c'env outer'context
+          inner'reduced <- reduce c'env inner'context
+
+          -- the outer'reduced must entail the whole inner'reduce (or so I believe)
+
+          let ps' = filter (not . entail c'env outer'reduced) inner'reduced
+
+          if not $ null ps'
+          then
+            throwError $ Unexpected ("The context is too weak!\n" ++ "Predicates: " ++ show ps' ++ "\n can not be solved.")
+          else return ()
+
+        _ -> return ()
+      -- end of the experiment
+      --
+
+
       if not $ null bad'vars
       then
         throwError $ Unexpected "Type is not polymorphic enough!"
       else do
         return (expr', preds ++ preds')
+        -- I still return those predicates for now
+        -- in the future, I think it would be worth thinking about whether some of them can actually be eliminated completely
 
 
 -- TODO:  tady budu potrebovat trosku vymyslet neco vlastniho

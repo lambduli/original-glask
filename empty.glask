@@ -27,6 +27,9 @@
 
 
 
+; data Pair a b = MkPair a b
+
+
 ; class Show a where
   { show :: a -> [Char]
   ; show'list :: [a] -> [Char] }
@@ -38,7 +41,7 @@
 ; instance Show Bool where
   { show True = "True"
   ; show False = "False"
-  ; show'list bools = "[" ++ concat'map'with ", " show bools ++ "]" }
+  ; show'list bools = "[" ++ concat'map'with ", " show bools ++ "]" } -- problematic
 
 ; instance Show Char where
   { show ch = [ch]
@@ -47,7 +50,21 @@
 
 ; instance Show Int where
   { show n = int#show n
-  ; show'list bools = "[" ++ concat'map'with ", " show bools ++ "]" }
+  ; show'list ints = "[" ++ concat'map'with ", " show ints ++ "]" } -- problematic
+
+; instance (Show a, Show b) => Show (Pair a b) where
+  { show (MkPair a b) = "MkPair " ++ show a ++ " " ++ show b -- problematic
+  ; show'list x = show'list x }
+
+-- SO THOSE COMMENTED OUT NOW CAUSE A TYPE ERROR
+-- IT COMPLAINS THAT THE OUTER CONTEXT ... something something ...
+
+; not'a'method :: (Show a, Show b) => Pair a b -> [Char]
+; not'a'method (MkPair a b) = "MkPair " ++ show a
+-- fails for now
+
+; an'example :: Show a => a -> [Char]
+; an'example a = show a ++ "."
 
 
 -- ; zeros = 0 : zeros
@@ -60,29 +77,98 @@
 -- ; f' g (x, y) = ((g x), (g y))
 
 
-; fst :: (a, b) -> a
-; fst (a, b) = a
+-- ; fst :: (a, b) -> a
+-- ; fst (a, b) = a
+-- 
+-- 
+-- ; class Foo a where
+--   { foo :: a -> a }
+-- 
+-- ; instance Foo Int where
+--   { foo x = 1 }
+-- 
+-- ; instance Foo Char where
+--   { foo _ = 'a' }
 
 
-; class Foo a where
-  { foo :: a -> a }
+-- ; f' :: (Char -> Char) -> Char -> Char
+-- ; f' g c = g c
+-- ; a'' = f' foo 'a'
+-- 
+-- ; f'' :: (Foo a, Foo b) => (forall a . Foo a => a -> a) -> (Pair a b) -> (Pair a b)
+-- ; f'' g (MkPair x y) = (MkPair (g x) (g y))
+-- 
+-- ; y'' = f'' foo (MkPair (42 :: Int) 'z')
+-- 
+-- ; x'' = f'' (\ x -> foo x) (MkPair (23 :: Int) 'b')
 
-; instance Foo Int where
-  { foo x = 1 }
-
-; instance Foo Char where
-  { foo _ = 'a' }
 
 
-; f' :: (Char -> Char) -> Char -> Char
-; f' g c = g c
-; a'' = f' foo 'a'
 
-; f'' :: (Foo a, Foo b) => (forall a . Foo a => a -> a) -> (a, b) -> (a, b)
-; f'' g (x, y) = ((g x), (g y))
 
-; y'' = f'' foo (42 :: Int, 'z')
 
--- ; x'' = f'' (\ x -> foo x) (23 :: Int, 'b')
+
+
+
+
+; class Add a where
+{ add :: a -> a -> a }
+
+; takes :: (forall x . x -> x) -> a -> a
+; takes fn a = fn a
+
+
+; given :: Add a => a -> a
+; given a = add a a
+
+
+
+; wants :: (forall x . x -> x) -> a -> a
+; wants fn a = fn a
+; correct _ = wants ((\ i -> i) :: forall e . e -> e)
+
+-- ; xyz _ = takes (given :: (forall x . x -> x)) -- this needs to fail but it DOESN'T !!!
+-- IT DOES FAIL NOW
+-- and no longer infers:
+-- xyz :: (forall a b . a -> b -> b)
+
+-- it would be a problem for two reasons
+-- the one related to contexts is that the function `takes`
+-- expects a function that is applied to a single thing
+-- but would be given a function that expects also a dictionary before the argument
+
+-- let's try simpler version of it
+-- ; xyz'1 _ = (given :: (forall x . x -> x)) -- this needs to fail but it STILL DOESN'T !!!
+-- ; xyz'2 _ = ((given :: Add a => a -> a) :: (forall x . x -> x)) -- this needs to fail but it STILL DOESN'T !!!
+-- ; xyz'3 _ = ((undefined :: Add a => a -> a) :: (forall x . x -> x)) -- this finally breaks
+-- ; xyz'4 _ = (((\ x -> x) :: Add a => a -> a) :: (forall x . x -> x)) -- this finally breaks
+-- so I think there's something wrong with instantiation
+-- ALL OF THEM FAIL NOW
+
+
+
+-- so what about the other way around?
+-- what if the one expecting thinks there will be more dictionaries but the one given expects fewer?
+
+
+
+
+
+-- ; takes' :: (forall x . Num x => x -> x) -> a -> a
+-- ; takes' fnumx a = fnumx a -- I think this will force `a` to be qualified with Num too
+-- -- yes, that's what happens
+-- -- so it does not type check
+-- -- so no problem when dictionary passing
+-- 
+-- ; given' :: a -> a
+-- ; given' a = a
+-- 
+-- ; xyz' _ = takes' given' -- this should fail and it DOES !
+
+
+-- ; function x = (((\ i -> i) :: forall x . Add x => x -> x) :: forall y . y -> y) -- this should fail to type check
+-- OK THIS ONE FAILS NOW
+
+
 
 }

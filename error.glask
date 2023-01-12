@@ -12,6 +12,12 @@
 ; instance (Num a, Num b) => Num (Pair a b) where
   { (-) (P a b) (P c d) = P (a - c) (b - d) }
 
+; class Show a where
+  { show :: a -> [Char]
+  ; show'list :: [a] -> [Char] }
+
+
+
 ; data Pair a b = P a b
 
 ; infixr 2 ||
@@ -93,13 +99,34 @@
 
 
 
-
+-- commenting out the holes for now, I need it to work a bit
 -- ; holy :: Int -> a -> a
 -- ; holy i a = if True then a else _
 
 -- ; holy1 i a = if True then a else _
 
 -- ; holy2 :: Int -> a -> a
-; holy2 i a = i - _
+-- ; holy2 i a = i - _
+
+
+; class Test a where
+  { test :: a -> a }
+
+; data In'Test = In'Test
+
+; instance Show In'Test where
+  { show In'Test = "In'Test"
+  ; show'list x = show'list x }
+
+; instance Test In'Test where
+  { test x = x }
+
+; function1 :: Test a => (forall x . Test x => x -> x) -> a -> a
+; function1 fn a = fn a
+
+
+; function2 :: forall x . Test x => x -> x
+; function2 x = let { o = test x } in x
+
 
 }
