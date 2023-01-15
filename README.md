@@ -1,3 +1,3 @@
 # Glask
 
-TODO: Write some examples.
+TODO: Write some examples. In the meantime, see `./examples/positive`
