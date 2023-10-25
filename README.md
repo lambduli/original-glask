@@ -1,3 +1,3 @@
 # Glask
 
-TODO: Write some examples. In the meantime, see `./examples/positive`
+I am currently rebuilding the whole project from the ground up.
