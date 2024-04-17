@@ -31,13 +31,13 @@ import Compiler.TypeSystem.Type.Infer.Pattern ( infer'pat, infer'pattern, check'
 import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Match ( infer'match, tc'matches )
 import {-# SOURCE #-} Compiler.TypeSystem.Type.Infer.Declaration ( infer'decls )
 
-import Compiler.TypeSystem.Utils.Infer ( lookup't'env, merge'into't'env, inst'sigma, unify'fun, check'sigma, infer'rho, check'rho, subs'check, skolemise, lookup'in'overloaded, unify'pair, fresh'meta )
+import Compiler.TypeSystem.Utils.Infer ( with, lookup't'env, {- merge'into't'env -} inst'sigma, unify'fun, check'sigma, infer'rho, check'rho, subs'check, skolemise, lookup'in'overloaded, unify'pair, fresh'meta )
 import Compiler.TypeSystem.Expected ( Expected (Infer, Check) )
 import Compiler.TypeSystem.Actual ( Actual (Checked, Inferred) )
 import Compiler.TypeSystem.Kind.Infer.Annotation ( kind'specify )
 import Compiler.TypeSystem.Error ( Error(Unexpected, Typed'Holes) )
 import Compiler.TypeSystem.InferenceState (Infer'State(holes))
-import Debug.Trace (trace)
+import Debug.Trace (trace, traceM)
 
 
 infer'expr :: Expression -> Expected Rho'Type -> Type'Check (Expression, [Predicate], Actual Rho'Type)
@@ -176,14 +176,20 @@ infer'expr l@(Lit lit) expected = do
 
 infer'expr (Abs pattern' body) Infer = do
   (pattern'', preds, arg'type, assumptions) <- infer'pattern pattern'
-  (body', preds', rho) <- merge'into't'env assumptions (infer'rho body)
-
+  (body', preds', rho) <- {- merge'into't'env -} with assumptions (infer'rho body)
   return (Abs pattern'' body', preds ++ preds', Inferred (arg'type `T'Fun` rho))
+  -- a'thing <- {- merge'into't'env -} with assumptions (infer'expr body Infer)
+  -- let (body', preds', Inferred rho) = a'thing
+
+  -- {- merge'into't'env -} with assumptions (infer'expr body Infer) >>=
+  --   \(body', preds', Inferred rho) ->
+  --     return (Abs pattern'' body', preds ++ preds', Inferred (arg'type `T'Fun` rho))
+  
 
 infer'expr (Abs pattern' body) (Check rho) = do
   (arg'type, res'type) <- unify'fun rho
   (pattern'', preds, assumptions) <- check'pattern pattern' arg'type
-  (body', preds') <- merge'into't'env assumptions (check'rho body res'type)
+  (body', preds') <- {- merge'into't'env -} with assumptions (check'rho body res'type)
   return (Abs pattern'' body', preds ++ preds', Checked)
 
 infer'expr (App fun arg) expected = do
@@ -240,6 +246,8 @@ infer'expr (If condition then' else') Infer = do
   preds'' <- subs'check rho'else rho'then
   
   (skolems, context, rho) <- skolemise rho'then
+
+  trace ("________\n" ++ "IF :- rho= " ++ show rho ++ "\n" ++ "skolems= " ++ show skolems ++ "\n" ++ ".") (return ())
   
   return (If condition' then'' else'', preds ++ preds'then ++ preds'else ++ preds' ++ preds'' ++ context, Inferred rho)
 
@@ -254,15 +262,40 @@ infer'expr (If condition then' else') (Check rho) = do
 
 infer'expr (Let decls body) expected = do
   (decls', preds'decls, assumptions'decls) <- infer'decls decls
-  (body', preds'body, t'body) <- merge'into't'env assumptions'decls (infer'expr body expected)
+  (body', preds'body, t'body) <- {- merge'into't'env -} with assumptions'decls (infer'expr body expected)
   return (Let decls' body', preds'decls ++ preds'body, t'body)
 
 infer'expr (Ann expr sigma) expected = do
   -- TODO: fully specify kinds within types in the `sigma`
   sigma' <- kind'specify sigma
   (expr', preds) <- check'sigma expr sigma'
+  -- NOTE about THE BUG:
+  -- The issue is that check'sigma will correctly return a context that came to be
+  -- from the (sigma'). That is indeed correct!
+  -- (undefined :: Add a => a -> a) :: forall x . Add x => x -> x
+  -- the inner annotation - (Add a => a -> a) must lead to the predicate (Add a)
+  -- accounted for.
+  -- If I ignore it, then the outer annotation could just say
+  -- :: forall x . x -> x
+  -- and there would be NO WAY for me to identify that this is NOT LEGAL
+  -- it would be the same as if the (Add a) is never in the inner type in the first place!
+  -- So it definitely needs to be returned.
+  -- BUT!!!
+  -- Because in checking mode there is a type like [x -> x]
+  -- pushed into this level from the above level (coming from the outer annotation)
+  -- there needs to be a way, to say that the (a) in the (Add a)
+  -- is the same as (x) in the [x -> x]
+  -- Because it is!!!
+  -- But that is not going to happen here!
+  -- (inst'sigma) that is tasked to unify (in checking mode at least)
+  -- (sigma') and (expected) will again skoleimise the (sigma')
+  -- that will lead to another list of skolems and a whole different skolemisation
+  -- that means, that the context from the line above will cause trouble
   (preds', actual') <- inst'sigma sigma' expected
-  return (Ann expr' sigma, preds ++ preds', actual')
+  traceM ("ANN\nexpr= " ++ show expr ++ "\nsigma= " ++ show sigma ++ "\npreds= " ++ show preds ++ "\npreds'= " ++ show preds' ++ "\nexpected= " ++ show expected ++ "\nactual'= " ++show actual' ++ "\n\n")
+  return (Ann expr' sigma, {- preds ++ -} preds', actual')
+  -- EXPERIMENT: I will try to ignore preds
+
   -- so according the paper this is what should happen:
   {-  Freshly instantiate the implicit type scheme given by the user. That most
       likely means I will need to quantify the qualified type first. Destructure

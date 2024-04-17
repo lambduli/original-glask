@@ -235,4 +235,100 @@
 
 ; identifier = identifier
 
+
+-- So I want to see how the `if` expression works
+
+-- first I want to see, if the skolemisation approach breaks what I think it breaks
+; some'higher :: forall a . a -> forall b . Int -> b -> Int
+; some'higher = some'higher
+; similar'higher :: forall a . a -> Int -> forall b . b -> Int
+; similar'higher = similar'higher
+; if'expr _ = if True
+              then some'higher
+              else some'higher
+; if'expr1 _ =  if True
+                then some'higher
+                else similar'higher
+; if'expr2 _ =  if True
+                then some'higher
+                else similar'higher
+; if'expr3 _ =  (if True
+                then some'higher
+                else similar'higher) 'a'
+-- we get this type
+-- if'expr3 :: (forall a . a -> Int -> je -> Int)
+-- which is clearly broken
+-- I think it's because only when we used APP rule, we've forced the `infer mode`
+-- the question is - if the `a` has a type `Char`, how was it able to unify with
+-- a skolem?
+-- that's because some'higher has the first type parameter under a left-most outer-most
+-- forall --> this leads to it being instantiated when the the of the `then` branch
+-- is being inferred -> so `a` is not a skolem/rigid variable
+
+-- what about this then?
+
+-- ; if'expr4 _ =  (if True
+--                then some'higher
+--                else similar'higher) 'a' (23 :: Int) 'z' -- this 'z' should cause a problem
+-- yes! this leads to the following error
+-- Error: [Shape] Couldn't match type `Char` :: * with `je` :: *
+-- this confirms my hypothesis
+-- IT IS INDEED BROKEN
+-- and most likely, the reason is - doing skolemisation and not instantiating the skolemised type
+-- is wrong
+
+
+-- ; if'expr5 _ =  (if True
+--                 then some'higher
+--                 else some'higher) 'a' (23 :: Int) 'z' -- this 'z' should cause a problem
+-- also produces
+-- Error: [Shape] Couldn't match type `Char` :: * with `je` :: *
+
+-- but it works in GHC
+-- so I think we should instantiate the skolemised type so that it becomes some ρ
+
+
+
+
+
+
+-- another thing I think is broken
+
+-- so this should work and is simple to see how it works
+; class Pred a
+; instance Pred Char
+
+; some'func :: forall a . Pred a => a -> a
+; some'func = some'func
+
+-- now the context
+; context1 _ = some'func :: Char -> Char -- should type check
+-- ; context2 _ = some'func :: Int -> Int -- should not type check
+-- the context2 fails as expected
+
+
+-- but what about this:
+
+; other'func :: Char -> forall a . Pred a => a -> a
+; other'func = other'func
+
+-- now the context
+; context3 _ = (other'func 'a') 'b' -- this should work fine
+-- ; context4 _ = (other'func 'a') True -- this should fail
+-- AND IT FAILS
+; context5 _ = (other'func 'a') :: Char -> Char -- this should work fine
+-- ; context6 _ = (other'func 'a') :: Int -> Int -- this should fail
+-- AND IT FAILS
+-- ; context7 _ = (other'func 'a') :: forall b . b -> b -- this should fail
+-- AND IT FAILS
+-- ; context8 _ = ((other'func 'a') :: forall b . b -> b) True -- this should fail
+-- AND IT FAILS
+
+
+
+-- this is existential quantification
+-- it is not supported, not even in the parser
+-- ; data X = forall a . Mk'X a (a -> Int)
+
+
 }

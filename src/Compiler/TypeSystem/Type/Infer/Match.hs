@@ -119,7 +119,6 @@ tc'matches matches expected@(Check type') = do
   let preds'exprs = concat  [ pred  | (_, _, _, pred) <- results ]
   let preds       = preds'patts ++ preds'exprs
 
-
   return (matches', preds, Checked)
 
 tc'matches matches Infer = do

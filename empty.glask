@@ -127,8 +127,15 @@
 ; wants fn a = fn a
 ; correct _ = wants ((\ i -> i) :: forall e . e -> e)
 
+
+-- ; incorrect _ = wants given
+-- this fails because (given) is less polymorphic than it should be
+
+
+-- this is the same thing, I just used (wants) instead of (takes)
 -- ; xyz _ = takes (given :: (forall x . x -> x)) -- this needs to fail but it DOESN'T !!!
 -- IT DOES FAIL NOW
+-- it fails, because retyping (given) to a totally polymorphic type is illegal
 -- and no longer infers:
 -- xyz :: (forall a b . a -> b -> b)
 
@@ -138,12 +145,34 @@
 -- but would be given a function that expects also a dictionary before the argument
 
 -- let's try simpler version of it
--- ; xyz'1 _ = (given :: (forall x . x -> x)) -- this needs to fail but it STILL DOESN'T !!!
--- ; xyz'2 _ = ((given :: Add a => a -> a) :: (forall x . x -> x)) -- this needs to fail but it STILL DOESN'T !!!
--- ; xyz'3 _ = ((undefined :: Add a => a -> a) :: (forall x . x -> x)) -- this finally breaks
--- ; xyz'4 _ = (((\ x -> x) :: Add a => a -> a) :: (forall x . x -> x)) -- this finally breaks
--- so I think there's something wrong with instantiation
--- ALL OF THEM FAIL NOW
+-- ; xyz'1 _ = (given :: (forall x . x -> x))
+-- fails because (given) can't be retyped to a more polymorphic type
+
+-- ; xyz'2 _ = ((given :: Add a => a -> a) :: (forall x . x -> x))
+-- fails for the same reason as above
+
+-- ; xyz'3 _ = ((undefined :: Add a => a -> a) :: (forall x . x -> x))
+-- fails for the same reason
+
+-- ; xyz'4 _ = (((\ x -> x) :: Add a => a -> a) :: (forall x . x -> x))
+-- fails for the same reason again
+
+
+-- THIS FAILS AND I THINK IT SHOULDN'T
+-- ; experiment _ = (undefined :: forall a . Add a => a -> a) :: forall x . Add x => x -> x
+-- ; experiment _ = (undefined :: Add a => a -> a) :: forall x . Add x => x -> x
+
+-- investigating this one now:
+-- infer'expr in checking mode, on:
+-- (undefined :: Add a => a -> a) :: [et -> et]
+-- 
+-- ; experiment _ = (undefined :: Add a => a -> a) :: forall x . Add x => x -> x
+
+
+
+-- SO THIS DOES NOT FAIL (as it is supposed to)
+-- ; experiment _ = (undefined :: forall a . a -> a) :: forall x . Add x => x -> x
+
 
 
 
@@ -154,6 +183,7 @@
 
 
 
+-- this should fail and it DOES !
 -- ; takes' :: (forall x . Num x => x -> x) -> a -> a
 -- ; takes' fnumx a = fnumx a -- I think this will force `a` to be qualified with Num too
 -- -- yes, that's what happens
@@ -163,12 +193,32 @@
 -- ; given' :: a -> a
 -- ; given' a = a
 -- 
--- ; xyz' _ = takes' given' -- this should fail and it DOES !
+-- ; xyz' _ = takes' given'
 
 
 -- ; function x = (((\ i -> i) :: forall x . Add x => x -> x) :: forall y . y -> y) -- this should fail to type check
 -- OK THIS ONE FAILS NOW
 
 
+
+; seq :: forall a b . a -> b -> b
+; seq a b = case a of
+            { _ -> b }
+
+
+-- seq ((\ True y -> ()) False) 5 -- this succeeds in ghc
+
+-- seq ((\ True -> \ y -> ()) False) 5 -- this fails in ghc
+; the'second'one = \ first -> case first of
+                              { True -> \ second -> case second of { _ -> () } }
+
+-- but they both work in Glask
+-- with the'second'one instead of the lambda - it also works in Glask
+
+-- the reason being (for at least the lambda one), Glask doesn't differentiate between
+-- \ x y -> ...
+-- and
+-- \ x -> \ y -> ...
+-- both of the above are considered translated into the second one
 
 }

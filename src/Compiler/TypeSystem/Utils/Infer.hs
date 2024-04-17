@@ -95,6 +95,28 @@ add'dicts dicts m = do
   local scope m
 
 
+class With a where
+  with :: [(String, a)] -> Type'Check b -> Type'Check b
+
+instance With Type where
+  with bindings m = do
+    let scope e@Infer'Env{ type'env = t'env } = e{ type'env = Map.fromList bindings `Map.union` t'env}
+    local scope m
+
+
+instance With Kind where
+  with bindings m = do
+    let scope e@Infer'Env{ kind'env = k'env } = e{ kind'env = Map.fromList bindings `Map.union` k'env }
+    local scope m
+
+
+
+
+
+
+
+
+
 -- TODO: I really feel like generalizing all the merge'into'... and put'in'... and lookup'...
 --        is the best way to go around. Then put them in some shared Utils module and use them
 --        across all parts of the pipeline.
@@ -402,6 +424,7 @@ fresh'meta = do
   return $ T'Meta $ Tau fresh'name K'Star
 
 
+-- NOTE: I feel like this function should be named `pr` and the skolemisation should be a detail of that operation
 skolemise :: Sigma'Type -> Type'Check ([T'V'], [Predicate], Rho'Type)
 skolemise (T'Forall tvs (preds :=> type')) = do                     --  PRPOLY
   skolems <- new'skolem'vars tvs
@@ -465,6 +488,115 @@ inst'sigma sigma (Check rho) = do
   return (preds, Checked)
 
 
+-- TODO: I think this function needs to deal with contexts too.
+-- We don't know whether they are sigma or rho types
+-- but I think that if they are both sigma types, preds'r and preds
+-- need to be checked, the SUB-type of the other (the more general)
+-- MUST BE more general with regard to the context
+-- if OK -> the corresponding constraints should be discharched, I think
+
+-- BUT, what if one of them is sigma and the other rho?
+-- and what if the sigma one wants to introduce some predicates?
+-- then I can't check that parts of the rho one satisfy the same context
+-- then I would probably need to introduce those? like return them
+-- and let the outer scope figure the context out
+
+
+-- I think that the one on the left (sigma'l) needs to be more general.
+-- That means that if there is some context in (sigma'l) then 
+-- the context of (sigma'r) must entail it.
+-- TODO: make sure that this happens!!!
+-- I think I might need to check if (sigma'r) is actually a forall.
+-- If it is, I think I will need to do almost the same thing, except
+-- that this function (subs'check) now becomes "the boundary" aka
+-- the keeper of the (potentially) stronger context
+-- and when the (subs'check'rho) returns predicates
+
+
+-- tau and tau
+-- if both are simple tau types (mono types) - no forall anywhere
+-- then there're no contexts to deal with
+
+-- forall and forall
+-- if the left is a forall and the right is a forall
+-- the context of the right one needs to entail the left one
+-- question: Do I return the stronger, right context? Or do I just discharge it? Would that be even legal?
+-- what if I return both?
+-- the duplicated Predicates should be reduced anyway, there might be some more stuff going on
+-- I would return that more stuff anyway
+-- and those duplicites that I think should be discharged - will they be discharged anyway?
+-- Well those skolems will have to unify with something right?
+-- Maybe not, because this operation does not produce a type, just predicates.
+-- WOW - this is true. If we don't produce type, just predicates, then what would be the point
+-- of returning predicates that can only mention skolems/rigid variables that never exist anywhere
+-- in the typing assumptions?
+-- That won't be the case in general right? Because I can have scoped variables,
+-- so this means that type annotations (even inside a forall) might contain those "free"
+-- type variables that are bound within an outer scope
+-- so some of those predicates might contain such a variable
+-- 
+-- so am I saying that returning those predicates will only do something if they contain
+-- variables reachable from the typing assumptions and typing constranits?
+-- I think I am saying that.
+-- So me returning any predicates at all (now) when both are foralls
+-- has no effect, those are probably not solved right?
+-- Well that is not true!
+-- Contexts are reduced! And when it would not be possible to reduce it fully
+-- or default it, there would be an error.
+-- So I think it's rather that I wasn't able to write a program
+-- that would exhibit that - that would lead to this specific subs-check
+-- with two foralls where one would be weaker (the wrong one)
+-- but at the same time those types would only be skolemised here -
+-- that would probably mean that the usual RHO type from CHECK mode
+-- will not be it
+-- but maybe some type where one of them is from type annotation (a sigme)
+-- and the other one is a rho type, a function type
+-- and it's higher-rank type (higher-rank type in the annotation)
+-- so the subs'check'fun might lead to this
+-- this function flips the position of arguments, but that should be fine if both are foralls anyway
+
+-- forall and rho
+-- I think the only way to ensure that the context of the right one
+-- is stronger as/than the context of the left one
+-- is to propagate the context (after the unification happens) to the level above
+-- so that it can bubble up and eventually stop at the generalization boundary for the right type
+-- that's the point where type variables from the right type are generalized
+-- and that is the point where either the expression is not annotated
+-- then the context is just discharged into the type of the expression (not just identifier, it can be an inline annotation)
+-- or there is annotation and at that point it will be checked that the annotation has as strong/stronger context as the one
+-- that the analysis figured out
+-- it is similar as with the situation where I would have
+-- foo :: a -> a
+-- foo x = x + x
+-- this would be problematic
+-- but this situation is bit different, the context would not come from an expression but rather
+-- from a type-level expressions
+-- maybe something like this:
+-- foo :: a -> a
+-- foo x = x :: forall o . Num o => o
+-- I think this would be the case I am talking about
+-- since x is supposed to be something, and I am adding another restriction
+-- saying that the type of x is actually (Num a) and that is not part of the original
+-- context, I think this should fail
+-- in Haskell it needs to be writen like this:
+-- should'fail :: forall a . a -> a
+-- should'fail x = x :: Num a => a
+-- and scoped type variables need to be enabled, but I think this might be what I am thinking about
+
+-- rho and forall
+-- because rho can't have a context (at this specific level)
+-- it can't introduce it (the context)
+-- so whatever context the right sigma has, it is definitelly stronger
+-- at this level
+-- on the other hand -- there might be some predicates bound to variables in the left rho
+-- so I can't just say that the right thing is stronger
+-- becase it might not be?
+-- so I guess this should mean that after the unification (which, again, happens for sure)
+-- the context from the right sigma should be returned?
+-- this seems to make sense in theory
+-- I need to come up with some example of it
+--
+--
 subs'check :: Sigma'Type -> Sigma'Type -> Type'Check [Predicate]
 subs'check sigma'l sigma'r = do
   (skolems, preds'r, rho'r) <- skolemise sigma'r
@@ -487,10 +619,25 @@ subs'check sigma'l sigma'r = do
 
 
 -- Invariant: the second argument is in weak-prenex form
+-- TODO: I think that this function should be checking that the contexts are valid.
+-- It checks that one type is a subtype of the other one.
+-- To be more specific, that the first argument (sigma type) is a sub-type of the second one (rho type).
+-- In other words, the first one must be MORE general/polymorphic than the second one.
+-- But that means, that whatever context sigma keeps, rho must obey it too.
 subs'check'rho :: Sigma'Type -> Rho'Type -> Type'Check [Predicate]
 subs'check'rho sigma@(T'Forall _ _) rho = do                              --  SPEC
   preds :=> rho' <- instantiate sigma
+  -- So since the sigma is supposed to be the MORE GENERAL one
+  -- that implies that rho can never lose the context of sigma
+  -- rho can be stricter - meaning - it can add more stuff into its context
+  -- making it stricter/less general, but it can never NOT have something
+  -- that sigma has
+  -- so (preds) need to be returned for sure
+  
+  -- here (preds) are just from the sigma one 
   preds' <- subs'check'rho rho' rho
+  -- here (preds') can be from both, because subs'check
+  -- introduces Predicates from both types into the system
   return (preds ++ preds')
 
 subs'check'rho rho'l (arg'r `T'Fun` res'r) = do                           --  FUN1
@@ -519,7 +666,7 @@ subs'check'fun a1 r1 a2 r2 = do
 -- mohl bych ztratit tu informaci, ze expr "domnele" pozaduje nejaky Predicates
 -- hodne zalezi na tom, jak vlastne funguje check'rho
 -- pokud je tam nekde unifikace na bottom urovni, tak by snad mohlo stacit vratit ty Predicates
--- protoze by se melo stat to, ze skolemy (ty jediny jsou kvalifikovany kontextem) se sunifikuji
+-- protoze by se melo stat to, ze skolemy (ty jediny jsou kvalifikovany kontextem) se zunifikuji
 -- s odpovidajicimy meta promennymi (s nicim jinym ani nemuzou, krome sebe a to tady moc nepomuze)
 -- 
 -- na druhou stranu, je opravdu potreba to poradne promyslet, je klidne mozny, ze funkce, ktery operujici jako check'rho
@@ -600,23 +747,47 @@ check'sigma expr sigma = do
 
           let ps' = filter (not . entail c'env outer'reduced) inner'reduced
 
-          if not $ null ps'
-          then
-            throwError $ Unexpected ("The context is too weak!\n" ++ "Predicates: " ++ show ps' ++ "\n can not be solved.")
-          else return ()
 
-        _ -> return ()
+          if not $ null ps'
+          then do
+            let message = ("----------\ncheck'sigma\nsigma = " ++ show sigma ++ "\n") ++
+                          ("skolems = " ++ show skolems ++ "\npreds = " ++ show preds ++ "\nrho = " ++ show rho) ++ "\n" ++
+                          ("preds' = " ++ show preds' ++ "\n") ++
+                          ("check'sigma\n" ++ "outer'context = " ++ show outer'context ++ "\ninner'context = " ++ show inner'context ++ "\n") ++
+                          ("check'sigma\n" ++ "outer'reduced = " ++ show outer'reduced ++ "\ninner'reduced = " ++ show inner'reduced ++ "\n") ++
+                          ("the expression = " ++ show expr ++ "\n\nsubst = " ++ show subst)
+            throwError $ Unexpected ("The context is too weak!\n" ++ "Predicates: " ++ show ps' ++ "\n can not be solved." ++ "\n" ++ message ++ "\n\n")
+          else return (expr', outer'reduced)
+          -- IMPORTANT: I think that if the context from the type entails the whole inferred context
+          -- it should be OK to return only the outer'reduced context.
+          -- The reason being, the inner is already contained within the outer one and the outer one
+          -- may contain some additional restrictions so we want to propagate those.
+          -- I need to test it and think it through though!
+
+          -- so is it OK to just return the outer (the one that should entail the inner?)
+          -- since it entails the inner I think it should be OK, I guess
+          -- it can contain some more predicates than just the ones in the innner
+
+        _ -> do
+          if not $ null bad'vars
+          then
+            throwError $ Unexpected "Type is not polymorphic enough!"
+          else do
+            return (expr', preds ++ preds')
+            -- I still return those predicates for now
+            -- in the future, I think it would be worth thinking about whether some of them can actually be eliminated completely
+
       -- end of the experiment
       --
 
 
-      if not $ null bad'vars
-      then
-        throwError $ Unexpected "Type is not polymorphic enough!"
-      else do
-        return (expr', preds ++ preds')
-        -- I still return those predicates for now
-        -- in the future, I think it would be worth thinking about whether some of them can actually be eliminated completely
+      -- if not $ null bad'vars
+      -- then
+      --   throwError $ Unexpected "Type is not polymorphic enough!"
+      -- else do
+      --   return (expr', preds ++ preds')
+      --   -- I still return those predicates for now
+      --   -- in the future, I think it would be worth thinking about whether some of them can actually be eliminated completely
 
 
 -- TODO:  tady budu potrebovat trosku vymyslet neco vlastniho

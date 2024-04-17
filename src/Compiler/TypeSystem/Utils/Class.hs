@@ -91,10 +91,11 @@ initial'env = Class'Env { classes = Map.empty, defaults = [t'Int, t'Double] }
                                   In that case, it would make more sense to just return (). But then I need to use something different from `ifM`.
           What would be better: 
  -}
-overlap :: (MonadError Error m) => Predicate -> Predicate -> m Bool
-overlap p q = do
-  p `unify` q :: (MonadError Error m) => m (Subst M'V Type)
-  return False
+-- SO IT TURNS OUT - THE FUNCTION IS ONLY USED IN ADD'INST --> SO I DON'T CARE ABOUT IT FOR NOW, I don't mind overlapping instances anyway.
+-- overlap :: (MonadError Error m) => Predicate -> Predicate -> m Bool
+-- overlap p q = do
+--   p `unify` q :: (MonadError Error m) => m (Subst M'V Type)
+--   return False
 -- takze co se tady deje
 -- moje unify nevraci Maybe (Subst ...)
 -- ja to mam schovany v monad transformeru abych mohl reportovat ruzny konkretni duvody, proc neslo unifikovat

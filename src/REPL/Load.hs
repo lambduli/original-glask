@@ -191,28 +191,29 @@ load'declarations source counter = do
   return (declarations, trans'env, counter'')
 
 
-make'program :: [Declaration] -> TE.Translate'Env -> Counter -> Program
-make'program declarations trans'env counter =
-  -- TODO: now when I have the list of Declarations in AST form
-  -- I need to call inference
-  -- for the inference I am going to need to build things like class environment and instance environment
-  let class'env = Class'Env.extract declarations
+-- NOTE: Seems like it's not used anywhere
+-- make'program :: [Declaration] -> TE.Translate'Env -> Counter -> Program
+-- make'program declarations trans'env counter =
+--   -- TODO: now when I have the list of Declarations in AST form
+--   -- I need to call inference
+--   -- for the inference I am going to need to build things like class environment and instance environment
+--   let class'env = Class'Env.extract declarations
 
 
-  -- TODO: I need to extract `Type Assumptions` about all data constructors in the list of Declarations
-      constr'assumptions = Data.extract declarations
+--   -- TODO: I need to extract `Type Assumptions` about all data constructors in the list of Declarations
+--       constr'assumptions = Data.extract declarations
 
 
-  -- TODO: I need to inclide all bindings in all type classes and instances into the program too
-  -- I need to split binding declarations into - explicitly typed (also includes instance bindings) and implicitly typed
-  -- then I need to do the dependency analysis on those two groups and figure out the order in which I will infer them
-  -- then I "just" do the inference
-      program :: Program
-      program = to'program declarations
+--   -- TODO: I need to inclide all bindings in all type classes and instances into the program too
+--   -- I need to split binding declarations into - explicitly typed (also includes instance bindings) and implicitly typed
+--   -- then I need to do the dependency analysis on those two groups and figure out the order in which I will infer them
+--   -- then I "just" do the inference
+--       program :: Program
+--       program = to'program declarations
 
-      -- m'anns = method'annotations program
+--       -- m'anns = method'annotations program
 
-  in program
+--   in program
 
 
 process'declarations :: [Declaration] -> TE.Translate'Env -> Counter -> Either Error (Program, Infer'Env, TE.Translate'Env, Counter, Infer'State Type)
